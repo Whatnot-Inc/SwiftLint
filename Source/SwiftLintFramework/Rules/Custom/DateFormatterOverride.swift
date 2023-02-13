@@ -26,9 +26,9 @@ struct DateFormatterOverrideRule: ConfigurationProviderRule, SwiftSyntaxRule {
 extension DateFormatterOverrideRule {
     private final class Visitor: ViolationsSyntaxVisitor {
         override func visitPost(_ node: FunctionCallExprSyntax) {
-            if let functionName = node.calledExpression.as(IdentifierExprSyntax.self)?.identifier.text,
-                functionName == "DateFormatter",
-                node.argumentList.isEmpty {
+            if let calledExpression = node.calledExpression.as(IdentifierExprSyntax.self)?.identifier.text,
+               calledExpression == "DateFormatter",
+               node.argumentList.isEmpty {
                 violations.append(node.positionAfterSkippingLeadingTrivia)
             }
         }
