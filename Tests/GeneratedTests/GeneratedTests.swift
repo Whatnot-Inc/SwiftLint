@@ -1,4 +1,4 @@
-// Generated using Sourcery 1.9.2 — https://github.com/krzysztofzablocki/Sourcery
+// Generated using Sourcery 2.0.1 — https://github.com/krzysztofzablocki/Sourcery
 // DO NOT EDIT
 @_spi(TestHelper)
 @testable import SwiftLintFramework
@@ -184,6 +184,12 @@ class ConvenienceTypeRuleGeneratedTests: XCTestCase {
 class CyclomaticComplexityRuleGeneratedTests: XCTestCase {
     func testWithDefaultConfiguration() {
         verifyRule(CyclomaticComplexityRule.description)
+    }
+}
+
+class DateFormatterOverrideRuleGeneratedTests: XCTestCase {
+    func testWithDefaultConfiguration() {
+        verifyRule(DateFormatterOverrideRule.description)
     }
 }
 

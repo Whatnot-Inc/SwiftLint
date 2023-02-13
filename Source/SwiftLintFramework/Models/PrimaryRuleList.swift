@@ -1,4 +1,4 @@
-// Generated using Sourcery 1.9.2 — https://github.com/krzysztofzablocki/Sourcery
+// Generated using Sourcery 2.0.1 — https://github.com/krzysztofzablocki/Sourcery
 // DO NOT EDIT
 
 /// The rule list containing all available rules built into SwiftLint.
@@ -34,6 +34,7 @@ let builtInRules: [Rule.Type] = [
     ConvenienceTypeRule.self,
     CustomRules.self,
     CyclomaticComplexityRule.self,
+    DateFormatterOverrideRule.self,
     DeploymentTargetRule.self,
     DiscardedNotificationCenterObserverRule.self,
     DiscouragedAssertRule.self,
