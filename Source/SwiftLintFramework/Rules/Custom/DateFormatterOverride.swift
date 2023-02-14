@@ -15,54 +15,37 @@ struct DateFormatterOverrideRule: ConfigurationProviderRule, SwiftSyntaxRule {
             Example("DateFormatter.whatnotFormatter")
         ],
         triggeringExamples: [
+            Example("let df = ↓DateFormatter.init()"),
             Example("let df = ↓DateFormatter()"),
-            Example("↓DateFormatter.init()"),
-            Example("↓DateFormatter()"),
             Example("let df = ↓DateFormatter.anotherStaticInit"),
+            Example("↓DateFormatter()"),
+            Example("↓DateFormatter.init()"),
+            Example("↓DateFormatter.anotherStaticInit"),
         ]
     )
     
     func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        let vis = Visitor(viewMode: .sourceAccurate)
-        return vis
+        Visitor(viewMode: .sourceAccurate)
     }
 }
 
 extension DateFormatterOverrideRule {
     private final class Visitor: ViolationsSyntaxVisitor {
-        override func visitPost(_ node: FunctionCallExprSyntax) {
-            if node.calledExpression.as(IdentifierExprSyntax.self)?.identifier.text == "DateFormatter", node.argumentList.isEmpty {
-                violations.append(node.positionAfterSkippingLeadingTrivia)
-            }
-            
-            if let memberAccessExp = node.calledExpression.as(MemberAccessExprSyntax.self),
-               let identifierExp = memberAccessExp.base?.as(IdentifierExprSyntax.self),
-               identifierExp.identifier.text == "DateFormatter" {
+        override func visitPost(_ node: MemberAccessExprSyntax) {
+            if let identifierExp = node.base?.as(IdentifierExprSyntax.self),
+               identifierExp.identifier.text == "DateFormatter",
+               node.name.text != "whatnotFormatter"
+            {
                 violations.append(node.positionAfterSkippingLeadingTrivia)
             }
         }
         
-        override func visitPost(_ node: VariableDeclSyntax) {
-            for binding in node.bindings {
-                if let initializerClause = binding.initializer?.as(InitializerClauseSyntax.self),
-                   let memberAccessExp = initializerClause.value.as(MemberAccessExprSyntax.self),
-                   let identifierExp = memberAccessExp.base?.as(IdentifierExprSyntax.self),
-                   identifierExp.identifier.text == "DateFormatter",
-                   memberAccessExp.name.text != "whatnotFormatter"
-                {
-                    violations.append(memberAccessExp.positionAfterSkippingLeadingTrivia)
-                    return
-                }
-                
-                else if let initializerClause = binding.initializer?.as(InitializerClauseSyntax.self),
-                        let functionCallExp = initializerClause.value.as(FunctionCallExprSyntax.self),
-                        let memberAccessExp = functionCallExp.calledExpression.as(MemberAccessExprSyntax.self),
-                        let identifierExp = memberAccessExp.base?.as(IdentifierExprSyntax.self),
-                        identifierExp.identifier.text == "DateFormatter"
-                {
-                    violations.append(memberAccessExp.positionAfterSkippingLeadingTrivia)
-                    return
-                }
+        override func visitPost(_ node: FunctionCallExprSyntax) {
+            if let identifierExp = node.calledExpression.as(IdentifierExprSyntax.self),
+               identifierExp.identifier.text == "DateFormatter",
+               node.argumentList.isEmpty
+            {
+                violations.append(node.positionAfterSkippingLeadingTrivia)
             }
         }
     }
