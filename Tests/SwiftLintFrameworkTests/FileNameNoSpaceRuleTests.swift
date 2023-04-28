@@ -1,12 +1,12 @@
 import SourceKittenFramework
-@testable import SwiftLintFramework
+@testable import SwiftLintBuiltInRules
 import XCTest
 
 private let fixturesDirectory = #file.bridge()
     .deletingLastPathComponent.bridge()
     .appendingPathComponent("Resources/FileNameNoSpaceRuleFixtures")
 
-class FileNameNoSpaceRuleTests: XCTestCase {
+class FileNameNoSpaceRuleTests: SwiftLintTestCase {
     private func validate(fileName: String, excludedOverride: [String]? = nil) throws -> [StyleViolation] {
         let file = SwiftLintFile(path: fixturesDirectory.stringByAppendingPathComponent(fileName))!
         let rule: FileNameNoSpaceRule

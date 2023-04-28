@@ -1,7 +1,6 @@
-@_spi(TestHelper)
 import SwiftLintFramework
 
-extension RulesFilter {
+final class RulesFilter {
     struct ExcludingOptions: OptionSet {
         let rawValue: Int
 
@@ -9,13 +8,11 @@ extension RulesFilter {
         static let disabled = Self(rawValue: 1 << 1)
         static let uncorrectable = Self(rawValue: 1 << 2)
     }
-}
 
-class RulesFilter {
     private let allRules: RuleList
     private let enabledRules: [Rule]
 
-    init(allRules: RuleList = primaryRuleList, enabledRules: [Rule]) {
+    init(allRules: RuleList = RuleRegistry.shared.list, enabledRules: [Rule]) {
         self.allRules = allRules
         self.enabledRules = enabledRules
     }

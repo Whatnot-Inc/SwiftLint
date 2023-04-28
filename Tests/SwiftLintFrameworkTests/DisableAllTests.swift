@@ -1,7 +1,7 @@
 import SwiftLintFramework
 import XCTest
 
-class DisableAllTests: XCTestCase {
+class DisableAllTests: SwiftLintTestCase {
     /// Example violations. Could be replaced with other single violations.
     private let violatingPhrases = [
         Example("let r = 0"), // Violates identifier_name
@@ -26,7 +26,8 @@ class DisableAllTests: XCTestCase {
     /// Tests whether swiftlint:disable all protects properly
     func testDisableAll() {
         for violatingPhrase in violatingPhrases {
-            let protectedPhrase = violatingPhrase.with(code: "// swiftlint:disable all\n" + violatingPhrase.code)
+            let code = "// swiftlint:disable all\n" + violatingPhrase.code + "\n// swiftlint:enable all\n"
+            let protectedPhrase = violatingPhrase.with(code: code)
             XCTAssertEqual(
                 violations(protectedPhrase).count,
                 0,
@@ -79,7 +80,8 @@ class DisableAllTests: XCTestCase {
                 // swiftlint:disable all
                 \(violatingPhrase.code)
                 \(violatingPhrase.code)
-                // swiftlint:enable:previous all\n
+                // swiftlint:enable:previous all
+                // swiftlint:enable all
                 """)
             XCTAssertEqual(
                 violations(unprotectedPhrase).count,
@@ -111,7 +113,8 @@ class DisableAllTests: XCTestCase {
                 // swiftlint:disable all
                 \(violatingPhrase.code)
                 // swiftlint:enable:next all
-                \(violatingPhrase.code)\n
+                \(violatingPhrase.code)
+                // swiftlint:enable all
                 """)
             XCTAssertEqual(
                 violations(unprotectedPhrase).count,
@@ -144,7 +147,8 @@ class DisableAllTests: XCTestCase {
             let unprotectedPhrase = violatingPhrase.with(code: """
                 // swiftlint:disable all
                 \(violatingPhrase.code)
-                \(rawViolatingPhrase)// swiftlint:enable:this all\n"
+                \(rawViolatingPhrase)// swiftlint:enable:this all
+                // swiftlint:enable all
                 """)
             XCTAssertEqual(
                 violations(unprotectedPhrase).count,

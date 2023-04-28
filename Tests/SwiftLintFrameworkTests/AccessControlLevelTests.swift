@@ -1,7 +1,7 @@
-import SwiftLintFramework
+import SwiftLintCore
 import XCTest
 
-class AccessControlLevelTests: XCTestCase {
+class AccessControlLevelTests: SwiftLintTestCase {
     func testDescription() {
         XCTAssertEqual(AccessControlLevel.private.description, "private")
         XCTAssertEqual(AccessControlLevel.fileprivate.description, "fileprivate")

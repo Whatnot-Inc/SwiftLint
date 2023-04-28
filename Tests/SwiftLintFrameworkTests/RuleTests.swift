@@ -1,4 +1,4 @@
-@testable import SwiftLintFramework
+import SwiftLintCore
 import XCTest
 
 struct RuleWithLevelsMock: ConfigurationProviderRule {
@@ -19,7 +19,7 @@ struct RuleWithLevelsMock: ConfigurationProviderRule {
     func validate(file: SwiftLintFile) -> [StyleViolation] { return [] }
 }
 
-class RuleTests: XCTestCase {
+class RuleTests: SwiftLintTestCase {
     fileprivate struct RuleMock1: Rule {
         var configurationDescription: String { return "N/A" }
         static let description = RuleDescription(identifier: "RuleMock1", name: "",
@@ -71,6 +71,7 @@ class RuleTests: XCTestCase {
     }
 
     func testRuleArraysWithDifferentCountsNotEqual() {
+        // swiftlint:disable:next xct_specific_matcher
         XCTAssertFalse([RuleMock1(), RuleMock2()] == [RuleMock1()])
     }
 

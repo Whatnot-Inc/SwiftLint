@@ -1,26 +1,12 @@
 import Foundation
 import SourceKittenFramework
-@testable import SwiftLintFramework
+@testable import SwiftLintBuiltInRules
+@testable import SwiftLintCore
 import XCTest
 
-class ReporterTests: XCTestCase {
+class ReporterTests: SwiftLintTestCase {
     func testReporterFromString() {
-        let reporters: [Reporter.Type] = [
-            XcodeReporter.self,
-            JSONReporter.self,
-            CSVReporter.self,
-            CheckstyleReporter.self,
-            CodeClimateReporter.self,
-            JUnitReporter.self,
-            HTMLReporter.self,
-            EmojiReporter.self,
-            SonarQubeReporter.self,
-            MarkdownReporter.self,
-            GitHubActionsLoggingReporter.self,
-            GitLabJUnitReporter.self,
-            RelativePathReporter.self
-        ]
-        for reporter in reporters {
+        for reporter in reportersList {
             XCTAssertEqual(reporter.identifier, reporterFrom(identifier: reporter.identifier).identifier)
         }
     }
@@ -154,5 +140,24 @@ class ReporterTests: XCTestCase {
         let result = RelativePathReporter.generateReport([violation])
         XCTAssertFalse(result.contains(absolutePath))
         XCTAssertTrue(result.contains(relativePath))
+    }
+
+    func testSummaryReporter() {
+        let expectedOutput = stringFromFile("CannedSummaryReporterOutput.txt")
+            .trimmingTrailingCharacters(in: .whitespacesAndNewlines)
+        let correctableViolation = StyleViolation(
+            ruleDescription: VerticalWhitespaceOpeningBracesRule.description,
+            location: Location(file: "filename", line: 1, character: 2),
+            reason: "Violation Reason"
+        )
+        let result = SummaryReporter.generateReport(generateViolations() + [correctableViolation])
+        XCTAssertEqual(result, expectedOutput)
+    }
+
+    func testSummaryReporterWithNoViolations() {
+        let expectedOutput = stringFromFile("CannedSummaryReporterNoViolationsOutput.txt")
+            .trimmingTrailingCharacters(in: .whitespacesAndNewlines)
+        let result = SummaryReporter.generateReport([])
+        XCTAssertEqual(result, expectedOutput)
     }
 }

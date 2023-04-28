@@ -1,25 +1,6 @@
 // swift-tools-version:5.7
 import PackageDescription
 
-#if os(macOS)
-private let addCryptoSwift = false
-private let binaryPlugin = true
-#else
-private let addCryptoSwift = true
-private let binaryPlugin = false
-#endif
-
-let frameworkDependencies: [Target.Dependency] = [
-    .product(name: "IDEUtils", package: "swift-syntax"),
-    .product(name: "SourceKittenFramework", package: "SourceKitten"),
-    .product(name: "SwiftSyntax", package: "swift-syntax"),
-    .product(name: "SwiftSyntaxBuilder", package: "swift-syntax"),
-    .product(name: "SwiftParser", package: "swift-syntax"),
-    .product(name: "SwiftOperators", package: "swift-syntax"),
-    "Yams",
-]
-+ (addCryptoSwift ? ["CryptoSwift"] : [])
-
 let package = Package(
     name: "SwiftLint",
     platforms: [.macOS(.v12)],
@@ -30,18 +11,20 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-argument-parser.git", .upToNextMinor(from: "1.2.1")),
-        .package(url: "https://github.com/apple/swift-syntax.git", exact: "0.50800.0-SNAPSHOT-2022-12-29-a"),
-        .package(url: "https://github.com/jpsim/SourceKitten.git", .upToNextMinor(from: "0.34.0")),
-        .package(url: "https://github.com/jpsim/Yams.git", from: "5.0.4"),
+        .package(url: "https://github.com/apple/swift-syntax.git", exact: "509.0.0-swift-5.9-DEVELOPMENT-SNAPSHOT-2023-04-10-a"),
+        .package(url: "https://github.com/jpsim/SourceKitten.git", .upToNextMinor(from: "0.34.1")),
+        .package(url: "https://github.com/jpsim/Yams.git", from: "5.0.5"),
         .package(url: "https://github.com/scottrhoyt/SwiftyTextTable.git", from: "0.9.0"),
-        .package(url: "https://github.com/JohnSundell/CollectionConcurrencyKit.git", from: "0.2.0")
-    ] + (addCryptoSwift ? [.package(url: "https://github.com/krzyzanowskim/CryptoSwift.git", .upToNextMinor(from: "1.6.0"))] : []),
+        .package(url: "https://github.com/JohnSundell/CollectionConcurrencyKit.git", from: "0.2.0"),
+        .package(url: "https://github.com/krzyzanowskim/CryptoSwift.git", .upToNextMinor(from: "1.7.1"))
+    ],
     targets: [
         .plugin(
             name: "SwiftLintPlugin",
             capability: .buildTool(),
             dependencies: [
-                .target(name: binaryPlugin ? "SwiftLintBinary" : "swiftlint")
+                .target(name: "SwiftLintBinary", condition: .when(platforms: [.macOS])),
+                .target(name: "swiftlint", condition: .when(platforms: [.linux]))
             ]
         ),
         .executableTarget(
@@ -60,9 +43,37 @@ let package = Package(
             ]
         ),
         .target(
-            name: "SwiftLintFramework",
-            dependencies: frameworkDependencies
+            name: "SwiftLintCore",
+            dependencies: [
+                .product(name: "CryptoSwift", package: "CryptoSwift", condition: .when(platforms: [.linux])),
+                .target(name: "DyldWarningWorkaround", condition: .when(platforms: [.macOS])),
+                .product(name: "IDEUtils", package: "swift-syntax"),
+                .product(name: "SourceKittenFramework", package: "SourceKitten"),
+                .product(name: "SwiftOperators", package: "swift-syntax"),
+                .product(name: "SwiftParser", package: "swift-syntax"),
+                .product(name: "SwiftSyntax", package: "swift-syntax"),
+                .product(name: "SwiftSyntaxBuilder", package: "swift-syntax"),
+                .product(name: "SwiftyTextTable", package: "SwiftyTextTable"),
+                .product(name: "Yams", package: "Yams"),
+            ]
         ),
+        .target(
+            name: "SwiftLintBuiltInRules",
+            dependencies: ["SwiftLintCore"]
+        ),
+        .target(
+            name: "SwiftLintExtraRules",
+            dependencies: ["SwiftLintCore"]
+        ),
+        .target(
+            name: "SwiftLintFramework",
+            dependencies: [
+                "SwiftLintBuiltInRules",
+                "SwiftLintCore",
+                "SwiftLintExtraRules"
+            ]
+        ),
+        .target(name: "DyldWarningWorkaround"),
         .target(
             name: "SwiftLintTestHelpers",
             dependencies: [
@@ -103,8 +114,8 @@ let package = Package(
         ),
         .binaryTarget(
             name: "SwiftLintBinary",
-            url: "https://github.com/realm/SwiftLint/releases/download/0.50.3/SwiftLintBinary-macos.artifactbundle.zip",
-            checksum: "abe7c0bb505d26c232b565c3b1b4a01a8d1a38d86846e788c4d02f0b1042a904"
+            url: "https://github.com/realm/SwiftLint/releases/download/0.51.0/SwiftLintBinary-macos.artifactbundle.zip",
+            checksum: "9fbfdf1c2a248469cfbe17a158c5fbf96ac1b606fbcfef4b800993e7accf43ae"
         )
     ]
 )

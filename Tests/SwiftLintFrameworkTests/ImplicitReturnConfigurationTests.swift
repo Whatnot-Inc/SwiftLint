@@ -1,7 +1,7 @@
-@testable import SwiftLintFramework
+@testable import SwiftLintBuiltInRules
 import XCTest
 
-class ImplicitReturnConfigurationTests: XCTestCase {
+class ImplicitReturnConfigurationTests: SwiftLintTestCase {
     func testImplicitReturnConfigurationFromDictionary() throws {
         var configuration = ImplicitReturnConfiguration(includedKinds: Set<ImplicitReturnConfiguration.ReturnKind>())
         let config: [String: Any] = [
@@ -19,8 +19,8 @@ class ImplicitReturnConfigurationTests: XCTestCase {
             .function,
             .getter
         ])
-        XCTAssert(configuration.severityConfiguration.severity == .error)
-        XCTAssertTrue(configuration.includedKinds == expectedKinds)
+        XCTAssertEqual(configuration.severityConfiguration.severity, .error)
+        XCTAssertEqual(configuration.includedKinds, expectedKinds)
     }
 
     func testImplicitReturnConfigurationThrowsOnUnrecognizedModifierGroup() {

@@ -1,4 +1,4 @@
-module: SwiftLintFramework
+module: SwiftLintCore
 author: JP Simard, SwiftLint Contributors
 author_url: https://jpsim.com
 root_url: https://realm.github.io/SwiftLint/
@@ -7,13 +7,14 @@ github_file_prefix: https://github.com/realm/SwiftLint/tree/main
 swift_build_tool: spm
 theme: fullwidth
 clean: true
-copyright: '© 2022 [JP Simard](https://jpsim.com) under MIT.'
+copyright: '© 2023 [JP Simard](https://jpsim.com) under MIT.'
 
 documentation: rule_docs/*.md
 hide_unlisted_documentation: true
 custom_categories_unlisted_prefix: ''
 exclude:
-  - Source/SwiftLintFramework/Rules/**/*.swift
+  # TODO: Document extensions
+  - Source/SwiftLintCore/Extensions/*.swift
 custom_categories:
   - name: Rules
     children:

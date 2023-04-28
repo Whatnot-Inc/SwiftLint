@@ -1,7 +1,6 @@
-@testable import SwiftLintFramework
-import XCTest
+@testable import SwiftLintBuiltInRules
 
-class FileTypesOrderRuleTests: XCTestCase {
+class FileTypesOrderRuleTests: SwiftLintTestCase {
     // swiftlint:disable:next function_body_length
     func testFileTypesOrderReversedOrder() {
         // Test with reversed `order` entries
@@ -143,7 +142,7 @@ class FileTypesOrderRuleTests: XCTestCase {
         verifyRule(
             groupedOrderDescription,
             ruleConfiguration: [
-                "order": ["main_type", ["extension", "supporting_type"], "preview_provider"]
+                "order": ["main_type", ["extension", "supporting_type"] as Any, "preview_provider"] as Any
             ]
         )
     }

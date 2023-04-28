@@ -2,25 +2,16 @@ trigger:
 - main
 
 jobs:
-- job: Sourcery
-  pool:
-    vmImage: 'macOS-12'
-  steps:
-    - script: brew install sourcery
-      displayName: Install Sourcery
-    - script: make --always-make sourcery
-      displayName: Generate sources
-    - script: "! git diff -U0 | grep '^[-+][^-+]' | grep --invert-match '// Generated using Sourcery'"
-      displayName: Check changed files ignoring Sourcery's version
-
 - job: Linux
   pool:
-    vmImage: 'ubuntu-latest'
+    vmImage: 'ubuntu-20.04'
   strategy:
     maxParallel: 10
     matrix:
       swift57:
         containerImage: swift:5.7
+      swift58:
+        containerImage: swift:5.8
   container: $[ variables['containerImage'] ]
   steps:
     - script: swift test --parallel -Xswiftc -DDISABLE_FOCUSED_EXAMPLES

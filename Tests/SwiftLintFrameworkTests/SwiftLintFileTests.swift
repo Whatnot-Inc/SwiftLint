@@ -1,12 +1,17 @@
-@testable import SwiftLintFramework
+@testable import SwiftLintCore
 import XCTest
 
-class SwiftLintFileTests: XCTestCase {
+class SwiftLintFileTests: SwiftLintTestCase {
     private let tempFile = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
 
     override func setUp() async throws {
         try await super.setUp()
         try "let i = 2".data(using: .utf8)!.write(to: tempFile)
+    }
+
+    override func tearDown() async throws {
+        try FileManager.default.removeItem(at: tempFile)
+        try await super.tearDown()
     }
 
     func testFileFromStringUpdate() {

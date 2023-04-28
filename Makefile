@@ -30,14 +30,18 @@ VERSION_STRING=$(shell ./tools/get-version)
 
 all: build
 
-sourcery: Source/SwiftLintFramework/Models/PrimaryRuleList.swift Tests/GeneratedTests/GeneratedTests.swift
+sourcery: Source/SwiftLintBuiltInRules/Models/BuiltInRules.swift Source/SwiftLintCore/Models/ReportersList.swift Tests/GeneratedTests/GeneratedTests.swift
 
-Source/SwiftLintFramework/Models/PrimaryRuleList.swift: Source/SwiftLintFramework/Rules/**/*.swift .sourcery/PrimaryRuleList.stencil
-	sourcery --sources Source/SwiftLintFramework/Rules --templates .sourcery/PrimaryRuleList.stencil --output .sourcery
-	mv .sourcery/PrimaryRuleList.generated.swift Source/SwiftLintFramework/Models/PrimaryRuleList.swift
+Source/SwiftLintBuiltInRules/Models/BuiltInRules.swift: Source/SwiftLintBuiltInRules/Rules/**/*.swift .sourcery/BuiltInRules.stencil
+	./tools/sourcery --sources Source/SwiftLintBuiltInRules/Rules --templates .sourcery/BuiltInRules.stencil --output .sourcery
+	mv .sourcery/BuiltInRules.generated.swift Source/SwiftLintBuiltInRules/Models/BuiltInRules.swift
 
-Tests/GeneratedTests/GeneratedTests.swift: Source/SwiftLintFramework/Rules/**/*.swift .sourcery/GeneratedTests.stencil
-	sourcery --sources Source/SwiftLintFramework/Rules --templates .sourcery/GeneratedTests.stencil --output .sourcery
+Source/SwiftLintCore/Models/ReportersList.swift: Source/SwiftLintCore/Reporters/*.swift .sourcery/ReportersList.stencil
+	./tools/sourcery --sources Source/SwiftLintCore/Reporters --templates .sourcery/ReportersList.stencil --output .sourcery
+	mv .sourcery/ReportersList.generated.swift Source/SwiftLintCore/Models/ReportersList.swift
+
+Tests/GeneratedTests/GeneratedTests.swift: Source/SwiftLint*/Rules/**/*.swift .sourcery/GeneratedTests.stencil
+	./tools/sourcery --sources Source/SwiftLintCore/Rules --sources Source/SwiftLintBuiltInRules/Rules --templates .sourcery/GeneratedTests.stencil --output .sourcery
 	mv .sourcery/GeneratedTests.generated.swift Tests/GeneratedTests/GeneratedTests.swift
 
 test: clean_xcode
@@ -65,7 +69,7 @@ clean:
 clean_xcode:
 	$(BUILD_TOOL) $(XCODEFLAGS) -configuration Test clean
 
-build: clean
+build:
 	mkdir -p "$(SWIFTLINT_EXECUTABLE_PARENT)"
 	bazel build --config release universal_swiftlint
 	$(eval SWIFTLINT_BINARY := $(shell bazel cquery --config release --output=files universal_swiftlint))
@@ -113,7 +117,7 @@ zip_linux: docker_image
 
 zip_linux_release:
 	$(eval TMP_FOLDER := $(shell mktemp -d))
-	docker run "ghcr.io/realm/swiftlint:$(VERSION_STRING)" cat /usr/bin/swiftlint > "$(TMP_FOLDER)/swiftlint"
+	docker run --platform linux/amd64 "ghcr.io/realm/swiftlint:$(VERSION_STRING)" cat /usr/bin/swiftlint > "$(TMP_FOLDER)/swiftlint"
 	chmod +x "$(TMP_FOLDER)/swiftlint"
 	cp -f "$(LICENSE_PATH)" "$(TMP_FOLDER)"
 	(cd "$(TMP_FOLDER)"; zip -yr - "swiftlint" "LICENSE") > "./swiftlint_linux.zip"
@@ -165,8 +169,9 @@ endif
 	$(eval NEW_VERSION_AND_NAME := $(filter-out $@,$(MAKECMDGOALS)))
 	$(eval NEW_VERSION := $(shell echo $(NEW_VERSION_AND_NAME) | sed 's/:.*//' ))
 	@sed -i '' 's/## Main/## $(NEW_VERSION_AND_NAME)/g' CHANGELOG.md
-	@sed 's/__VERSION__/$(NEW_VERSION)/g' tools/Version.swift.template > Source/SwiftLintFramework/Models/Version.swift
+	@sed 's/__VERSION__/$(NEW_VERSION)/g' tools/Version.swift.template > Source/SwiftLintCore/Models/Version.swift
 	@sed -e '3s/.*/    version = "$(NEW_VERSION)",/' -i '' MODULE.bazel
+	make clean
 	make package
 	make bazel_release
 	make portable_zip

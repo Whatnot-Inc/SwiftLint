@@ -1,6 +1,6 @@
 # SwiftLint
 
-A tool to enforce Swift style and conventions, loosely based on the now archived [GitHub Swift Style Guide](https://github.com/github/swift-style-guide). SwiftLint enforces the style guide rules that are generally accepted by the Swift community. These rules are well described in popular style guides like [Ray Wenderlich's Swift Style Guide](https://github.com/raywenderlich/swift-style-guide).
+A tool to enforce Swift style and conventions, loosely based on the now archived [GitHub Swift Style Guide](https://github.com/github/swift-style-guide). SwiftLint enforces the style guide rules that are generally accepted by the Swift community. These rules are well described in popular style guides like [Kodeco's Swift Style Guide](https://github.com/kodecocodes/swift-style-guide).
 
 SwiftLint hooks into [Clang](http://clang.llvm.org) and
 [SourceKit](http://www.jpsim.com/uncovering-sourcekit) to use the
@@ -158,7 +158,10 @@ folder by default. To instruct Xcode where to find SwiftLint, you can either add
 `/opt/homebrew/bin` to the `PATH` environment variable in your build phase
 
 ```bash
-export PATH="$PATH:/opt/homebrew/bin"
+if [[ "$(uname -m)" == arm64 ]]; then
+    export PATH="/opt/homebrew/bin:$PATH"
+fi
+
 if which swiftlint > /dev/null; then
   swiftlint
 else
@@ -200,7 +203,7 @@ there is currently no way to pass any additional options to the SwiftLint execut
 
 #### Xcode
 
-You can integrate SwiftLint as a Xcode Build Tool Plug-in if you're working
+You can integrate SwiftLint as an Xcode Build Tool Plug-in if you're working
 with a project in Xcode.
 
 Add SwiftLint as a package dependency to your project without linking any of the
@@ -211,6 +214,15 @@ Open `Run Build Tool Plug-ins` and select the `+` button.
 Select `SwiftLintPlugin` from the list and add it to the project.
 
 ![](assets/select-swiftlint-plugin.png)
+
+For unattended use (e.g. on CI), you can disable the package validation dialog by
+
+* individually passing `-skipPackagePluginValidation` to `xcodebuild` or
+* globally setting `defaults write com.apple.dt.Xcode IDESkipPackagePluginFingerprintValidatation -bool YES` 
+  for that user.
+
+_Note: This implicitly trusts all Xcode package plugins and bypasses Xcode's package validation
+       dialogs, which has security implications._
 
 #### Swift Package
 
@@ -226,14 +238,6 @@ Add SwiftLint to a target using the `plugins` parameter.
     plugins: [.plugin(name: "SwiftLintPlugin", package: "SwiftLint")]
 ),
 ```
-
-
-### AppCode
-
-To integrate SwiftLint with AppCode, install
-[this plugin](https://plugins.jetbrains.com/plugin/9175) and configure
-SwiftLint's installed path in the plugin's preferences.
-The `fix` action is available via `⌥⏎`.
 
 ### Visual Studio Code
 
@@ -304,6 +308,7 @@ SUBCOMMANDS:
   docs                    Open SwiftLint documentation website in the default web browser
   generate-docs           Generates markdown documentation for all rules
   lint (default)          Print lint warnings and errors
+  reporters               Display the list of reporters and their identifiers
   rules                   Display the list of rules and their identifiers
   version                 Display the current version of SwiftLint
 
@@ -474,7 +479,9 @@ run SwiftLint from. The following parameters can be configured:
 Rule inclusion:
 
 * `disabled_rules`: Disable rules from the default enabled set.
-* `opt_in_rules`: Enable rules that are not part of the default set.
+* `opt_in_rules`: Enable rules that are not part of the default set. The
+   special `all` identifier will enable all opt in linter rules, except the ones
+   listed in `disabled_rules`.
 * `only_rules`: Only the rules specified in this list will be enabled.
    Cannot be specified alongside `disabled_rules` or `opt_in_rules`.
 * `analyzer_rules`: This is an entirely separate list of rules that are only
@@ -543,13 +550,29 @@ identifier_name:
     - id
     - URL
     - GlobalAPIKey
-reporter: "xcode" # reporter type (xcode, json, csv, checkstyle, codeclimate, junit, html, emoji, sonarqube, markdown, github-actions-logging)
+reporter: "xcode" # reporter type (xcode, json, csv, checkstyle, codeclimate, junit, html, emoji, sonarqube, markdown, github-actions-logging, summary)
 ```
 
 You can also use environment variables in your configuration file,
 by using `${SOME_VARIABLE}` in a string.
 
-#### Defining Custom Rules
+### Defining Custom Rules
+
+In addition to the rules that the main SwiftLint project ships with, SwiftLint
+can also run two types of custom rules that you can define yourself in your own
+projects:
+
+#### 1. Swift Custom Rules
+
+These rules are written the same way as the Swift-based rules that ship with
+SwiftLint so they're fast, accurate, can leverage SwiftSyntax, can be unit
+tested, and more.
+
+Using these requires building SwiftLint with Bazel as described in
+[this video](https://vimeo.com/820572803) or its associated code in
+[github.com/jpsim/swiftlint-bazel-example](https://github.com/jpsim/swiftlint-bazel-example).
+
+#### 2. Regex Custom Rules
 
 You can define custom regex-based rules in your configuration file using the
 following syntax:
@@ -613,6 +636,9 @@ which match to `keyword` and `identifier` in the above list.
 
 If using custom rules in combination with `only_rules`, make sure to add
 `custom_rules` as an item under `only_rules`.
+
+Unlike Swift custom rules, you can use official SwiftLint builds
+(e.g. from Homebrew) to run regex custom rules.
 
 ### Auto-correct
 

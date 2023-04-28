@@ -1,8 +1,7 @@
 import SourceKittenFramework
-@testable import SwiftLintFramework
 import XCTest
 
-final class StringViewExtensionTests: XCTestCase {
+final class StringViewExtensionTests: SwiftLintTestCase {
     func testByteOffsetInvalidCases() {
         let view = StringView("")
 

@@ -1,7 +1,7 @@
-@testable import SwiftLintFramework
+@testable import SwiftLintBuiltInRules
 import XCTest
 
-class MissingDocsRuleTests: XCTestCase {
+class MissingDocsRuleTests: SwiftLintTestCase {
     func testDescriptionEmpty() {
         let configuration = MissingDocsRuleConfiguration()
         XCTAssertEqual(
@@ -129,7 +129,9 @@ class MissingDocsRuleTests: XCTestCase {
 
     func testInvalidDuplicateAcl() {
         var configuration = MissingDocsRuleConfiguration()
-        XCTAssertThrowsError(try configuration.apply(configuration: ["warning": ["public", "open"], "error": "public"]))
+        XCTAssertThrowsError(
+            try configuration.apply(configuration: ["warning": ["public", "open"] as Any, "error": "public"])
+        )
     }
 
     func testExcludesFalse() {
@@ -175,7 +177,7 @@ class MissingDocsRuleTests: XCTestCase {
                 "excludes_extensions": true,
                 "excludes_inherited_types": false,
                 "error": ["public"]
-            ]
+            ] as [String: Any]
         )
 
         XCTAssertTrue(configuration.excludesExtensions)

@@ -10,12 +10,21 @@
       }
     },
     {
+      "identity" : "cryptoswift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/krzyzanowskim/CryptoSwift.git",
+      "state" : {
+        "revision" : "eee9ad754926c40a0f7e73f152357d37b119b7fa",
+        "version" : "1.7.1"
+      }
+    },
+    {
       "identity" : "sourcekitten",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/jpsim/SourceKitten.git",
       "state" : {
-        "revision" : "f403b5cdbaa1748fe74da47915013fe058166e03",
-        "version" : "0.34.0"
+        "revision" : "b6dc09ee51dfb0c66e042d2328c017483a1a5d56",
+        "version" : "0.34.1"
       }
     },
     {
@@ -32,8 +41,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-syntax.git",
       "state" : {
-        "revision" : "edd2d0cdb988ac45e2515e0dd0624e4a6de54a94",
-        "version" : "0.50800.0-SNAPSHOT-2022-12-29-a"
+        "revision" : "2a9988f32c3439b1c850673cfccb085ddcde1395",
+        "version" : "509.0.0-swift-5.9-DEVELOPMENT-SNAPSHOT-2023-04-10-a"
       }
     },
     {
@@ -59,8 +68,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/jpsim/Yams.git",
       "state" : {
-        "revision" : "4889c132978bc6ad3e80f680011ec3dd4fead90c",
-        "version" : "5.0.4"
+        "revision" : "f47ba4838c30dbd59998a4e4c87ab620ff959e8a",
+        "version" : "5.0.5"
       }
     }
   ],

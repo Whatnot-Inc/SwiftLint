@@ -1,5 +1,6 @@
+@testable import SwiftLintBuiltInRules
 @_spi(TestHelper)
-@testable import SwiftLintFramework
+@testable import SwiftLintCore
 import XCTest
 
 // swiftlint:disable file_length
@@ -33,7 +34,6 @@ extension ConfigurationTests {
     func testWarningThresholdMerging() {
         func configuration(forWarningThreshold warningThreshold: Int?) -> Configuration {
             return Configuration(
-                ruleList: primaryRuleList,
                 warningThreshold: warningThreshold,
                 reporter: XcodeReporter.identifier
             )

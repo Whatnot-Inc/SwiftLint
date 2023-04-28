@@ -62,7 +62,6 @@ swift_library(
     srcs = [":SwiftLintFrameworkTestsSources"],
     module_name = "SwiftLintFrameworkTests",
     deps = [
-        "//:SwiftLintFramework",
         ":SwiftLintTestHelpers",
     ],
 )
@@ -86,7 +85,6 @@ swift_library(
     srcs = ["GeneratedTests/GeneratedTests.swift"],
     module_name = "GeneratedTests",
     deps = [
-        "//:SwiftLintFramework",
         ":SwiftLintTestHelpers",
     ],
 )
@@ -105,7 +103,6 @@ swift_library(
     srcs = ["IntegrationTests/IntegrationTests.swift"],
     module_name = "IntegrationTests",
     deps = [
-        "//:SwiftLintFramework",
         ":SwiftLintTestHelpers",
     ],
 )
@@ -140,7 +137,6 @@ swift_library(
     }),
     module_name = "ExtraRulesTests",
     deps = [
-        "//:SwiftLintFramework",
         ":SwiftLintTestHelpers",
     ],
 )

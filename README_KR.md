@@ -1,6 +1,6 @@
 # SwiftLint
 
-SwiftLint는 스위프트 스타일 및 컨벤션을 강제하기 위한 도구로, [Ray Wenderlich 스위프트 스타일 가이드](https://github.com/raywenderlich/swift-style-guide)에 대략적인 기반을 두고 있습니다.
+SwiftLint는 스위프트 스타일 및 컨벤션을 강제하기 위한 도구로, [Kodeco 스위프트 스타일 가이드](https://github.com/kodecocodes/swift-style-guide)에 대략적인 기반을 두고 있습니다.
 
 SwiftLint는 좀 더 정확한 결과를 위해 [Clang](http://clang.llvm.org)과 [SourceKit](http://www.jpsim.com/uncovering-sourcekit)에 연결하여 소스 파일의 [AST](http://clang.llvm.org/docs/IntroductionToTheClangAST.html) 표현을 사용합니다.
 
@@ -180,7 +180,7 @@ $ TOOLCHAINS=com.apple.dt.toolchain.Swift_2_3 swiftlint autocorrect
 
 ## 룰
 
-SwiftLint에는 75개가 넘는 룰들이 있고, 스위프트 커뮤니티(바로 여러분들!)는 이를 지속적으로 발전시켜 가고 있습니다. [풀 리퀘스트](CONTRIBUTING.md)는 언제나 환영입니다.
+SwiftLint에는 200개가 넘는 룰들이 있고, 스위프트 커뮤니티(바로 여러분들!)는 이를 지속적으로 발전시켜 가고 있습니다. [풀 리퀘스트](CONTRIBUTING.md)는 언제나 환영입니다.
 
 현재 구현된 룰 전체를 확인하려면 [Source/SwiftLintFramework/Rules](Source/SwiftLintFramework/Rules)를 살펴보세요.
 

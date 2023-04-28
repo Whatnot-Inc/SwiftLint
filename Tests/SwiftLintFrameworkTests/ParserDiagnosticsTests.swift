@@ -1,8 +1,9 @@
+@testable import SwiftLintBuiltInRules
 @_spi(TestHelper)
-@testable import SwiftLintFramework
+@testable import SwiftLintCore
 import XCTest
 
-final class ParserDiagnosticsTests: XCTestCase {
+final class ParserDiagnosticsTests: SwiftLintTestCase {
     func testFileWithParserErrorDiagnostics() {
         parserDiagnosticsDisabledForTests = false
         XCTAssertNotNil(SwiftLintFile(contents: "importz Foundation").parserDiagnostics)

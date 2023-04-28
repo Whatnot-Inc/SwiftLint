@@ -1,8 +1,7 @@
-@testable import SwiftLintFramework
-import XCTest
+@testable import SwiftLintBuiltInRules
 
-// swiftlint:disable function_body_length
-class TypeContentsOrderRuleTests: XCTestCase {
+class TypeContentsOrderRuleTests: SwiftLintTestCase {
+    // swiftlint:disable:next function_body_length
     func testTypeContentsOrderReversedOrder() {
         // Test with reversed `order` entries
         let nonTriggeringExamples = [
@@ -159,11 +158,12 @@ class TypeContentsOrderRuleTests: XCTestCase {
                     "subtype",
                     ["type_alias", "associated_type"],
                     "case"
-                ]
+                ] as [Any]
             ]
         )
     }
 
+    // swiftlint:disable:next function_body_length
     func testTypeContentsOrderGroupedOrder() {
         // Test with grouped `order` entries
         let nonTriggeringExamples = [

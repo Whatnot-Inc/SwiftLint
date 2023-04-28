@@ -1,7 +1,7 @@
-@testable import SwiftLintFramework
+@testable import SwiftLintBuiltInRules
 import XCTest
 
-class IndentationWidthRuleTests: XCTestCase {
+class IndentationWidthRuleTests: SwiftLintTestCase {
     // MARK: Examples
     /// It's not okay to have the first line indented.
     func testFirstLineIndentation() {
@@ -196,12 +196,66 @@ class IndentationWidthRuleTests: XCTestCase {
             """, includeCompilerDirectives: true)
     }
 
+    func testIncludeMultilineStrings() {
+        let example0 = #"""
+            let x = """
+                string1
+                    string2
+                  string3
+                """
+            """#
+        assertNoViolation(in: example0, includeMultilineStrings: false)
+        assert1Violation(in: example0, includeMultilineStrings: true)
+
+        let example1 = #"""
+            let x = """
+                string1
+                    string2
+                  string3
+                 string4
+                """
+            """#
+        assertNoViolation(in: example1, includeMultilineStrings: false)
+        assertViolations(in: example1, equals: 2, includeMultilineStrings: true)
+
+        let example2 = ##"""
+            let x = #"""
+                string1
+               """#
+            """##
+        assert1Violation(in: example2, includeMultilineStrings: false)
+        assert1Violation(in: example2, includeMultilineStrings: true)
+
+        let example3 = """
+            let x = [
+                "key": [
+                    ["nestedKey": "string"],
+                ],
+            ]
+            """
+        assertNoViolation(in: example3, includeMultilineStrings: false)
+        assertNoViolation(in: example3, includeMultilineStrings: true)
+
+        let example4 = #"""
+            func test() -> String {
+                """
+                ▿ Type:
+                  - property: \(123) + \(456)
+                \(true)
+                """
+            }
+            """#
+        assertNoViolation(in: example4, includeMultilineStrings: false)
+        assert1Violation(in: example4, includeMultilineStrings: true)
+    }
+
     // MARK: Helpers
     private func countViolations(
         in example: Example,
         indentationWidth: Int? = nil,
-        includeComments: Bool? = nil,
-        includeCompilerDirectives: Bool? = nil,
+        includeComments: Bool = true,
+        includeCompilerDirectives: Bool = true,
+        includeMultilineStrings: Bool = true,
         file: StaticString = #file,
         line: UInt = #line
     ) -> Int {
@@ -209,12 +263,9 @@ class IndentationWidthRuleTests: XCTestCase {
         if let indentationWidth {
             configDict["indentation_width"] = indentationWidth
         }
-        if let includeComments {
-            configDict["include_comments"] = includeComments
-        }
-        if let includeCompilerDirectives {
-            configDict["include_compiler_directives"] = includeCompilerDirectives
-        }
+        configDict["include_comments"] = includeComments
+        configDict["include_compiler_directives"] = includeCompilerDirectives
+        configDict["include_multiline_strings"] = includeMultilineStrings
 
         guard let config = makeConfig(configDict, IndentationWidthRule.description.identifier) else {
             XCTFail("Unable to create rule configuration.", file: (file), line: line)
@@ -228,8 +279,9 @@ class IndentationWidthRuleTests: XCTestCase {
         in string: String,
         equals expectedCount: Int,
         indentationWidth: Int? = nil,
-        includeComments: Bool? = nil,
-        includeCompilerDirectives: Bool? = nil,
+        includeComments: Bool = true,
+        includeCompilerDirectives: Bool = true,
+        includeMultilineStrings: Bool = true,
         file: StaticString = #file,
         line: UInt = #line
     ) {
@@ -239,6 +291,7 @@ class IndentationWidthRuleTests: XCTestCase {
                 indentationWidth: indentationWidth,
                 includeComments: includeComments,
                 includeCompilerDirectives: includeCompilerDirectives,
+                includeMultilineStrings: includeMultilineStrings,
                 file: file,
                 line: line
             ),
@@ -251,8 +304,9 @@ class IndentationWidthRuleTests: XCTestCase {
     private func assertNoViolation(
         in string: String,
         indentationWidth: Int? = nil,
-        includeComments: Bool? = nil,
-        includeCompilerDirectives: Bool? = nil,
+        includeComments: Bool = true,
+        includeCompilerDirectives: Bool = true,
+        includeMultilineStrings: Bool = true,
         file: StaticString = #file,
         line: UInt = #line
     ) {
@@ -262,6 +316,7 @@ class IndentationWidthRuleTests: XCTestCase {
             indentationWidth: indentationWidth,
             includeComments: includeComments,
             includeCompilerDirectives: includeCompilerDirectives,
+            includeMultilineStrings: includeMultilineStrings,
             file: file,
             line: line
         )
@@ -270,8 +325,9 @@ class IndentationWidthRuleTests: XCTestCase {
     private func assert1Violation(
         in string: String,
         indentationWidth: Int? = nil,
-        includeComments: Bool? = nil,
-        includeCompilerDirectives: Bool? = nil,
+        includeComments: Bool = true,
+        includeCompilerDirectives: Bool = true,
+        includeMultilineStrings: Bool = true,
         file: StaticString = #file,
         line: UInt = #line
     ) {
@@ -281,6 +337,7 @@ class IndentationWidthRuleTests: XCTestCase {
             indentationWidth: indentationWidth,
             includeComments: includeComments,
             includeCompilerDirectives: includeCompilerDirectives,
+            includeMultilineStrings: includeMultilineStrings,
             file: file,
             line: line
         )

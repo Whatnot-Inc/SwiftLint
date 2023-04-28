@@ -1,8 +1,9 @@
 import SourceKittenFramework
-@testable import SwiftLintFramework
+@testable import SwiftLintBuiltInRules
+@testable import SwiftLintCore
 import XCTest
 
-class RuleConfigurationTests: XCTestCase {
+class RuleConfigurationTests: SwiftLintTestCase {
     func testNameConfigurationSetsCorrectly() {
         let config = [ "min_length": ["warning": 17, "error": 7],
                        "max_length": ["warning": 170, "error": 700],
@@ -242,21 +243,21 @@ class RuleConfigurationTests: XCTestCase {
                                                              ignoresComments: true)
         let configuration2 = TrailingWhitespaceConfiguration(ignoresEmptyLines: true,
                                                              ignoresComments: true)
-        XCTAssertFalse(configuration1 == configuration2)
+        XCTAssertNotEqual(configuration1, configuration2)
 
         let configuration3 = TrailingWhitespaceConfiguration(ignoresEmptyLines: true,
                                                              ignoresComments: true)
-        XCTAssertTrue(configuration2 == configuration3)
+        XCTAssertEqual(configuration2, configuration3)
 
         let configuration4 = TrailingWhitespaceConfiguration(ignoresEmptyLines: false,
                                                              ignoresComments: false)
 
-        XCTAssertFalse(configuration1 == configuration4)
+        XCTAssertNotEqual(configuration1, configuration4)
 
         let configuration5 = TrailingWhitespaceConfiguration(ignoresEmptyLines: true,
                                                              ignoresComments: false)
 
-        XCTAssertFalse(configuration1 == configuration5)
+        XCTAssertNotEqual(configuration1, configuration5)
     }
 
     func testTrailingWhitespaceConfigurationApplyConfigurationUpdatesSeverityConfiguration() {
@@ -266,7 +267,7 @@ class RuleConfigurationTests: XCTestCase {
 
         do {
             try configuration.apply(configuration: ["severity": "error"])
-            XCTAssert(configuration.severityConfiguration.severity == .error)
+            XCTAssertEqual(configuration.severityConfiguration.severity, .error)
         } catch {
             XCTFail("Failed to apply severity")
         }
@@ -279,7 +280,7 @@ class RuleConfigurationTests: XCTestCase {
         let conf1 = ["severity": "error", "excluded": "viewWillAppear(_:)"]
         do {
             try configuration.apply(configuration: conf1)
-            XCTAssert(configuration.severityConfiguration.severity == .error)
+            XCTAssertEqual(configuration.severityConfiguration.severity, .error)
             XCTAssertFalse(configuration.resolvedMethodNames.contains("*"))
             XCTAssertFalse(configuration.resolvedMethodNames.contains("viewWillAppear(_:)"))
             XCTAssertTrue(configuration.resolvedMethodNames.contains("viewWillDisappear(_:)"))
@@ -294,7 +295,7 @@ class RuleConfigurationTests: XCTestCase {
         ] as [String: Any]
         do {
             try configuration.apply(configuration: conf2)
-            XCTAssert(configuration.severityConfiguration.severity == .error)
+            XCTAssertEqual(configuration.severityConfiguration.severity, .error)
             XCTAssertFalse(configuration.resolvedMethodNames.contains("*"))
             XCTAssertFalse(configuration.resolvedMethodNames.contains("viewWillAppear(_:)"))
             XCTAssertTrue(configuration.resolvedMethodNames.contains("viewWillDisappear(_:)"))
@@ -311,8 +312,8 @@ class RuleConfigurationTests: XCTestCase {
         ] as [String: Any]
         do {
             try configuration.apply(configuration: conf3)
-            XCTAssert(configuration.severityConfiguration.severity == .warning)
-            XCTAssert(configuration.resolvedMethodNames.count == 2)
+            XCTAssertEqual(configuration.severityConfiguration.severity, .warning)
+            XCTAssertEqual(configuration.resolvedMethodNames.count, 2)
             XCTAssertFalse(configuration.resolvedMethodNames.contains("*"))
             XCTAssertTrue(configuration.resolvedMethodNames.contains("testMethod1()"))
             XCTAssertTrue(configuration.resolvedMethodNames.contains("testMethod2(_:)"))
@@ -354,8 +355,8 @@ class RuleConfigurationTests: XCTestCase {
             .lazy,
             .dynamic
         ]
-        XCTAssert(configuration.severityConfiguration.severity == .warning)
-        XCTAssertTrue(configuration.preferredModifierOrder == expected)
+        XCTAssertEqual(configuration.severityConfiguration.severity, .warning)
+        XCTAssertEqual(configuration.preferredModifierOrder, expected)
     }
 
     func testModifierOrderConfigurationThrowsOnUnrecognizedModifierGroup() {

@@ -1,8 +1,8 @@
-@testable import SwiftLintFramework
+@testable import SwiftLintBuiltInRules
 import XCTest
 
 // swiftlint:disable:next type_name
-class ImplicitlyUnwrappedOptionalConfigurationTests: XCTestCase {
+class ImplicitlyUnwrappedOptionalConfigurationTests: SwiftLintTestCase {
     func testImplicitlyUnwrappedOptionalConfigurationProperlyAppliesConfigurationFromDictionary() throws {
         var configuration = ImplicitlyUnwrappedOptionalConfiguration(
             mode: .allExceptIBOutlets,

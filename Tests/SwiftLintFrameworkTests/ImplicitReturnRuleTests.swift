@@ -1,7 +1,6 @@
-@testable import SwiftLintFramework
-import XCTest
+@testable import SwiftLintBuiltInRules
 
-class ImplicitReturnRuleTests: XCTestCase {
+class ImplicitReturnRuleTests: SwiftLintTestCase {
     func testOnlyClosureKindIncluded() {
         let nonTriggeringExamples = ImplicitReturnRuleExamples.GenericExamples.nonTriggeringExamples +
             ImplicitReturnRuleExamples.ClosureExamples.nonTriggeringExamples +

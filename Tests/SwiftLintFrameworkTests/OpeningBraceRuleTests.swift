@@ -1,8 +1,7 @@
-@testable import SwiftLintFramework
-import XCTest
+@testable import SwiftLintBuiltInRules
 
-class OpeningBraceRuleTests: XCTestCase {
-    // swiftlint:disable function_body_length
+class OpeningBraceRuleTests: SwiftLintTestCase {
+    // swiftlint:disable:next function_body_length
     func testWithAllowMultilineTrue() {
         // Test with `same_line` set to false
 

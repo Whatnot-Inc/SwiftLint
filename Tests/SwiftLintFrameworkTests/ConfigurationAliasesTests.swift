@@ -1,13 +1,14 @@
-@testable import SwiftLintFramework
+@testable import SwiftLintCore
 import XCTest
 
-final class ConfigurationAliasesTests: XCTestCase {
+final class ConfigurationAliasesTests: SwiftLintTestCase {
     private let testRuleList = RuleList(rules: RuleWithLevelsMock.self)
 
     func testConfiguresCorrectlyFromDeprecatedAlias() throws {
         let ruleConfiguration = [1, 2]
         let config = ["mock": ruleConfiguration]
         let rules = try testRuleList.allRulesWrapped(configurationDict: config).map { $0.rule }
+        // swiftlint:disable:next xct_specific_matcher
         XCTAssertTrue(rules == [try RuleWithLevelsMock(configuration: ruleConfiguration)])
     }
 

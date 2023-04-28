@@ -1,7 +1,7 @@
-@testable import SwiftLintFramework
+@testable import SwiftLintCore
 import XCTest
 
-class RegexConfigurationTests: XCTestCase {
+class RegexConfigurationTests: SwiftLintTestCase {
     func testShouldValidateIsTrueByDefault() {
         let config = RegexConfiguration(identifier: "example")
         XCTAssertTrue(config.shouldValidate(filePath: "App/file.swift"))
@@ -25,7 +25,7 @@ class RegexConfigurationTests: XCTestCase {
             "excluded": [
                 "^Tests/.*\\.swift",
                 "^MyFramework/Tests/.*\\.swift"
-            ]
+            ] as Any
         ])
 
         XCTAssertFalse(config.shouldValidate(filePath: "Tests/file.swift"))
@@ -52,7 +52,7 @@ class RegexConfigurationTests: XCTestCase {
             "included": [
                 "App/.*\\.swift",
                 "MyFramework/.*\\.swift"
-            ]
+            ] as Any
         ])
 
         XCTAssertFalse(config.shouldValidate(filePath: "Tests/file.swift"))
@@ -67,11 +67,11 @@ class RegexConfigurationTests: XCTestCase {
             "included": [
                 "App/.*\\.swift",
                 "MyFramework/.*\\.swift"
-            ],
+            ] as Any,
             "excluded": [
                 "Tests/.*\\.swift",
                 "App/Fixtures/.*\\.swift"
-            ]
+            ] as Any
         ])
 
         XCTAssertTrue(config.shouldValidate(filePath: "App/file.swift"))

@@ -5,7 +5,7 @@ load(
     "swift_library",
 )
 load(
-    "@com_github_buildbuddy_io_rules_xcodeproj//xcodeproj:defs.bzl",
+    "@rules_xcodeproj//xcodeproj:defs.bzl",
     "xcode_schemes",
     "xcodeproj",
 )
@@ -13,21 +13,56 @@ load(
 # Targets
 
 swift_library(
+    name = "SwiftLintCore",
+    srcs = glob(["Source/SwiftLintCore/**/*.swift"]),
+    module_name = "SwiftLintCore",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@com_github_apple_swift_syntax//:optlibs",
+        "@com_github_jpsim_sourcekitten//:SourceKittenFramework",
+        "@sourcekitten_com_github_jpsim_yams//:Yams",
+        "@swiftlint_com_github_scottrhoyt_swifty_text_table//:SwiftyTextTable",
+    ] + select({
+        "@platforms//os:linux": ["@com_github_krzyzanowskim_cryptoswift//:CryptoSwift"],
+        "//conditions:default": [":DyldWarningWorkaround"],
+    }),
+)
+
+swift_library(
+    name = "SwiftLintBuiltInRules",
+    srcs = glob(["Source/SwiftLintBuiltInRules/**/*.swift"]),
+    module_name = "SwiftLintBuiltInRules",
+    visibility = ["//visibility:public"],
+    deps = [
+        ":SwiftLintCore",
+    ],
+)
+
+swift_library(
+    name = "SwiftLintExtraRules",
+    srcs = [
+        "Source/SwiftLintExtraRules/Exports.swift",
+        "@swiftlint_extra_rules//:extra_rules",
+    ],
+    module_name = "SwiftLintExtraRules",
+    visibility = ["//visibility:public"],
+    deps = [
+        ":SwiftLintCore",
+    ],
+)
+
+swift_library(
     name = "SwiftLintFramework",
     srcs = glob(
         ["Source/SwiftLintFramework/**/*.swift"],
-        exclude = ["Source/SwiftLintFramework/Rules/ExcludedFromBazel/ExtraRules.swift"],
-    ) + ["@swiftlint_extra_rules//:extra_rules"],
+    ),
     module_name = "SwiftLintFramework",
     visibility = ["//visibility:public"],
     deps = [
-        "@com_github_jpsim_sourcekitten//:SourceKittenFramework",
-        "@com_github_apple_swift_syntax//:optlibs",
-        "@sourcekitten_com_github_jpsim_yams//:Yams",
-    ] + select({
-        "@platforms//os:linux": ["@com_github_krzyzanowskim_cryptoswift//:CryptoSwift"],
-        "//conditions:default": [],
-    }),
+        ":SwiftLintBuiltInRules",
+        ":SwiftLintCore",
+        ":SwiftLintExtraRules",
+    ],
 )
 
 swift_library(
@@ -63,6 +98,16 @@ apple_universal_binary(
     visibility = ["//visibility:public"],
 )
 
+cc_library(
+    name = "DyldWarningWorkaround",
+    srcs = [
+        "Source/DyldWarningWorkaround/DyldWarningWorkaround.c",
+        "Source/DyldWarningWorkaround/include/objc_dupclass.h",
+    ],
+    includes = ["Source/DyldWarningWorkaround/include"],
+    alwayslink = True,
+)
+
 # Linting
 
 filegroup(
@@ -81,6 +126,7 @@ filegroup(
     srcs = [
         "BUILD",
         "LICENSE",
+        "MODULE.bazel",
         "//:LintInputs",
         "//Tests:BUILD",
         "//bazel:release_files",

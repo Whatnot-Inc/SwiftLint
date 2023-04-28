@@ -1,7 +1,7 @@
 import Foundation
 import SourceKittenFramework
 @_spi(TestHelper)
-import SwiftLintFramework
+import SwiftLintCore
 import XCTest
 
 // swiftlint:disable file_length
@@ -48,7 +48,7 @@ public extension String {
     }
 }
 
-public let allRuleIdentifiers = Set(primaryRuleList.list.keys)
+public let allRuleIdentifiers = Set(RuleRegistry.shared.list.list.keys)
 
 public extension Configuration {
     func applyingConfiguration(from example: Example) -> Configuration {
@@ -272,7 +272,7 @@ public func makeConfig(_ ruleConfiguration: Any?, _ identifier: String,
     let identifiers: Set<String> = skipDisableCommandTests ? [identifier]
         : [identifier, superfluousDisableCommandRuleIdentifier]
 
-    if let ruleConfiguration, let ruleType = primaryRuleList.list[identifier] {
+    if let ruleConfiguration, let ruleType = RuleRegistry.shared.rule(forID: identifier) {
         // The caller has provided a custom configuration for the rule under test
         return (try? ruleType.init(configuration: ruleConfiguration)).flatMap { configuredRule in
             let rules = skipDisableCommandTests ? [configuredRule] : [configuredRule, SuperfluousDisableCommandRule()]
@@ -433,7 +433,7 @@ public extension XCTestCase {
                            parserDiagnosticsDisabledForTests: Bool = true) {
         let ruleDescription = ruleDescription.focused()
 
-        SwiftLintFramework.parserDiagnosticsDisabledForTests = parserDiagnosticsDisabledForTests
+        SwiftLintCore.parserDiagnosticsDisabledForTests = parserDiagnosticsDisabledForTests
 
         // corrections
         ruleDescription.corrections.forEach {
