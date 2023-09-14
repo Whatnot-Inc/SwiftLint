@@ -78,7 +78,6 @@ struct ExpiringTodoRule: ConfigurationProviderRule, OptInRule {
             .substring(with: range)
             .trimmingCharacters(in: .whitespacesAndNewlines)
 
-        // swiftlint:disable:next date_formatter_override
         let formatter = DateFormatter()
         formatter.calendar = .current
         formatter.dateFormat = configuration.dateFormat

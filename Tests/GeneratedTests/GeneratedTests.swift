@@ -194,12 +194,6 @@ class CyclomaticComplexityRuleGeneratedTests: SwiftLintTestCase {
     }
 }
 
-class DateFormatterOverrideRuleGeneratedTests: SwiftLintTestCase {
-    func testWithDefaultConfiguration() {
-        verifyRule(DateFormatterOverrideRule.description)
-    }
-}
-
 class DeploymentTargetRuleGeneratedTests: SwiftLintTestCase {
     func testWithDefaultConfiguration() {
         verifyRule(DeploymentTargetRule.description)
@@ -641,6 +635,12 @@ class LiteralExpressionEndIdentationRuleGeneratedTests: SwiftLintTestCase {
 class LocalDocCommentRuleGeneratedTests: SwiftLintTestCase {
     func testWithDefaultConfiguration() {
         verifyRule(LocalDocCommentRule.description)
+    }
+}
+
+class LocaleOverrideRuleGeneratedTests: SwiftLintTestCase {
+    func testWithDefaultConfiguration() {
+        verifyRule(LocaleOverrideRule.description)
     }
 }
 

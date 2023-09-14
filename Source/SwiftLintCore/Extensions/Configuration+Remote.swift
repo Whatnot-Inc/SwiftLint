@@ -197,7 +197,6 @@ internal extension Configuration.FileGraph.FilePath {
         }
 
         // Add comment line at the top of the config string
-        // swiftlint:disable:next date_formatter_override
         let formatter = DateFormatter()
         formatter.dateFormat = "dd/MM/yyyy 'at' HH:mm:ss"
         let configString =

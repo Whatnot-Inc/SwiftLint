@@ -1,7 +1,6 @@
 import Foundation
 
 private let formatter: DateFormatter = {
-    // swiftlint:disable:next date_formatter_override
     let formatter = DateFormatter()
     formatter.dateStyle = .short
     return formatter

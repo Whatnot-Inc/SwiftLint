@@ -34,7 +34,6 @@ public let builtInRules: [Rule.Type] = [
     ControlStatementRule.self,
     ConvenienceTypeRule.self,
     CyclomaticComplexityRule.self,
-    DateFormatterOverrideRule.self,
     DeploymentTargetRule.self,
     DirectReturnRule.self,
     DiscardedNotificationCenterObserverRule.self,
@@ -229,5 +228,8 @@ public let builtInRules: [Rule.Type] = [
     WeakDelegateRule.self,
     XCTFailMessageRule.self,
     XCTSpecificMatcherRule.self,
-    YodaConditionRule.self
+    YodaConditionRule.self,
+
+    // Whatnot Rules
+    LocaleOverrideRule.self,
 ]

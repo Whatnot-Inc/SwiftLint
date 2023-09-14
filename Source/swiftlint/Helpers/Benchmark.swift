@@ -47,7 +47,6 @@ private let numberFormatter: NumberFormatter = {
 }()
 
 private let timestamp: String = {
-    // swiftlint:disable:next date_formatter_override
     let formatter = DateFormatter()
     formatter.dateFormat = "yyyy_MM_dd_HH_mm_ss"
     return formatter.string(from: Date())
