@@ -2,9 +2,9 @@ import SwiftSyntax
 
 struct DateFormatterOverrideRule: ConfigurationProviderRule, SwiftSyntaxRule {
     var configuration = SeverityConfiguration(.error)
-    
+
     init() {}
-    
+
     static let description = RuleDescription(
         identifier: "date_formatter_override",
         name: "DateFormatter Override",
@@ -20,10 +20,10 @@ struct DateFormatterOverrideRule: ConfigurationProviderRule, SwiftSyntaxRule {
             Example("let df = ↓DateFormatter.anotherStaticInit"),
             Example("↓DateFormatter()"),
             Example("↓DateFormatter.init()"),
-            Example("↓DateFormatter.anotherStaticInit"),
+            Example("↓DateFormatter.anotherStaticInit")
         ]
     )
-    
+
     func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
         Visitor(viewMode: .sourceAccurate)
     }
@@ -34,17 +34,15 @@ extension DateFormatterOverrideRule {
         override func visitPost(_ node: MemberAccessExprSyntax) {
             if let identifierExp = node.base?.as(IdentifierExprSyntax.self),
                identifierExp.identifier.text == "DateFormatter",
-               node.name.text != "whatnotFormatter"
-            {
+               node.name.text != "whatnotFormatter" {
                 violations.append(node.positionAfterSkippingLeadingTrivia)
             }
         }
-        
+
         override func visitPost(_ node: FunctionCallExprSyntax) {
             if let identifierExp = node.calledExpression.as(IdentifierExprSyntax.self),
                identifierExp.identifier.text == "DateFormatter",
-               node.argumentList.isEmpty
-            {
+               node.argumentList.isEmpty {
                 violations.append(node.positionAfterSkippingLeadingTrivia)
             }
         }

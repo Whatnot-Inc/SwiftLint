@@ -34,6 +34,7 @@ public let builtInRules: [Rule.Type] = [
     ControlStatementRule.self,
     ConvenienceTypeRule.self,
     CyclomaticComplexityRule.self,
+    DateFormatterOverrideRule.self,
     DeploymentTargetRule.self,
     DirectReturnRule.self,
     DiscardedNotificationCenterObserverRule.self,

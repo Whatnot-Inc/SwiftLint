@@ -194,6 +194,12 @@ class CyclomaticComplexityRuleGeneratedTests: SwiftLintTestCase {
     }
 }
 
+class DateFormatterOverrideRuleGeneratedTests: SwiftLintTestCase {
+    func testWithDefaultConfiguration() {
+        verifyRule(DateFormatterOverrideRule.description)
+    }
+}
+
 class DeploymentTargetRuleGeneratedTests: SwiftLintTestCase {
     func testWithDefaultConfiguration() {
         verifyRule(DeploymentTargetRule.description)
