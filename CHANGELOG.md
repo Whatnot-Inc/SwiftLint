@@ -2,7 +2,14 @@
 
 #### Breaking
 
-* None.
+* The `attributes` rule now expects attributes with arguments to be placed
+  on their own line above the declaration they are supposed to influence.
+  This applies to attributes with any kinds of arguments including single
+  key path arguments which were previously handled in a different way. This
+  behavior can be turned off by setting `attributes_with_arguments_always_on_line_above`
+  to `false.  
+  [SimplyDanny](https://github.com/SimplyDanny)
+  [#4843](https://github.com/realm/SwiftLint/issues/4843)
 
 #### Experimental
 
@@ -17,6 +24,17 @@
 
 * Add `sorted_enum_cases` rule which warns when enum cases are not sorted.  
   [kimdv](https://github.com/kimdv)
+
+* Add new `redundant_self_in_closure` rule that triggers in closures on
+  explicitly used `self` when it's actually not needed due to:
+  * Strongly captured `self` (`{ [self] in ... }`)
+  * Closure used in a struct declaration (`self` can always be omitted)
+  * Anonymous closures that are directly called (`{ ... }()`) as they are
+    definitly not escaping
+  * Weakly captured `self` with explicit unwrapping
+
+  [SimplyDanny](https://github.com/SimplyDanny)
+  [#59](https://github.com/realm/SwiftLint/issues/59)
 
 * Extend `xct_specific_matcher` rule to check for boolean asserts on (un)equal
   comparisons. The rule can be configured with the matchers that should trigger
@@ -43,6 +61,18 @@
   subclasses.  
   [AndrewDMontgomery](https://github.com/andrewdmontgomery)
   [#4875](https://github.com/realm/SwiftLint/pull/4875)
+  
+* Prepend `warning: ` to error messages so that they show in Xcode.  
+  [whiteio](https://github.com/whiteio)
+  [#4923](https://github.com/realm/SwiftLint/issues/4923)
+
+* The `attributes` rule received a new boolean option
+  `attributes_with_arguments_always_on_line_above` which is `true` by default.
+  Setting it to `false` ensures that attributes with arguments like
+  `@Persisted(primaryKey: true)` don't violate the rule if they are on the same
+  line with the variable declaration.  
+  [SimplyDanny](https://github.com/SimplyDanny)
+  [#4843](https://github.com/realm/SwiftLint/issues/4843)
 
 #### Bug Fixes
 
@@ -66,6 +96,11 @@
   [keith](https://github.com/keith)
   [#4782](https://github.com/realm/SwiftLint/issues/4782)
 
+* Improve lint times of SwiftLintPlugin by moving the
+  `excludedPaths(fileManager:)` operation out of the linting iterations.  
+  [andyyhope](https://github.com/andyyhope)
+  [#4844](https://github.com/realm/SwiftLint/issues/4844)
+
 ## 0.51.0: bzllint
 
 #### Breaking
@@ -79,6 +114,13 @@
   At the same time, make it an opt-in rule.  
   [SimplyDanny](https://github.com/SimplyDanny)
   [#4615](https://github.com/realm/SwiftLint/issues/4615)
+  
+* Interpret strings in `excluded` option of `identifier_name`, 
+  `type_name` and `generic_type_name` rules as regular expression. Existing
+  configurations should remain working without notice as long as they don't
+  contain characters that must be escaped in regular expression.  
+  [Moly](https://github.com/kyounh12)
+  [#4655](https://github.com/realm/SwiftLint/pull/4655)
 
 #### Experimental
 
@@ -112,11 +154,6 @@
 * Add rule identifier to output of Emoji reporter.  
   [SimplyDanny](https://github.com/SimplyDanny)
   [#4707](https://github.com/realm/SwiftLint/issues/4707)
-
-* Interpret strings in `excluded` option of `identifier_name`, 
-  `type_name` and `generic_type_name` rules as regex.  
-  [Moly](https://github.com/kyounh12)
-  [#4655](https://github.com/realm/SwiftLint/pull/4655)
 
 * Add new `direct_return` rule that triggers on `return` statements returning
   variables that have been declared in the statement before only.  
