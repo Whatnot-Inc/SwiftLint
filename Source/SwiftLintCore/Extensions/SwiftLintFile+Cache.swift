@@ -10,7 +10,8 @@ import SwiftParserDiagnostics
 import SwiftSyntax
 
 private typealias FileCacheKey = UUID
-private let responseCache = Cache { file -> [String: SourceKitRepresentable]? in
+
+private let responseCache = Cache { file -> [String: any SourceKitRepresentable]? in
     do {
         return try Request.editorOpen(file: file.file).sendIfNotDisabled()
     } catch let error as Request.Error {
@@ -32,7 +33,7 @@ private let foldedSyntaxTreeCache = Cache { file -> SourceFileSyntax? in
         .as(SourceFileSyntax.self)
 }
 private let locationConverterCache = Cache { file -> SourceLocationConverter in
-    return SourceLocationConverter(file: file.path ?? "<nopath>", tree: file.syntaxTree)
+    return SourceLocationConverter(fileName: file.path ?? "<nopath>", tree: file.syntaxTree)
 }
 private let commandsCache = Cache { file -> [Command] in
     guard file.contents.contains("swiftlint:") else {

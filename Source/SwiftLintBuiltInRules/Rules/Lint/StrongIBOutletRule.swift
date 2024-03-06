@@ -1,7 +1,8 @@
 import SwiftSyntax
 
-struct StrongIBOutletRule: ConfigurationProviderRule, SwiftSyntaxCorrectableRule, OptInRule {
-    var configuration = SeverityConfiguration(.warning)
+@SwiftSyntaxRule(explicitRewriter: true)
+struct StrongIBOutletRule: OptInRule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
     static let description = RuleDescription(
         identifier: "strong_iboutlet",
@@ -26,21 +27,10 @@ struct StrongIBOutletRule: ConfigurationProviderRule, SwiftSyntaxCorrectableRule
                 wrapExample("@IBOutlet var textField: UITextField?")
         ]
     )
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(viewMode: .sourceAccurate)
-    }
-
-    func makeRewriter(file: SwiftLintFile) -> ViolationsSyntaxRewriter? {
-        Rewriter(
-            locationConverter: file.locationConverter,
-            disabledRegions: disabledRegions(file: file)
-        )
-    }
 }
 
 private extension StrongIBOutletRule {
-    final class Visitor: ViolationsSyntaxVisitor {
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
         override func visitPost(_ node: VariableDeclSyntax) {
             if let violationPosition = node.violationPosition {
                 violations.append(violationPosition)
@@ -48,26 +38,15 @@ private extension StrongIBOutletRule {
         }
     }
 
-    private final class Rewriter: SyntaxRewriter, ViolationsSyntaxRewriter {
-        private(set) var correctionPositions: [AbsolutePosition] = []
-        let locationConverter: SourceLocationConverter
-        let disabledRegions: [SourceRange]
-
-        init(locationConverter: SourceLocationConverter, disabledRegions: [SourceRange]) {
-            self.locationConverter = locationConverter
-            self.disabledRegions = disabledRegions
-        }
-
+    final class Rewriter: ViolationsSyntaxRewriter {
         override func visit(_ node: VariableDeclSyntax) -> DeclSyntax {
             guard let violationPosition = node.violationPosition,
                   let weakOrUnownedModifier = node.weakOrUnownedModifier,
-                  let modifiers = node.modifiers,
-                  !node.isContainedIn(regions: disabledRegions, locationConverter: locationConverter)
-            else {
+                  case let modifiers = node.modifiers else {
                 return super.visit(node)
             }
 
-            let newModifiers = ModifierListSyntax(modifiers.filter { $0 != weakOrUnownedModifier })
+            let newModifiers = modifiers.filter { $0 != weakOrUnownedModifier }
             let newNode = node.with(\.modifiers, newModifiers)
             correctionPositions.append(violationPosition)
             return super.visit(newNode)

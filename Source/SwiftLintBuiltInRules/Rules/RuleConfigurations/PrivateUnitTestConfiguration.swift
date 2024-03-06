@@ -1,54 +1,58 @@
 import Foundation
+import SwiftLintCore
 
-struct PrivateUnitTestConfiguration: SeverityBasedRuleConfiguration, Equatable, CacheDescriptionProvider {
-    let identifier: String
-    var name: String?
-    var message = "Regex matched."
-    var regex: NSRegularExpression!
-    var included: NSRegularExpression?
-    var severityConfiguration = SeverityConfiguration(.warning)
+struct PrivateUnitTestConfiguration: SeverityBasedRuleConfiguration {
+    typealias Parent = PrivateUnitTestRule
 
-    var consoleDescription: String {
-        return "\(severity.rawValue): \(regex.pattern)"
-    }
+    @ConfigurationElement(key: "severity")
+    private(set) var severityConfiguration = SeverityConfiguration<Parent>(.warning)
+    @ConfigurationElement(key: "test_parent_classes")
+    private(set) var testParentClasses: Set<String> = ["QuickSpec", "XCTestCase"]
 
-    var cacheDescription: String {
-        let jsonObject: [String] = [
-            identifier,
-            name ?? "",
-            message,
-            regex.pattern,
-            included?.pattern ?? "",
-            severityConfiguration.consoleDescription
-        ]
-        if let jsonData = try? JSONSerialization.data(withJSONObject: jsonObject),
-          let jsonString = String(data: jsonData, encoding: .utf8) {
-              return jsonString
-        }
-        queuedFatalError("Could not serialize private unit test configuration for cache")
-    }
-
-    init(identifier: String) {
-        self.identifier = identifier
-    }
+    @ConfigurationElement(key: "regex")
+    private(set) var regex: RegularExpression = "XCTestCase"
 
     mutating func apply(configuration: Any) throws {
         guard let configurationDict = configuration as? [String: Any] else {
-            throw ConfigurationError.unknownConfiguration
+            throw Issue.unknownConfiguration(ruleID: Parent.identifier)
         }
-        if let regexString = configurationDict["regex"] as? String {
-            regex = try .cached(pattern: regexString)
+        if let extraTestParentClasses = configurationDict[$testParentClasses.key] as? [String] {
+            self.testParentClasses.formUnion(extraTestParentClasses)
         }
-        if let includedString = configurationDict["included"] as? String {
-            included = try .cached(pattern: includedString)
+        if let regexString = configurationDict[$regex.key] as? String {
+            // TODO: [01/09/2025] Remove deprecation warning after ~2 years and use `UnitTestConfiguration`
+            // instead of this configuration.
+            queuedPrintError(
+                """
+                warning: '\($regex.key)' has been replaced by a list of explicit parent class names. They can be \
+                configured in the '\($testParentClasses.key)' option. '\($regex.key)' will be completely removed \
+                in a future release.
+                """
+            )
+            regex = try RegularExpression(pattern: regexString)
         }
-        if let name = configurationDict["name"] as? String {
-            self.name = name
+        if configurationDict["included"] is String {
+            // TODO: [01/09/2025] Remove deprecation warning after ~2 years and replace this configuration by
+            // `UnitTestConfiguration`.
+            queuedPrintError(
+                "warning: 'included' is ignored from now on. You may remove it from the configuration file."
+            )
         }
-        if let message = configurationDict["message"] as? String {
-            self.message = message
+        if configurationDict["name"] is String {
+            // TODO: [01/09/2025] Remove deprecation warning after ~2 years and replace this configuration by
+            // `UnitTestConfiguration`.
+            queuedPrintError(
+                "warning: 'name' is ignored from now on. You may remove it from the configuration file."
+            )
         }
-        if let severityString = configurationDict["severity"] as? String {
+        if configurationDict["message"] is String {
+            // TODO: [01/09/2025] Remove deprecation warning after ~2 years and replace this configuration by
+            // `UnitTestConfiguration`.
+            queuedPrintError(
+                "warning: 'message' is ignored from now on. You may remove it from the configuration file."
+            )
+        }
+        if let severityString = configurationDict[$severityConfiguration.key] as? String {
             try severityConfiguration.apply(configuration: severityString)
         }
     }

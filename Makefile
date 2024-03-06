@@ -41,7 +41,7 @@ Source/SwiftLintCore/Models/ReportersList.swift: Source/SwiftLintCore/Reporters/
 	mv .sourcery/ReportersList.generated.swift Source/SwiftLintCore/Models/ReportersList.swift
 
 Tests/GeneratedTests/GeneratedTests.swift: Source/SwiftLint*/Rules/**/*.swift .sourcery/GeneratedTests.stencil
-	./tools/sourcery --sources Source/SwiftLintCore/Rules --sources Source/SwiftLintBuiltInRules/Rules --templates .sourcery/GeneratedTests.stencil --output .sourcery
+	./tools/sourcery --sources Source/SwiftLintBuiltInRules/Rules --templates .sourcery/GeneratedTests.stencil --output .sourcery
 	mv .sourcery/GeneratedTests.generated.swift Tests/GeneratedTests/GeneratedTests.swift
 
 test: clean_xcode
@@ -121,6 +121,7 @@ zip_linux_release:
 	chmod +x "$(TMP_FOLDER)/swiftlint"
 	cp -f "$(LICENSE_PATH)" "$(TMP_FOLDER)"
 	(cd "$(TMP_FOLDER)"; zip -yr - "swiftlint" "LICENSE") > "./swiftlint_linux.zip"
+	gh release upload "$(VERSION_STRING)" swiftlint_linux.zip
 
 package: build
 	$(eval PACKAGE_ROOT := $(shell mktemp -d))
@@ -132,6 +133,9 @@ package: build
 		--version "$(VERSION_STRING)" \
 		"$(OUTPUT_PACKAGE)"
 
+bazel_test:
+	bazel test --test_output=errors //Tests/...
+
 bazel_release:
 	bazel build :release
 	mv bazel-bin/bazel.tar.gz bazel-bin/bazel.tar.gz.sha256 .
@@ -140,7 +144,7 @@ docker_image:
 	docker build --platform linux/amd64 --force-rm --tag swiftlint .
 
 docker_test:
-	docker run -v `pwd`:`pwd` -w `pwd` --name swiftlint --rm swift:5.7-focal swift test --parallel
+	docker run -v `pwd`:`pwd` -w `pwd` --name swiftlint --rm swift:5.9-focal swift test --parallel
 
 docker_htop:
 	docker run --platform linux/amd64 -it --rm --pid=container:swiftlint terencewestphal/htop || reset
@@ -151,8 +155,8 @@ display_compilation_time:
 
 publish:
 	brew update && brew bump-formula-pr --tag=$(shell git describe --tags) --revision=$(shell git rev-parse HEAD) swiftlint
-	# Workaround for https://github.com/CocoaPods/CocoaPods/issues/11185
-	arch -arch x86_64 pod trunk push SwiftLint.podspec
+	bundle install
+	bundle exec pod trunk push SwiftLint.podspec
 
 docs:
 	swift run swiftlint generate-docs
@@ -181,6 +185,11 @@ endif
 	git tag -a $(NEW_VERSION) -m "$(NEW_VERSION_AND_NAME)"
 	git push origin HEAD
 	git push origin $(NEW_VERSION)
+	./tools/create-github-release.sh "$(NEW_VERSION)"
+	make publish
+	./tools/add-new-changelog-section.sh
+	git commit -a -m "Add new changelog section"
+	git push origin HEAD
 
 %:
 	@:

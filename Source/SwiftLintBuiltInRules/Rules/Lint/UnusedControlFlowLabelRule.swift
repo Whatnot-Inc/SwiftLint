@@ -1,7 +1,8 @@
 import SwiftSyntax
 
-struct UnusedControlFlowLabelRule: SwiftSyntaxCorrectableRule, ConfigurationProviderRule {
-    var configuration = SeverityConfiguration(.warning)
+@SwiftSyntaxRule(explicitRewriter: true)
+struct UnusedControlFlowLabelRule: Rule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
     static let description = RuleDescription(
         identifier: "unused_control_flow_label",
@@ -82,21 +83,10 @@ struct UnusedControlFlowLabelRule: SwiftSyntaxCorrectableRule, ConfigurationProv
                 """)
         ]
     )
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(viewMode: .sourceAccurate)
-    }
-
-    func makeRewriter(file: SwiftLintFile) -> ViolationsSyntaxRewriter? {
-        Rewriter(
-            locationConverter: file.locationConverter,
-            disabledRegions: disabledRegions(file: file)
-        )
-    }
 }
 
 private extension UnusedControlFlowLabelRule {
-    final class Visitor: ViolationsSyntaxVisitor {
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
         override func visitPost(_ node: LabeledStmtSyntax) {
             if let position = node.violationPosition {
                 violations.append(position)
@@ -104,19 +94,9 @@ private extension UnusedControlFlowLabelRule {
         }
     }
 
-    private final class Rewriter: SyntaxRewriter, ViolationsSyntaxRewriter {
-        private(set) var correctionPositions: [AbsolutePosition] = []
-        let locationConverter: SourceLocationConverter
-        let disabledRegions: [SourceRange]
-
-        init(locationConverter: SourceLocationConverter, disabledRegions: [SourceRange]) {
-            self.locationConverter = locationConverter
-            self.disabledRegions = disabledRegions
-        }
-
+    final class Rewriter: ViolationsSyntaxRewriter {
         override func visit(_ node: LabeledStmtSyntax) -> StmtSyntax {
-            guard let violationPosition = node.violationPosition,
-                  !node.isContainedIn(regions: disabledRegions, locationConverter: locationConverter) else {
+            guard let violationPosition = node.violationPosition else {
                 return super.visit(node)
             }
 
@@ -131,11 +111,11 @@ private extension LabeledStmtSyntax {
     var violationPosition: AbsolutePosition? {
         let visitor = BreakAndContinueLabelCollector(viewMode: .sourceAccurate)
         let labels = visitor.walk(tree: self, handler: \.labels)
-        guard !labels.contains(labelName.text) else {
+        guard !labels.contains(label.text) else {
             return nil
         }
 
-        return labelName.positionAfterSkippingLeadingTrivia
+        return label.positionAfterSkippingLeadingTrivia
     }
 }
 

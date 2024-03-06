@@ -1,6 +1,6 @@
 import SourceKittenFramework
 
-struct TypeContentsOrderRule: ConfigurationProviderRule, OptInRule {
+struct TypeContentsOrderRule: OptInRule {
     private typealias TypeContentOffset = (typeContent: TypeContent, offset: ByteCount)
 
     var configuration = TypeContentsOrderConfiguration()
@@ -110,6 +110,7 @@ struct TypeContentsOrderRule: ConfigurationProviderRule, OptInRule {
             let viewLifecycleMethodNames = [
                 "loadView(",
                 "loadViewIfNeeded(",
+                "viewIsAppearing(",
                 "viewDidLoad(",
                 "viewWillAppear(",
                 "viewWillLayoutSubviews(",

@@ -1,39 +1,19 @@
-private func toExplicitInitMethod(typeName: String) -> String {
-    return "\(typeName).init"
-}
+import SwiftLintCore
 
-struct DiscouragedDirectInitConfiguration: SeverityBasedRuleConfiguration, Equatable {
-    var severityConfiguration = SeverityConfiguration(.warning)
+@AutoApply
+struct DiscouragedDirectInitConfiguration: SeverityBasedRuleConfiguration {
+    typealias Parent = DiscouragedDirectInitRule
 
-    var consoleDescription: String {
-        return "severity: \(severityConfiguration.consoleDescription)" + ", types: \(discouragedInits.sorted(by: <))"
-    }
+    @ConfigurationElement(key: "severity")
+    var severityConfiguration = SeverityConfiguration<Parent>(.warning)
 
-    private(set) var discouragedInits: Set<String>
-
-    private let defaultDiscouragedInits = [
+    @ConfigurationElement(
+        key: "types",
+        postprocessor: { $0.formUnion($0.map { name in "\(name).init" }) }
+    )
+    private(set) var discouragedInits: Set = [
         "Bundle",
         "NSError",
         "UIDevice"
     ]
-
-    init() {
-        discouragedInits = Set(defaultDiscouragedInits + defaultDiscouragedInits.map(toExplicitInitMethod))
-    }
-
-    // MARK: - RuleConfiguration
-
-    mutating func apply(configuration: Any) throws {
-        guard let configuration = configuration as? [String: Any] else {
-            throw ConfigurationError.unknownConfiguration
-        }
-
-        if let severityString = configuration["severity"] as? String {
-            try severityConfiguration.apply(configuration: severityString)
-        }
-
-        if let types = [String].array(of: configuration["types"]) {
-            discouragedInits = Set(types + types.map(toExplicitInitMethod))
-        }
-    }
 }

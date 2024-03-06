@@ -1,7 +1,8 @@
 import SwiftSyntax
 
-struct RedundantDiscardableLetRule: SwiftSyntaxCorrectableRule, ConfigurationProviderRule {
-    var configuration = SeverityConfiguration(.warning)
+@SwiftSyntaxRule(explicitRewriter: true)
+struct RedundantDiscardableLetRule: Rule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
     static let description = RuleDescription(
         identifier: "redundant_discardable_let",
@@ -9,37 +10,26 @@ struct RedundantDiscardableLetRule: SwiftSyntaxCorrectableRule, ConfigurationPro
         description: "Prefer `_ = foo()` over `let _ = foo()` when discarding a result from a function",
         kind: .style,
         nonTriggeringExamples: [
-            Example("_ = foo()\n"),
-            Example("if let _ = foo() { }\n"),
-            Example("guard let _ = foo() else { return }\n"),
+            Example("_ = foo()"),
+            Example("if let _ = foo() { }"),
+            Example("guard let _ = foo() else { return }"),
             Example("let _: ExplicitType = foo()"),
-            Example("while let _ = SplashStyle(rawValue: maxValue) { maxValue += 1 }\n"),
+            Example("while let _ = SplashStyle(rawValue: maxValue) { maxValue += 1 }"),
             Example("async let _ = await foo()")
         ],
         triggeringExamples: [
-            Example("↓let _ = foo()\n"),
-            Example("if _ = foo() { ↓let _ = bar() }\n")
+            Example("↓let _ = foo()"),
+            Example("if _ = foo() { ↓let _ = bar() }")
         ],
         corrections: [
-            Example("↓let _ = foo()\n"): Example("_ = foo()\n"),
-            Example("if _ = foo() { ↓let _ = bar() }\n"): Example("if _ = foo() { _ = bar() }\n")
+            Example("↓let _ = foo()"): Example("_ = foo()"),
+            Example("if _ = foo() { ↓let _ = bar() }"): Example("if _ = foo() { _ = bar() }")
         ]
     )
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(viewMode: .sourceAccurate)
-    }
-
-    func makeRewriter(file: SwiftLintFile) -> ViolationsSyntaxRewriter? {
-        Rewriter(
-            locationConverter: file.locationConverter,
-            disabledRegions: disabledRegions(file: file)
-        )
-    }
 }
 
 private extension RedundantDiscardableLetRule {
-    final class Visitor: ViolationsSyntaxVisitor {
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
         override func visitPost(_ node: VariableDeclSyntax) {
             if node.hasRedundantDiscardableLetViolation {
                 violations.append(node.positionAfterSkippingLeadingTrivia)
@@ -47,28 +37,16 @@ private extension RedundantDiscardableLetRule {
         }
     }
 
-    final class Rewriter: SyntaxRewriter, ViolationsSyntaxRewriter {
-        private(set) var correctionPositions: [AbsolutePosition] = []
-        let locationConverter: SourceLocationConverter
-        let disabledRegions: [SourceRange]
-
-        init(locationConverter: SourceLocationConverter, disabledRegions: [SourceRange]) {
-            self.locationConverter = locationConverter
-            self.disabledRegions = disabledRegions
-        }
-
+    final class Rewriter: ViolationsSyntaxRewriter {
         override func visit(_ node: VariableDeclSyntax) -> DeclSyntax {
-            guard
-                node.hasRedundantDiscardableLetViolation,
-                !node.isContainedIn(regions: disabledRegions, locationConverter: locationConverter)
-            else {
+            guard node.hasRedundantDiscardableLetViolation else {
                 return super.visit(node)
             }
 
             correctionPositions.append(node.positionAfterSkippingLeadingTrivia)
             let newNode = node
-                .with(\.bindingKeyword, .keyword(.let, presence: .missing))
-                .with(\.bindings, node.bindings.with(\.leadingTrivia, node.bindingKeyword.leadingTrivia))
+                .with(\.bindingSpecifier, .keyword(.let, presence: .missing))
+                .with(\.bindings, node.bindings.with(\.leadingTrivia, node.bindingSpecifier.leadingTrivia))
             return super.visit(newNode)
         }
     }
@@ -76,10 +54,10 @@ private extension RedundantDiscardableLetRule {
 
 private extension VariableDeclSyntax {
     var hasRedundantDiscardableLetViolation: Bool {
-        bindingKeyword.tokenKind == .keyword(.let) &&
-            bindings.count == 1 &&
-            bindings.first!.pattern.is(WildcardPatternSyntax.self) &&
-            bindings.first!.typeAnnotation == nil &&
-            modifiers?.contains(where: { $0.name.text == "async" }) != true
+           bindingSpecifier.tokenKind == .keyword(.let)
+        && bindings.count == 1
+        && bindings.first!.pattern.is(WildcardPatternSyntax.self)
+        && bindings.first!.typeAnnotation == nil
+        && modifiers.contains(where: { $0.name.text == "async" }) != true
     }
 }

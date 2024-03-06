@@ -55,7 +55,7 @@ public extension Configuration {
         guard let exampleConfiguration = example.configuration,
            case let .only(onlyRules) = self.rulesMode,
            let firstRule = (onlyRules.first { $0 != "superfluous_disable_command" }),
-           case let configDict = ["only_rules": onlyRules, firstRule: exampleConfiguration],
+           case let configDict: [_: any Sendable] = ["only_rules": onlyRules, firstRule: exampleConfiguration],
            let typedConfiguration = try? Configuration(dict: configDict) else { return self }
         return merged(withChild: typedConfiguration, rootDirectory: rootDirectory)
     }
@@ -210,7 +210,7 @@ private extension Configuration {
         let file = SwiftLintFile.testFile(withContents: cleanedBefore, persistToDisk: true)
         // expectedLocations are needed to create before call `correct()`
         let expectedLocations = markerOffsets.map { Location(file: file, characterOffset: $0) }
-        let includeCompilerArguments = self.rules.contains(where: { $0 is AnalyzerRule })
+        let includeCompilerArguments = self.rules.contains(where: { $0 is any AnalyzerRule })
         let compilerArguments = includeCompilerArguments ? file.makeCompilerArguments() : []
         let storage = RuleStorage()
         let collecter = Linter(file: file, configuration: self, compilerArguments: compilerArguments)
@@ -297,7 +297,7 @@ private func testCorrection(_ correction: (Example, Example),
     if let correctionConfiguration = correction.0.configuration,
         case let .only(onlyRules) = configuration.rulesMode,
         let ruleToConfigure = (onlyRules.first { $0 != SuperfluousDisableCommandRule.description.identifier }),
-        case let configDict = ["only_rules": onlyRules, ruleToConfigure: correctionConfiguration],
+        case let configDict: [_: any Sendable] = ["only_rules": onlyRules, ruleToConfigure: correctionConfiguration],
         let typedConfiguration = try? Configuration(dict: configDict) {
         config = configuration.merged(withChild: typedConfiguration, rootDirectory: configuration.rootDirectory)
     }
@@ -414,17 +414,23 @@ public extension XCTestCase {
 
         // Disabled rule doesn't violate and disable command isn't superfluous
         for command in disableCommands {
-            let violationsPartionedByType = triggers
+            let disabledTriggers = triggers
                 .filter { $0.testDisableCommand }
                 .map { $0.with(code: command + $0.code) }
-                .flatMap { makeViolations($0) }
-                .partitioned { $0.ruleIdentifier == SuperfluousDisableCommandRule.description.identifier }
-            XCTAssert(violationsPartionedByType.first.isEmpty,
-                      "Violation(s) still triggered although rule was disabled",
-                      file: (file), line: line)
-            XCTAssert(violationsPartionedByType.second.isEmpty,
-                      "Disable command was superfluous since no violations(s) triggered",
-                      file: (file), line: line)
+
+            for trigger in disabledTriggers {
+                let violationsPartionedByType = makeViolations(trigger)
+                    .partitioned { $0.ruleIdentifier == SuperfluousDisableCommandRule.description.identifier }
+
+                XCTAssert(violationsPartionedByType.first.isEmpty,
+                          "Violation(s) still triggered although rule was disabled",
+                          file: trigger.file,
+                          line: trigger.line)
+                XCTAssert(violationsPartionedByType.second.isEmpty,
+                          "Disable command was superfluous since no violations(s) triggered",
+                          file: trigger.file,
+                          line: trigger.line)
+            }
         }
     }
 

@@ -1,7 +1,8 @@
 import SwiftSyntax
 
-struct OptionalEnumCaseMatchingRule: SwiftSyntaxCorrectableRule, ConfigurationProviderRule, OptInRule {
-    var configuration = SeverityConfiguration(.warning)
+@SwiftSyntaxRule(explicitRewriter: true)
+struct OptionalEnumCaseMatchingRule: OptInRule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
     static let description = RuleDescription(
         identifier: "optional_enum_case_matching",
@@ -152,22 +153,11 @@ struct OptionalEnumCaseMatchingRule: SwiftSyntaxCorrectableRule, ConfigurationPr
             """)
         ]
     )
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(viewMode: .sourceAccurate)
-    }
-
-    func makeRewriter(file: SwiftLintFile) -> ViolationsSyntaxRewriter? {
-        Rewriter(
-            locationConverter: file.locationConverter,
-            disabledRegions: disabledRegions(file: file)
-        )
-    }
 }
 
 private extension OptionalEnumCaseMatchingRule {
-    final class Visitor: ViolationsSyntaxVisitor {
-        override func visitPost(_ node: CaseItemSyntax) {
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
+        override func visitPost(_ node: SwitchCaseItemSyntax) {
             guard let pattern = node.pattern.as(ExpressionPatternSyntax.self) else {
                 return
             }
@@ -184,21 +174,11 @@ private extension OptionalEnumCaseMatchingRule {
         }
     }
 
-    final class Rewriter: SyntaxRewriter, ViolationsSyntaxRewriter {
-        private(set) var correctionPositions: [AbsolutePosition] = []
-        let locationConverter: SourceLocationConverter
-        let disabledRegions: [SourceRange]
-
-        init(locationConverter: SourceLocationConverter, disabledRegions: [SourceRange]) {
-            self.locationConverter = locationConverter
-            self.disabledRegions = disabledRegions
-        }
-
-        override func visit(_ node: CaseItemSyntax) -> CaseItemSyntax {
+    final class Rewriter: ViolationsSyntaxRewriter {
+        override func visit(_ node: SwitchCaseItemSyntax) -> SwitchCaseItemSyntax {
             guard
                 let pattern = node.pattern.as(ExpressionPatternSyntax.self),
-                pattern.expression.is(OptionalChainingExprSyntax.self) || pattern.expression.is(TupleExprSyntax.self),
-                !node.isContainedIn(regions: disabledRegions, locationConverter: locationConverter)
+                pattern.expression.is(OptionalChainingExprSyntax.self) || pattern.expression.is(TupleExprSyntax.self)
             else {
                 return super.visit(node)
             }
@@ -215,7 +195,7 @@ private extension OptionalEnumCaseMatchingRule {
                 return super.visit(newNode)
             } else if let expression = pattern.expression.as(TupleExprSyntax.self) {
                 var newExpression = expression
-                for (index, element) in expression.elementList.enumerated() {
+                for element in expression.elements {
                     guard
                         let optionalChainingExpression = element.expression.as(OptionalChainingExprSyntax.self),
                         !optionalChainingExpression.expression.is(DiscardAssignmentExprSyntax.self)
@@ -227,8 +207,9 @@ private extension OptionalEnumCaseMatchingRule {
                     correctionPositions.append(violationPosition)
 
                     let newElement = element.with(\.expression, optionalChainingExpression.expression)
-                    newExpression.elementList = newExpression.elementList
-                        .replacing(childAt: index, with: newElement)
+                    if let index = expression.elements.index(of: element) {
+                        newExpression.elements = newExpression.elements.with(\.[index], newElement)
+                    }
                 }
 
                 let newPattern = PatternSyntax(pattern.with(\.expression, ExprSyntax(newExpression)))
@@ -243,7 +224,7 @@ private extension OptionalEnumCaseMatchingRule {
 
 private extension TupleExprSyntax {
     func optionalChainingExpressions() -> [OptionalChainingExprSyntax] {
-        elementList
+        elements
             .compactMap { $0.expression.as(OptionalChainingExprSyntax.self) }
             .filter { !$0.expression.isDiscardAssignmentOrBoolLiteral }
     }

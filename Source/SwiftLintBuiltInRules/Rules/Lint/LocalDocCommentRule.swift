@@ -1,8 +1,8 @@
 import SwiftIDEUtils
 import SwiftSyntax
 
-struct LocalDocCommentRule: SwiftSyntaxRule, ConfigurationProviderRule, OptInRule {
-    var configuration = SeverityConfiguration(.warning)
+struct LocalDocCommentRule: SwiftSyntaxRule, OptInRule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
     static let description = RuleDescription(
         identifier: "local_doc_comment",
@@ -40,20 +40,25 @@ struct LocalDocCommentRule: SwiftSyntaxRule, ConfigurationProviderRule, OptInRul
         ]
     )
 
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(classifications: file.syntaxClassifications.filter { $0.kind != .none })
+    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor<ConfigurationType> {
+        Visitor(
+            configuration: configuration,
+            file: file,
+            classifications: file.syntaxClassifications.filter { $0.kind != .none }
+        )
     }
 }
 
 private extension LocalDocCommentRule {
-    final class Visitor: ViolationsSyntaxVisitor {
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
         private let docCommentRanges: [ByteSourceRange]
 
-        init(classifications: [SyntaxClassifiedRange]) {
+        init(configuration: ConfigurationType, file: SwiftLintFile,
+             classifications: [SyntaxClassifiedRange]) {
             self.docCommentRanges = classifications
                 .filter { $0.kind == .docLineComment || $0.kind == .docBlockComment }
                 .map(\.range)
-            super.init(viewMode: .sourceAccurate)
+            super.init(configuration: configuration, file: file)
         }
 
         override func visitPost(_ node: FunctionDeclSyntax) {
@@ -61,7 +66,7 @@ private extension LocalDocCommentRule {
                 return
             }
 
-            let violatingRange = docCommentRanges.first { $0.intersects(body.byteRange) }
+            let violatingRange = docCommentRanges.first { $0.intersects(body.totalByteRange) }
             if let violatingRange {
                 violations.append(AbsolutePosition(utf8Offset: violatingRange.offset))
             }

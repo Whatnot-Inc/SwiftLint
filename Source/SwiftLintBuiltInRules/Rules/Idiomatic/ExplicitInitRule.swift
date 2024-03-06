@@ -1,8 +1,9 @@
 import SwiftSyntax
 import SwiftSyntaxBuilder
 
-struct ExplicitInitRule: SwiftSyntaxCorrectableRule, ConfigurationProviderRule, OptInRule {
-    var configuration = SeverityConfiguration(.warning)
+@SwiftSyntaxRule(explicitRewriter: true)
+struct ExplicitInitRule: OptInRule {
+    var configuration = ExplicitInitConfiguration()
 
     static let description = RuleDescription(
         identifier: "explicit_init",
@@ -162,61 +163,53 @@ struct ExplicitInitRule: SwiftSyntaxCorrectableRule, ConfigurationProviderRule, 
 
 
                 """),
+            Example("""
+            f { e in
+                // comment
+                A↓.init(e: e)
+            }
+            """):
+                Example("""
+                f { e in
+                    // comment
+                    A(e: e)
+                }
+                """),
             Example("_ = GleanMetrics.Tabs.GroupedTabExtra↓.init()"):
                 Example("_ = GleanMetrics.Tabs.GroupedTabExtra()"),
             Example("_ = Set<KsApi.Category>↓.init()"):
                 Example("_ = Set<KsApi.Category>()")
         ]
     )
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(viewMode: .sourceAccurate)
-    }
-
-    func makeRewriter(file: SwiftLintFile) -> ViolationsSyntaxRewriter? {
-        Rewriter(
-            locationConverter: file.locationConverter,
-            disabledRegions: disabledRegions(file: file)
-        )
-    }
 }
 
 private extension ExplicitInitRule {
-    final class Visitor: ViolationsSyntaxVisitor {
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
         override func visitPost(_ node: FunctionCallExprSyntax) {
-            guard
-                let calledExpression = node.calledExpression.as(MemberAccessExprSyntax.self),
-                let violationPosition = calledExpression.explicitInitPosition
-            else {
+            guard let calledExpression = node.calledExpression.as(MemberAccessExprSyntax.self) else {
                 return
             }
 
-            violations.append(violationPosition)
+            if let violationPosition = calledExpression.explicitInitPosition {
+                violations.append(violationPosition)
+            }
+
+            if configuration.includeBareInit, let violationPosition = calledExpression.bareInitPosition {
+                let reason = "Prefer named constructors over .init and type inference"
+                violations.append(ReasonedRuleViolation(position: violationPosition, reason: reason))
+            }
         }
     }
 
-    final class Rewriter: SyntaxRewriter, ViolationsSyntaxRewriter {
-        private(set) var correctionPositions: [AbsolutePosition] = []
-        let locationConverter: SourceLocationConverter
-        let disabledRegions: [SourceRange]
-
-        init(locationConverter: SourceLocationConverter, disabledRegions: [SourceRange]) {
-            self.locationConverter = locationConverter
-            self.disabledRegions = disabledRegions
-        }
-
+    final class Rewriter: ViolationsSyntaxRewriter {
         override func visit(_ node: FunctionCallExprSyntax) -> ExprSyntax {
-            guard
-                let calledExpression = node.calledExpression.as(MemberAccessExprSyntax.self),
-                let violationPosition = calledExpression.explicitInitPosition,
-                let calledBase = calledExpression.base,
-                !node.isContainedIn(regions: disabledRegions, locationConverter: locationConverter)
-            else {
+            guard let calledExpression = node.calledExpression.as(MemberAccessExprSyntax.self),
+                  let violationPosition = calledExpression.explicitInitPosition,
+                  let calledBase = calledExpression.base else {
                 return super.visit(node)
             }
-
             correctionPositions.append(violationPosition)
-            let newNode = node.with(\.calledExpression, calledBase.trimmed)
+            let newNode = node.with(\.calledExpression, calledBase)
             return super.visit(newNode)
         }
     }
@@ -224,8 +217,16 @@ private extension ExplicitInitRule {
 
 private extension MemberAccessExprSyntax {
     var explicitInitPosition: AbsolutePosition? {
-        if let base, base.isTypeReferenceLike, name.text == "init" {
+        if let base, base.isTypeReferenceLike, declName.baseName.text == "init" {
             return base.endPositionBeforeTrailingTrivia
+        } else {
+            return nil
+        }
+    }
+
+    var bareInitPosition: AbsolutePosition? {
+        if base == nil, declName.baseName.text == "init" {
+            return period.positionAfterSkippingLeadingTrivia
         } else {
             return nil
         }
@@ -235,13 +236,13 @@ private extension MemberAccessExprSyntax {
 private extension ExprSyntax {
     /// `String` or `Nested.Type`.
     var isTypeReferenceLike: Bool {
-        if let expr = self.as(IdentifierExprSyntax.self), expr.identifier.text.startsWithUppercase {
+        if let expr = self.as(DeclReferenceExprSyntax.self), expr.baseName.text.startsWithUppercase {
             return true
         } else if let expr = self.as(MemberAccessExprSyntax.self),
                   expr.description.split(separator: ".").allSatisfy(\.startsWithUppercase) {
             return true
-        } else if let expr = self.as(SpecializeExprSyntax.self)?.expression.as(IdentifierExprSyntax.self),
-                  expr.identifier.text.startsWithUppercase {
+        } else if let expr = self.as(GenericSpecializationExprSyntax.self)?.expression.as(DeclReferenceExprSyntax.self),
+                  expr.baseName.text.startsWithUppercase {
             return true
         } else {
             return false

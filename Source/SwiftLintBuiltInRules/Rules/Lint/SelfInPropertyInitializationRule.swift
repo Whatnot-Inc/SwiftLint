@@ -1,7 +1,8 @@
 import SwiftSyntax
 
-struct SelfInPropertyInitializationRule: ConfigurationProviderRule, SwiftSyntaxRule {
-    var configuration = SeverityConfiguration(.warning)
+@SwiftSyntaxRule
+struct SelfInPropertyInitializationRule: Rule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
     static let description = RuleDescription(
         identifier: "self_in_property_initialization",
@@ -89,16 +90,12 @@ struct SelfInPropertyInitializationRule: ConfigurationProviderRule, SwiftSyntaxR
             """)
         ]
     )
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(viewMode: .sourceAccurate)
-    }
 }
 
 private extension SelfInPropertyInitializationRule {
-    final class Visitor: ViolationsSyntaxVisitor {
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
         override func visitPost(_ node: VariableDeclSyntax) {
-            guard !node.modifiers.containsLazy,
+            guard !node.modifiers.contains(keyword: .lazy),
                   !node.modifiers.containsStaticOrClass,
                   let closestDecl = node.closestDecl(),
                   closestDecl.is(ClassDeclSyntax.self) else {
@@ -112,24 +109,24 @@ private extension SelfInPropertyInitializationRule {
                     continue
                 }
 
-                violations.append(node.bindingKeyword.positionAfterSkippingLeadingTrivia)
+                violations.append(node.bindingSpecifier.positionAfterSkippingLeadingTrivia)
             }
         }
     }
+}
 
-    final class IdentifierUsageVisitor: SyntaxVisitor {
-        let identifier: TokenKind
-        private(set) var isTokenUsed = false
+private final class IdentifierUsageVisitor: SyntaxVisitor {
+    let identifier: TokenKind
+    private(set) var isTokenUsed = false
 
-        init(identifier: TokenKind) {
-            self.identifier = identifier
-            super.init(viewMode: .sourceAccurate)
-        }
+    init(identifier: TokenKind) {
+        self.identifier = identifier
+        super.init(viewMode: .sourceAccurate)
+    }
 
-        override func visitPost(_ node: IdentifierExprSyntax) {
-            if node.identifier.tokenKind == identifier {
-                isTokenUsed = true
-            }
+    override func visitPost(_ node: DeclReferenceExprSyntax) {
+        if node.baseName.tokenKind == identifier, node.keyPathInParent != \MemberAccessExprSyntax.declName {
+            isTokenUsed = true
         }
     }
 }

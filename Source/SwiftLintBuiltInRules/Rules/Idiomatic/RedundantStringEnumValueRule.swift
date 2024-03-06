@@ -1,7 +1,8 @@
 import SwiftSyntax
 
-struct RedundantStringEnumValueRule: SwiftSyntaxRule, ConfigurationProviderRule {
-    var configuration = SeverityConfiguration(.warning)
+@SwiftSyntaxRule
+struct RedundantStringEnumValueRule: Rule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
     static let description = RuleDescription(
         identifier: "redundant_string_enum_value",
@@ -58,14 +59,10 @@ struct RedundantStringEnumValueRule: SwiftSyntaxRule, ConfigurationProviderRule 
             """)
         ]
     )
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(viewMode: .sourceAccurate)
-    }
 }
 
 private extension RedundantStringEnumValueRule {
-    final class Visitor: ViolationsSyntaxVisitor {
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
         override func visitPost(_ node: EnumDeclSyntax) {
             guard node.isStringEnum else {
                 return
@@ -85,7 +82,7 @@ private extension RedundantStringEnumValueRule {
                 .compactMap { element -> AbsolutePosition? in
                     guard let stringExpr = element.rawValue?.value.as(StringLiteralExprSyntax.self),
                           let segment = stringExpr.segments.onlyElement?.as(StringSegmentSyntax.self),
-                          segment.content.text == element.identifier.text else {
+                          segment.content.text == element.name.text else {
                         return nil
                     }
 
@@ -105,8 +102,8 @@ private extension EnumDeclSyntax {
             return false
         }
 
-        return inheritanceClause.inheritedTypeCollection.contains { elem in
-            elem.typeName.as(SimpleTypeIdentifierSyntax.self)?.typeName == "String"
+        return inheritanceClause.inheritedTypes.contains { elem in
+            elem.type.as(IdentifierTypeSyntax.self)?.typeName == "String"
         }
     }
 }

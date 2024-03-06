@@ -2,15 +2,15 @@ import Foundation
 import SwiftyTextTable
 
 /// Reports a summary table of all violations
-public struct SummaryReporter: Reporter {
+struct SummaryReporter: Reporter {
     // MARK: - Reporter Conformance
 
-    public static let identifier = "summary"
-    public static let isRealtime = false
+    static let identifier = "summary"
+    static let isRealtime = false
 
-    public static let description = "Reports a summary table of all violations."
+    static let description = "Reports a summary table of all violations."
 
-    public static func generateReport(_ violations: [StyleViolation]) -> String {
+    static func generateReport(_ violations: [StyleViolation]) -> String {
         TextTable(violations: violations).renderWithExtraSeparator()
     }
 }
@@ -68,8 +68,8 @@ private extension TextTable {
 
             addRow(values: [
                 ruleIdentifier,
-                rule is OptInRule.Type ? "yes" : "no",
-                rule is CorrectableRule.Type ? "yes" : "no",
+                rule is any OptInRule.Type ? "yes" : "no",
+                rule is any CorrectableRule.Type ? "yes" : "no",
                 rule == nil ? "yes" : "no",
                 numberOfWarnings.formattedString.leftPadded(forHeader: numberOfWarningsHeader),
                 numberOfErrors.formattedString.leftPadded(forHeader: numberOfErrorsHeader),
@@ -114,7 +114,7 @@ private extension String {
 }
 
 private extension Int {
-    private static var numberFormatter: NumberFormatter = {
+    private static let numberFormatter: NumberFormatter = {
         let numberFormatter = NumberFormatter()
         numberFormatter.numberStyle = .decimal
         return numberFormatter

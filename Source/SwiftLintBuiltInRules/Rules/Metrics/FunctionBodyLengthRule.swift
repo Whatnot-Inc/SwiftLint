@@ -1,5 +1,5 @@
-struct FunctionBodyLengthRule: SwiftSyntaxRule, ConfigurationProviderRule {
-    var configuration = SeverityLevelsConfiguration(warning: 50, error: 100)
+struct FunctionBodyLengthRule: SwiftSyntaxRule {
+    var configuration = SeverityLevelsConfiguration<Self>(warning: 50, error: 100)
 
     static let description = RuleDescription(
         identifier: "function_body_length",
@@ -8,7 +8,7 @@ struct FunctionBodyLengthRule: SwiftSyntaxRule, ConfigurationProviderRule {
         kind: .metrics
     )
 
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
+    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor<ConfigurationType> {
         BodyLengthRuleVisitor(kind: .function, file: file, configuration: configuration)
     }
 }

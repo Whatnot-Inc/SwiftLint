@@ -1,9 +1,10 @@
 import SwiftSyntax
 
-struct DuplicatedKeyInDictionaryLiteralRule: SwiftSyntaxRule, ConfigurationProviderRule {
-    var configuration = SeverityConfiguration(.warning)
+@SwiftSyntaxRule
+struct DuplicatedKeyInDictionaryLiteralRule: Rule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
-    static var description = RuleDescription(
+    static let description = RuleDescription(
         identifier: "duplicated_key_in_dictionary_literal",
         name: "Duplicated Key in Dictionary Literal",
         description: "Dictionary literals with duplicated keys will crash at runtime",
@@ -76,16 +77,12 @@ struct DuplicatedKeyInDictionaryLiteralRule: SwiftSyntaxRule, ConfigurationProvi
             """)
         ]
     )
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(viewMode: .sourceAccurate)
-    }
 }
 
 private extension DuplicatedKeyInDictionaryLiteralRule {
-    final class Visitor: ViolationsSyntaxVisitor {
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
         override func visitPost(_ list: DictionaryElementListSyntax) {
-            let keys = list.map(\.keyExpression).compactMap { expr -> DictionaryKey? in
+            let keys = list.map(\.key).compactMap { expr -> DictionaryKey? in
                 expr.stringContent.map {
                     DictionaryKey(position: expr.positionAfterSkippingLeadingTrivia, content: $0)
                 }
@@ -127,8 +124,8 @@ private extension ExprSyntax {
             return float.description
         } else if let memberAccess = self.as(MemberAccessExprSyntax.self) {
             return memberAccess.description
-        } else if let identifier = self.as(IdentifierExprSyntax.self) {
-            return identifier.identifier.text
+        } else if let identifier = self.as(DeclReferenceExprSyntax.self) {
+            return identifier.baseName.text
         }
 
         return nil

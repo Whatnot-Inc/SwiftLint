@@ -2,8 +2,8 @@ import Foundation
 import SourceKittenFramework
 import SwiftIDEUtils
 
-struct PeriodSpacingRule: SourceKitFreeRule, ConfigurationProviderRule, OptInRule, SubstitutionCorrectableRule {
-    var configuration = SeverityConfiguration(.warning)
+struct PeriodSpacingRule: SourceKitFreeRule, OptInRule, SubstitutionCorrectableRule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
     static let description = RuleDescription(
         identifier: "period_spacing",

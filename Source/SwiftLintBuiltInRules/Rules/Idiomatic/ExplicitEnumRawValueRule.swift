@@ -1,7 +1,8 @@
 import SwiftSyntax
 
-struct ExplicitEnumRawValueRule: SwiftSyntaxRule, OptInRule, ConfigurationProviderRule {
-    var configuration = SeverityConfiguration(.warning)
+@SwiftSyntaxRule
+struct ExplicitEnumRawValueRule: OptInRule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
     static let description = RuleDescription(
         identifier: "explicit_enum_raw_value",
@@ -76,19 +77,15 @@ struct ExplicitEnumRawValueRule: SwiftSyntaxRule, OptInRule, ConfigurationProvid
             """)
         ]
     )
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(viewMode: .sourceAccurate)
-    }
 }
 
 private extension ExplicitEnumRawValueRule {
-    final class Visitor: ViolationsSyntaxVisitor {
-        override var skippableDeclarations: [DeclSyntaxProtocol.Type] { [ProtocolDeclSyntax.self] }
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
+        override var skippableDeclarations: [any DeclSyntaxProtocol.Type] { [ProtocolDeclSyntax.self] }
 
         override func visitPost(_ node: EnumCaseElementSyntax) {
             if node.rawValue == nil, node.enclosingEnum()?.supportsRawValues == true {
-                violations.append(node.identifier.positionAfterSkippingLeadingTrivia)
+                violations.append(node.name.positionAfterSkippingLeadingTrivia)
             }
         }
     }

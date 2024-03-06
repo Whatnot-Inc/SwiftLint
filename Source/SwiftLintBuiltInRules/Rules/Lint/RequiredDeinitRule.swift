@@ -6,8 +6,9 @@ import SwiftSyntax
 /// of objects and the deinit should print a message or remove its instance from a
 /// list of allocations. Even having an empty deinit method is useful to provide
 /// a place to put a breakpoint when chasing down leaks.
-struct RequiredDeinitRule: SwiftSyntaxRule, OptInRule, ConfigurationProviderRule {
-    var configuration = SeverityConfiguration(.warning)
+@SwiftSyntaxRule
+struct RequiredDeinitRule: OptInRule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
     static let description = RuleDescription(
         identifier: "required_deinit",
@@ -65,29 +66,25 @@ struct RequiredDeinitRule: SwiftSyntaxRule, OptInRule, ConfigurationProviderRule
             """)
         ]
     )
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(viewMode: .sourceAccurate)
-    }
 }
 
 private extension RequiredDeinitRule {
-    final class Visitor: ViolationsSyntaxVisitor {
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
         override func visitPost(_ node: ClassDeclSyntax) {
-            let visitor = DeinitVisitor(viewMode: .sourceAccurate)
+            let visitor = DeinitVisitor(configuration: configuration, file: file)
             if !visitor.walk(tree: node.memberBlock, handler: \.hasDeinit) {
                 violations.append(node.classKeyword.positionAfterSkippingLeadingTrivia)
             }
         }
     }
-}
 
-private class DeinitVisitor: ViolationsSyntaxVisitor {
-    private(set) var hasDeinit = false
+    final class DeinitVisitor: ViolationsSyntaxVisitor<ConfigurationType> {
+        private(set) var hasDeinit = false
 
-    override var skippableDeclarations: [DeclSyntaxProtocol.Type] { .all }
+        override var skippableDeclarations: [any DeclSyntaxProtocol.Type] { .all }
 
-    override func visitPost(_ node: DeinitializerDeclSyntax) {
-        hasDeinit = true
+        override func visitPost(_ node: DeinitializerDeclSyntax) {
+            hasDeinit = true
+        }
     }
 }

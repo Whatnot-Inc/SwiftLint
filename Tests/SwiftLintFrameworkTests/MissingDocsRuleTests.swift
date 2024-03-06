@@ -3,84 +3,84 @@ import XCTest
 
 class MissingDocsRuleTests: SwiftLintTestCase {
     func testDescriptionEmpty() {
-        let configuration = MissingDocsRuleConfiguration()
+        let configuration = MissingDocsConfiguration()
         XCTAssertEqual(
-            configuration.consoleDescription,
-            "warning: open, public, excludes_extensions: true, " +
-            "excludes_inherited_types: true, excludes_trivial_init: false"
+            configuration.parameterDescription?.oneLiner(),
+            "warning: [open, public]; excludes_extensions: true; " +
+            "excludes_inherited_types: true; excludes_trivial_init: false"
         )
     }
 
     func testDescriptionExcludesFalse() {
-        let configuration = MissingDocsRuleConfiguration(excludesExtensions: false, excludesInheritedTypes: false)
+        let configuration = MissingDocsConfiguration(excludesExtensions: false, excludesInheritedTypes: false)
         XCTAssertEqual(
-            configuration.consoleDescription,
-            "warning: open, public, excludes_extensions: false, " +
-            "excludes_inherited_types: false, excludes_trivial_init: false"
+            configuration.parameterDescription?.oneLiner(),
+            "warning: [open, public]; excludes_extensions: false; " +
+            "excludes_inherited_types: false; excludes_trivial_init: false"
         )
     }
 
     func testDescriptionExcludesExtensionsFalseExcludesInheritedTypesTrue() {
-        let configuration = MissingDocsRuleConfiguration(excludesExtensions: false, excludesInheritedTypes: true)
+        let configuration = MissingDocsConfiguration(excludesExtensions: false, excludesInheritedTypes: true)
         XCTAssertEqual(
-            configuration.consoleDescription,
-            "warning: open, public, excludes_extensions: false, " +
-            "excludes_inherited_types: true, excludes_trivial_init: false"
+            configuration.parameterDescription?.oneLiner(),
+            "warning: [open, public]; excludes_extensions: false; " +
+            "excludes_inherited_types: true; excludes_trivial_init: false"
         )
     }
 
     func testDescriptionExcludesExtensionsTrueExcludesInheritedTypesFalse() {
-        let configuration = MissingDocsRuleConfiguration(excludesExtensions: true, excludesInheritedTypes: false)
+        let configuration = MissingDocsConfiguration(excludesExtensions: true, excludesInheritedTypes: false)
         XCTAssertEqual(
-            configuration.consoleDescription,
-            "warning: open, public, excludes_extensions: true, " +
-            "excludes_inherited_types: false, excludes_trivial_init: false"
+            configuration.parameterDescription?.oneLiner(),
+            "warning: [open, public]; excludes_extensions: true; " +
+            "excludes_inherited_types: false; excludes_trivial_init: false"
         )
     }
 
     func testDescriptionSingleServety() {
-        let configuration = MissingDocsRuleConfiguration(
+        let configuration = MissingDocsConfiguration(
             parameters: [RuleParameter<AccessControlLevel>(severity: .error, value: .open)])
         XCTAssertEqual(
-            configuration.consoleDescription,
-            "error: open, excludes_extensions: true, " +
-            "excludes_inherited_types: true, excludes_trivial_init: false"
+            configuration.parameterDescription?.oneLiner(),
+            "error: [open]; excludes_extensions: true; " +
+            "excludes_inherited_types: true; excludes_trivial_init: false"
         )
     }
 
     func testDescriptionMultipleSeverities() {
-        let configuration = MissingDocsRuleConfiguration(
+        let configuration = MissingDocsConfiguration(
             parameters: [RuleParameter<AccessControlLevel>(severity: .error, value: .open),
                          RuleParameter<AccessControlLevel>(severity: .warning, value: .public)])
         XCTAssertEqual(
-            configuration.consoleDescription,
-            "error: open, warning: public, excludes_extensions: true, " +
-            "excludes_inherited_types: true, excludes_trivial_init: false"
+            configuration.parameterDescription?.oneLiner(),
+            "error: [open]; warning: [public]; excludes_extensions: true; " +
+            "excludes_inherited_types: true; excludes_trivial_init: false"
         )
     }
 
     func testDescriptionMultipleAcls() {
-        let configuration = MissingDocsRuleConfiguration(
+        let configuration = MissingDocsConfiguration(
             parameters: [RuleParameter<AccessControlLevel>(severity: .warning, value: .open),
                          RuleParameter<AccessControlLevel>(severity: .warning, value: .public)])
         XCTAssertEqual(
-            configuration.consoleDescription,
-            "warning: open, public, excludes_extensions: true, " +
-            "excludes_inherited_types: true, excludes_trivial_init: false"
+            configuration.parameterDescription?.oneLiner(),
+            "warning: [open, public]; excludes_extensions: true; " +
+            "excludes_inherited_types: true; excludes_trivial_init: false"
         )
     }
 
     func testDescriptionExcludesTrivialInitTrue() {
-        let configuration = MissingDocsRuleConfiguration(excludesTrivialInit: true)
+        let configuration = MissingDocsConfiguration(excludesTrivialInit: true)
         XCTAssertEqual(
-            configuration.consoleDescription,
-            "warning: open, public, excludes_extensions: true, " +
-            "excludes_inherited_types: true, excludes_trivial_init: true"
+            configuration.parameterDescription?.oneLiner(),
+            "warning: [open, public]; excludes_extensions: true; " +
+            "excludes_inherited_types: true; excludes_trivial_init: true"
         )
     }
 
     func testParsingSingleServety() {
-        var configuration = MissingDocsRuleConfiguration()
+        var configuration = MissingDocsConfiguration()
         try? configuration.apply(configuration: ["warning": "open"])
         XCTAssertEqual(
             configuration.parameters,
@@ -89,7 +89,7 @@ class MissingDocsRuleTests: SwiftLintTestCase {
     }
 
     func testParsingMultipleSeverities() {
-        var configuration = MissingDocsRuleConfiguration()
+        var configuration = MissingDocsConfiguration()
         try? configuration.apply(configuration: ["warning": "public", "error": "open"])
         XCTAssertEqual(
             configuration.parameters.sorted { $0.value.rawValue > $1.value.rawValue },
@@ -99,7 +99,7 @@ class MissingDocsRuleTests: SwiftLintTestCase {
     }
 
     func testParsingMultipleAcls() {
-        var configuration = MissingDocsRuleConfiguration()
+        var configuration = MissingDocsConfiguration()
         try? configuration.apply(configuration: ["warning": ["public", "open"]])
         XCTAssertEqual(
             configuration.parameters.sorted { $0.value.rawValue > $1.value.rawValue },
@@ -111,12 +111,12 @@ class MissingDocsRuleTests: SwiftLintTestCase {
     }
 
     func testInvalidServety() {
-        var configuration = MissingDocsRuleConfiguration()
+        var configuration = MissingDocsConfiguration()
         XCTAssertThrowsError(try configuration.apply(configuration: ["warning": ["public", "closed"]]))
     }
 
     func testInvalidAcl() {
-        var configuration = MissingDocsRuleConfiguration()
+        var configuration = MissingDocsConfiguration()
         try? configuration.apply(configuration: ["debug": ["public", "open"]])
         XCTAssertTrue(configuration.excludesExtensions)
         XCTAssertTrue(configuration.excludesInheritedTypes)
@@ -128,14 +128,14 @@ class MissingDocsRuleTests: SwiftLintTestCase {
     }
 
     func testInvalidDuplicateAcl() {
-        var configuration = MissingDocsRuleConfiguration()
+        var configuration = MissingDocsConfiguration()
         XCTAssertThrowsError(
             try configuration.apply(configuration: ["warning": ["public", "open"] as Any, "error": "public"])
         )
     }
 
     func testExcludesFalse() {
-        var configuration = MissingDocsRuleConfiguration()
+        var configuration = MissingDocsConfiguration()
         try? configuration.apply(configuration: ["excludes_extensions": false, "excludes_inherited_types": false])
         XCTAssertFalse(configuration.excludesExtensions)
         XCTAssertFalse(configuration.excludesInheritedTypes)
@@ -147,7 +147,7 @@ class MissingDocsRuleTests: SwiftLintTestCase {
     }
 
     func testExcludesExtensionsFalseExcludesInheritedTypesTrue() {
-        var configuration = MissingDocsRuleConfiguration()
+        var configuration = MissingDocsConfiguration()
         try? configuration.apply(configuration: ["excludes_extensions": false, "excludes_inherited_types": true])
         XCTAssertFalse(configuration.excludesExtensions)
         XCTAssertTrue(configuration.excludesInheritedTypes)
@@ -159,7 +159,7 @@ class MissingDocsRuleTests: SwiftLintTestCase {
     }
 
     func testExcludesExtensionsTrueExcludesInheritedTypesFalse() {
-        var configuration = MissingDocsRuleConfiguration()
+        var configuration = MissingDocsConfiguration()
         try? configuration.apply(configuration: ["excludes_extensions": true, "excludes_inherited_types": false])
         XCTAssertTrue(configuration.excludesExtensions)
         XCTAssertFalse(configuration.excludesInheritedTypes)
@@ -171,13 +171,13 @@ class MissingDocsRuleTests: SwiftLintTestCase {
     }
 
     func testExcludesExtensionsTrueExcludesInheritedTypesFalseWithParameters() {
-        var configuration = MissingDocsRuleConfiguration()
+        var configuration = MissingDocsConfiguration()
         try? configuration.apply(
             configuration: [
                 "excludes_extensions": true,
                 "excludes_inherited_types": false,
                 "error": ["public"]
-            ] as [String: Any]
+            ] as [String: any Sendable]
         )
 
         XCTAssertTrue(configuration.excludesExtensions)

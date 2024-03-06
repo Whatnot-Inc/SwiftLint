@@ -21,7 +21,7 @@ public protocol Reporter: CustomStringConvertible {
     static func generateReport(_ violations: [StyleViolation]) -> String
 }
 
-public extension Reporter {
+extension Reporter {
     /// For CustomStringConvertible conformance.
     var description: String { Self.description }
 }
@@ -32,9 +32,9 @@ public extension Reporter {
 /// - parameter identifier: The identifier corresponding to the reporter.
 ///
 /// - returns: The reporter type.
-public func reporterFrom(identifier: String) -> Reporter.Type {
+public func reporterFrom(identifier: String) -> any Reporter.Type {
     guard let reporter = reportersList.first(where: { $0.identifier == identifier }) else {
-        queuedFatalError("no reporter with identifier '\(identifier)' available.")
+        queuedFatalError("No reporter with identifier '\(identifier)' available.")
     }
     return reporter
 }

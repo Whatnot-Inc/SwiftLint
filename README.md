@@ -10,7 +10,7 @@ of your source files for more accurate results.
 [![Build Status](https://dev.azure.com/jpsim/SwiftLint/_apis/build/status/realm.SwiftLint?branchName=main)](https://dev.azure.com/jpsim/SwiftLint/_build/latest?definitionId=4?branchName=main)
 [![codecov.io](https://codecov.io/github/realm/SwiftLint/coverage.svg?branch=main)](https://codecov.io/github/realm/SwiftLint?branch=main)
 
-![](assets/screenshot.png)
+![](https://raw.githubusercontent.com/realm/SwiftLint/main/assets/screenshot.png)
 
 This project adheres to the [Contributor Covenant Code of Conduct](https://realm.io/conduct).
 By participating, you are expected to uphold this code. Please report
@@ -60,14 +60,14 @@ running it.
 ### Installing from source:
 
 You can also build and install from source by cloning this project and running
-`make install` (Xcode 13.3 or later).
+`make install` (Xcode 15.0 or later).
 
 ### Using Bazel
 
 Put this in your `MODULE.bazel`:
 
 ```bzl
-bazel_dep(name = "swiftlint", version = "0.50.4", repo_name = "SwiftLint")
+bazel_dep(name = "swiftlint", version = "0.52.4", repo_name = "SwiftLint")
 ```
 
 Or put this in your `WORKSPACE`:
@@ -81,8 +81,8 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 http_archive(
     name = "build_bazel_rules_apple",
-    sha256 = "f94e6dddf74739ef5cb30f000e13a2a613f6ebfa5e63588305a71fce8a8a9911",
-    url = "https://github.com/bazelbuild/rules_apple/releases/download/1.1.3/rules_apple.1.1.3.tar.gz",
+    sha256 = "390841dd5f8a85fc25776684f4793d56e21b098dfd7243cd145b9831e6ef8be6",
+    url = "https://github.com/bazelbuild/rules_apple/releases/download/2.4.1/rules_apple.2.4.1.tar.gz",
 )
 
 load(
@@ -108,8 +108,8 @@ swift_rules_extra_dependencies()
 
 http_archive(
     name = "SwiftLint",
-    sha256 = "7c454ff4abeeecdd9513f6293238a6d9f803b587eb93de147f9aa1be0d8337c4",
-    url = "https://github.com/realm/SwiftLint/releases/download/0.49.1/bazel.tar.gz",
+    sha256 = "c6ea58b9c72082cdc1ada4a2d48273ecc355896ed72204cedcc586b6ccb8aca6",
+    url = "https://github.com/realm/SwiftLint/releases/download/0.52.4/bazel.tar.gz",
 )
 
 load("@SwiftLint//bazel:repos.bzl", "swiftlint_repos")
@@ -136,7 +136,7 @@ bazel run -c opt @SwiftLint//:swiftlint
 To get a high-level overview of recommended ways to integrate SwiftLint into your project,
 we encourage you to watch this presentation or read the transcript:
 
-[![Presentation](assets/presentation.svg)](https://youtu.be/9Z1nTMTejqU)
+[![Presentation](https://raw.githubusercontent.com/realm/SwiftLint/main/assets/presentation.svg)](https://youtu.be/9Z1nTMTejqU)
 
 ### Xcode
 
@@ -147,7 +147,13 @@ To do this select the project in the file navigator, then select the primary app
 target, and go to Build Phases. Click the + and select "New Run Script Phase".
 Insert the following as the script:
 
-![](assets/runscript.png)
+![](https://raw.githubusercontent.com/realm/SwiftLint/main/assets/runscript.png)
+
+Xcode 15 made a significant change by setting the default value of the `ENABLE_USER_SCRIPT_SANDBOXING` Build Setting from `NO` to `YES`.
+As a result, SwiftLint encounters an error related to missing file permissions,
+which typically manifests as follows: `error: Sandbox: swiftlint(19427) deny(1) file-read-data.`
+
+To resolve this issue, it is necessary to manually set the `ENABLE_USER_SCRIPT_SANDBOXING` setting to `NO` for the specific target that SwiftLint is being configured for.
 
 If you installed SwiftLint via Homebrew on Apple Silicon, you might experience this warning:
 
@@ -213,15 +219,15 @@ Select the target you want to add linting to and open the `Build Phases` inspect
 Open `Run Build Tool Plug-ins` and select the `+` button.
 Select `SwiftLintPlugin` from the list and add it to the project.
 
-![](assets/select-swiftlint-plugin.png)
+![](https://raw.githubusercontent.com/realm/SwiftLint/main/assets/select-swiftlint-plugin.png)
 
-For unattended use (e.g. on CI), you can disable the package validation dialog by
+For unattended use (e.g. on CI), you can disable the package and macro validation dialog by
 
-* individually passing `-skipPackagePluginValidation` to `xcodebuild` or
-* globally setting `defaults write com.apple.dt.Xcode IDESkipPackagePluginFingerprintValidatation -bool YES` 
+* individually passing `-skipPackagePluginValidation` and `-skipMacroValidation` to `xcodebuild` or
+* globally setting `defaults write com.apple.dt.Xcode IDESkipPackagePluginFingerprintValidatation -bool YES` and `defaults write com.apple.dt.Xcode IDESkipMacroFingerprintValidation -bool YES` 
   for that user.
 
-_Note: This implicitly trusts all Xcode package plugins and bypasses Xcode's package validation
+_Note: This implicitly trusts all Xcode package plugins and macros in packages and bypasses Xcode's package validation
        dialogs, which has security implications._
 
 #### Swift Package
@@ -396,12 +402,12 @@ SwiftLint can be configured using `entry` to apply fixes and fail on errors:
 
 Over 200 rules are included in SwiftLint and the Swift community (that's you!)
 continues to contribute more over time.
-[Pull requests](CONTRIBUTING.md) are encouraged.
+[Pull requests](https://github.com/realm/SwiftLint/blob/main/CONTRIBUTING.md) are encouraged.
 
 You can find an updated list of rules and more information about them
 [here](https://realm.github.io/SwiftLint/rule-directory.html).
 
-You can also check [Source/SwiftLintFramework/Rules](https://github.com/realm/SwiftLint/tree/main/Source/SwiftLintFramework/Rules)
+You can also check [Source/SwiftLintBuiltInRules/Rules](https://github.com/realm/SwiftLint/tree/main/Source/SwiftLintBuiltInRules/Rules)
 directory to see their implementation.
 
 ### Opt-In Rules
@@ -496,27 +502,30 @@ disabled_rules: # rule identifiers turned on by default to exclude from running
   - comma
   - control_statement
 opt_in_rules: # some rules are turned off by default, so you need to opt-in
-  - empty_count # Find all the available rules by running: `swiftlint rules`
+  - empty_count # find all the available rules by running: `swiftlint rules`
 
 # Alternatively, specify all rules explicitly by uncommenting this option:
 # only_rules: # delete `disabled_rules` & `opt_in_rules` if using this
 #   - empty_parameters
 #   - vertical_whitespace
 
-analyzer_rules: # Rules run by `swiftlint analyze`
+analyzer_rules: # rules run by `swiftlint analyze`
   - explicit_self
 
-included: # paths to include during linting. `--path` is ignored if present.
-  - Source
-excluded: # paths to ignore during linting. Takes precedence over `included`.
+included: # case-sensitive paths to include during linting. `--path` is ignored if present
+  - Sources
+excluded: # case-sensitive paths to ignore during linting. Takes precedence over `included`
   - Carthage
   - Pods
-  - Source/ExcludedFolder
-  - Source/ExcludedFile.swift
-  - Source/*/ExcludedFile.swift # Exclude files with a wildcard
+  - Sources/ExcludedFolder
+  - Sources/ExcludedFile.swift
+  - Sources/*/ExcludedFile.swift # exclude files with a wildcard
 
 # If true, SwiftLint will not fail if no lintable files are found.
 allow_zero_lintable_files: false
+
+# If true, SwiftLint will treat all warnings as errors.
+strict: false
 
 # configurable rules can be customized from this configuration file
 # binary rules can set their severity level
@@ -599,7 +608,14 @@ custom_rules:
 
 This is what the output would look like:
 
-![](assets/custom-rule.png)
+![](https://raw.githubusercontent.com/realm/SwiftLint/main/assets/custom-rule.png)
+
+It is important to note that the regular expression pattern is used with the flags `s`
+and `m` enabled, that is `.`
+[matches newlines](https://developer.apple.com/documentation/foundation/nsregularexpression/options/1412529-dotmatcheslineseparators)
+and `^`/`$` 
+[match the start and end of lines](https://developer.apple.com/documentation/foundation/nsregularexpression/options/1408263-anchorsmatchlines),
+respectively. If you do not want to have `.` match newlines, for example, the regex can be prepended by `(?-s)`. 
 
 You can filter the matches by providing one or more `match_kinds`, which will
 reject matches that include syntax kinds that are not present in this list. Here
@@ -779,11 +795,11 @@ other `.swiftlint.yml` files somewhere within the directory. **So if you want to
 
 ## License
 
-[MIT licensed.](LICENSE)
+[MIT licensed.](https://github.com/realm/SwiftLint/blob/main/LICENSE)
 
 ## About
 
-<img src="assets/realm.png" width="184" />
+<img src="https://raw.githubusercontent.com/realm/SwiftLint/main/assets/realm.png" width="184" />
 
 SwiftLint is maintained and funded by Realm Inc. The names and logos for
 Realm are trademarks of Realm Inc.
@@ -793,7 +809,7 @@ See [our other open source projects](https://github.com/realm),
 read [our blog](https://realm.io/news), or say hi on twitter
 ([@realm](https://twitter.com/realm)).
 
-<img src="assets/macstadium.png" width="184" />
+<img src="https://raw.githubusercontent.com/realm/SwiftLint/main/assets/macstadium.png" width="184" />
 
 Our thanks to MacStadium for providing a Mac Mini to run our performance
 tests.

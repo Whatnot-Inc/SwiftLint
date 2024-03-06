@@ -10,8 +10,8 @@ private func wrapExample(
                    repeatElement(template, count: count).joined() + "\(add)}\n", file: file, line: line)
 }
 
-struct TypeBodyLengthRule: SwiftSyntaxRule, ConfigurationProviderRule {
-    var configuration = SeverityLevelsConfiguration(warning: 250, error: 350)
+struct TypeBodyLengthRule: SwiftSyntaxRule {
+    var configuration = SeverityLevelsConfiguration<Self>(warning: 250, error: 350)
 
     static let description = RuleDescription(
         identifier: "type_body_length",
@@ -23,7 +23,7 @@ struct TypeBodyLengthRule: SwiftSyntaxRule, ConfigurationProviderRule {
                 wrapExample(type, "let abc = 0\n", 249),
                 wrapExample(type, "\n", 251),
                 wrapExample(type, "// this is a comment\n", 251),
-                wrapExample(type, "let abc = 0\n", 249, "\n/* this is\na multiline comment\n*/\n")
+                wrapExample(type, "let abc = 0\n", 249, "\n/* this is\na multiline comment\n*/")
             ]
         }),
         triggeringExamples: ["class", "struct", "enum", "actor"].map({ type in
@@ -31,7 +31,7 @@ struct TypeBodyLengthRule: SwiftSyntaxRule, ConfigurationProviderRule {
         })
     )
 
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
+    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor<ConfigurationType> {
         BodyLengthRuleVisitor(kind: .type, file: file, configuration: configuration)
     }
 }

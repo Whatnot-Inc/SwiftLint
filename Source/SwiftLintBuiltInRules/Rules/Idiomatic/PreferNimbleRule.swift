@@ -1,7 +1,8 @@
 import SwiftSyntax
 
-struct PreferNimbleRule: SwiftSyntaxRule, OptInRule, ConfigurationProviderRule {
-    var configuration = SeverityConfiguration(.warning)
+@SwiftSyntaxRule
+struct PreferNimbleRule: OptInRule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
     static let description = RuleDescription(
         identifier: "prefer_nimble",
@@ -21,17 +22,13 @@ struct PreferNimbleRule: SwiftSyntaxRule, OptInRule, ConfigurationProviderRule {
             Example("↓XCTAssertGreaterThan(foo, 10)")
         ]
     )
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(viewMode: .sourceAccurate)
-    }
 }
 
 private extension PreferNimbleRule {
-    final class Visitor: ViolationsSyntaxVisitor {
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
         override func visitPost(_ node: FunctionCallExprSyntax) {
-            if let expr = node.calledExpression.as(IdentifierExprSyntax.self),
-               expr.identifier.text.starts(with: "XCTAssert") {
+            if let expr = node.calledExpression.as(DeclReferenceExprSyntax.self),
+               expr.baseName.text.starts(with: "XCTAssert") {
                 violations.append(node.positionAfterSkippingLeadingTrivia)
             }
         }

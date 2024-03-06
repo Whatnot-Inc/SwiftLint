@@ -1,7 +1,8 @@
 import SwiftSyntax
 
-struct FunctionParameterCountRule: SwiftSyntaxRule, ConfigurationProviderRule {
-    var configuration = FunctionParameterCountConfiguration(warning: 5, error: 8)
+@SwiftSyntaxRule
+struct FunctionParameterCountRule: Rule {
+    var configuration = FunctionParameterCountConfiguration()
 
     static let description = RuleDescription(
         identifier: "function_parameter_count",
@@ -34,27 +35,16 @@ struct FunctionParameterCountRule: SwiftSyntaxRule, ConfigurationProviderRule {
             """)
         ]
     )
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(configuration: configuration)
-    }
 }
 
 private extension FunctionParameterCountRule {
-    final class Visitor: ViolationsSyntaxVisitor {
-        private let configuration: FunctionParameterCountConfiguration
-
-        init(configuration: FunctionParameterCountConfiguration) {
-            self.configuration = configuration
-            super.init(viewMode: .sourceAccurate)
-        }
-
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
         override func visitPost(_ node: FunctionDeclSyntax) {
-            guard !node.modifiers.containsOverride else {
+            guard !node.modifiers.contains(keyword: .override) else {
                 return
             }
 
-            let parameterList = node.signature.input.parameterList
+            let parameterList = node.signature.parameterClause.parameters
             guard let minThreshold = configuration.severityConfiguration.params.map(\.value).min(by: <) else {
                 return
             }
@@ -66,7 +56,7 @@ private extension FunctionParameterCountRule {
 
             var parameterCount = allParameterCount
             if configuration.ignoresDefaultParameters {
-                parameterCount -= parameterList.filter { $0.defaultArgument != nil }.count
+                parameterCount -= parameterList.filter { $0.defaultValue != nil }.count
             }
 
             for parameter in configuration.severityConfiguration.params where parameterCount > parameter.value {

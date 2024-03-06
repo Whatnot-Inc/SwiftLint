@@ -1,19 +1,23 @@
 import Foundation
+import SwiftLintCore
 
-struct NameConfiguration: RuleConfiguration, Equatable {
-    var consoleDescription: String {
-        return "(min_length) \(minLength.shortConsoleDescription), " +
-            "(max_length) \(maxLength.shortConsoleDescription), " +
-            "excluded: \(excludedRegularExpressions.map { $0.pattern }.sorted()), " +
-            "allowed_symbols: \(allowedSymbolsSet.sorted()), " +
-            "validates_start_with_lowercase: \(validatesStartWithLowercase)"
-    }
+struct NameConfiguration<Parent: Rule>: RuleConfiguration {
+    typealias Severity = SeverityConfiguration<Parent>
+    typealias SeverityLevels = SeverityLevelsConfiguration<Parent>
+    typealias StartWithLowercaseConfiguration = ChildOptionSeverityConfiguration<Parent>
 
-    var minLength: SeverityLevelsConfiguration
-    var maxLength: SeverityLevelsConfiguration
-    var excludedRegularExpressions: Set<NSRegularExpression>
-    private var allowedSymbolsSet: Set<String>
-    var validatesStartWithLowercase: Bool
+    @ConfigurationElement(key: "min_length")
+    private(set) var minLength = SeverityLevels(warning: 0, error: 0)
+    @ConfigurationElement(key: "max_length")
+    private(set) var maxLength = SeverityLevels(warning: 0, error: 0)
+    @ConfigurationElement(key: "excluded")
+    private(set) var excludedRegularExpressions = Set<RegularExpression>()
+    @ConfigurationElement(key: "allowed_symbols")
+    private(set) var allowedSymbols = Set<String>()
+    @ConfigurationElement(key: "unallowed_symbols_severity")
+    private(set) var unallowedSymbolsSeverity = Severity.error
+    @ConfigurationElement(key: "validates_start_with_lowercase")
+    private(set) var validatesStartWithLowercase = StartWithLowercaseConfiguration.error
 
     var minLengthThreshold: Int {
         return max(minLength.warning, minLength.error ?? minLength.warning)
@@ -23,8 +27,8 @@ struct NameConfiguration: RuleConfiguration, Equatable {
         return min(maxLength.warning, maxLength.error ?? maxLength.warning)
     }
 
-    var allowedSymbols: CharacterSet {
-        return CharacterSet(charactersIn: allowedSymbolsSet.joined())
+    var allowedSymbolsAndAlphanumerics: CharacterSet {
+        CharacterSet(charactersIn: allowedSymbols.joined()).union(.alphanumerics)
     }
 
     init(minLengthWarning: Int,
@@ -33,51 +37,53 @@ struct NameConfiguration: RuleConfiguration, Equatable {
          maxLengthError: Int,
          excluded: [String] = [],
          allowedSymbols: [String] = [],
-         validatesStartWithLowercase: Bool = true) {
-        minLength = SeverityLevelsConfiguration(warning: minLengthWarning, error: minLengthError)
-        maxLength = SeverityLevelsConfiguration(warning: maxLengthWarning, error: maxLengthError)
+         unallowedSymbolsSeverity: Severity = .error,
+         validatesStartWithLowercase: StartWithLowercaseConfiguration = .error) {
+        minLength = SeverityLevels(warning: minLengthWarning, error: minLengthError)
+        maxLength = SeverityLevels(warning: maxLengthWarning, error: maxLengthError)
         self.excludedRegularExpressions = Set(excluded.compactMap {
-            try? NSRegularExpression.cached(pattern: "^\($0)$")
+            try? RegularExpression(pattern: "^\($0)$")
         })
-        self.allowedSymbolsSet = Set(allowedSymbols)
+        self.allowedSymbols = Set(allowedSymbols)
+        self.unallowedSymbolsSeverity = unallowedSymbolsSeverity
         self.validatesStartWithLowercase = validatesStartWithLowercase
     }
 
     mutating func apply(configuration: Any) throws {
         guard let configurationDict = configuration as? [String: Any] else {
-            throw ConfigurationError.unknownConfiguration
+            throw Issue.unknownConfiguration(ruleID: Parent.identifier)
         }
 
-        if let minLengthConfiguration = configurationDict["min_length"] {
+        if let minLengthConfiguration = configurationDict[$minLength.key] {
             try minLength.apply(configuration: minLengthConfiguration)
         }
-        if let maxLengthConfiguration = configurationDict["max_length"] {
+        if let maxLengthConfiguration = configurationDict[$maxLength.key] {
             try maxLength.apply(configuration: maxLengthConfiguration)
         }
-        if let excluded = [String].array(of: configurationDict["excluded"]) {
+        if let excluded = [String].array(of: configurationDict[$excludedRegularExpressions.key]) {
             self.excludedRegularExpressions = Set(excluded.compactMap {
-                try? NSRegularExpression.cached(pattern: "^\($0)$")
+                try? RegularExpression(pattern: "^\($0)$")
             })
         }
-        if let allowedSymbols = [String].array(of: configurationDict["allowed_symbols"]) {
-            self.allowedSymbolsSet = Set(allowedSymbols)
+        if let allowedSymbols = [String].array(of: configurationDict[$allowedSymbols.key]) {
+            self.allowedSymbols = Set(allowedSymbols)
         }
-
-        if let validatesStartWithLowercase = configurationDict["validates_start_with_lowercase"] as? Bool {
-            self.validatesStartWithLowercase = validatesStartWithLowercase
-        } else if let validatesStartWithLowercase = configurationDict["validates_start_lowercase"] as? Bool {
-            self.validatesStartWithLowercase = validatesStartWithLowercase
-            queuedPrintError("warning: \"validates_start_lowercase\" configuration was renamed to " +
-                "\"validates_start_with_lowercase\" and will be removed in a future release.")
+        if let unallowedSymbolsSeverity = configurationDict[$unallowedSymbolsSeverity.key] {
+            try self.unallowedSymbolsSeverity.apply(configuration: unallowedSymbolsSeverity)
         }
-    }
-}
-
-// MARK: - ConfigurationProviderRule extensions
-
-extension ConfigurationProviderRule where ConfigurationType == NameConfiguration {
-    func severity(forLength length: Int) -> ViolationSeverity? {
-        return configuration.severity(forLength: length)
+        if let validatesStartWithLowercase = configurationDict[$validatesStartWithLowercase.key] as? String {
+            try self.validatesStartWithLowercase.apply(configuration: validatesStartWithLowercase)
+        } else if let validatesStartWithLowercase = configurationDict[$validatesStartWithLowercase.key] as? Bool {
+            // TODO: [05/10/2025] Remove deprecation warning after ~2 years.
+            self.validatesStartWithLowercase = validatesStartWithLowercase ? .error : .off
+            Issue.genericWarning(
+                """
+                The \"validates_start_with_lowercase\" configuration now expects a severity (warning or \
+                error). The boolean value 'true' will still enable it as an error. It is now deprecated and will be \
+                removed in a future release.
+                """
+            ).print()
+        }
     }
 }
 
@@ -93,6 +99,10 @@ extension NameConfiguration {
         }
         return nil
     }
+
+    func containsOnlyAllowedCharacters(name: String) -> Bool {
+        allowedSymbolsAndAlphanumerics.isSuperset(of: CharacterSet(charactersIn: name))
+    }
 }
 
 // MARK: - `exclude` option extensions
@@ -100,7 +110,7 @@ extension NameConfiguration {
 extension NameConfiguration {
     func shouldExclude(name: String) -> Bool {
         excludedRegularExpressions.contains {
-            !$0.matches(in: name, options: [], range: NSRange(name.startIndex..., in: name)).isEmpty
+            !$0.regex.matches(in: name, options: [], range: NSRange(name.startIndex..., in: name)).isEmpty
         }
     }
 }

@@ -1,9 +1,8 @@
 import Foundation
 import SourceKittenFramework
 
-struct StatementPositionRule: CorrectableRule, ConfigurationProviderRule {
-    var configuration = StatementConfiguration(statementMode: .default,
-                                               severity: SeverityConfiguration(.warning))
+struct StatementPositionRule: CorrectableRule {
+    var configuration = StatementPositionConfiguration()
 
     static let description = RuleDescription(
         identifier: "statement_position",
@@ -25,9 +24,9 @@ struct StatementPositionRule: CorrectableRule, ConfigurationProviderRule {
             Example("↓}\n\t  catch {")
         ],
         corrections: [
-            Example("↓}\n else {\n"): Example("} else {\n"),
-            Example("↓}\n   else if {\n"): Example("} else if {\n"),
-            Example("↓}\n catch {\n"): Example("} catch {\n")
+            Example("↓}\n else {"): Example("} else {"),
+            Example("↓}\n   else if {"): Example("} else if {"),
+            Example("↓}\n catch {"): Example("} catch {")
         ]
     )
 
@@ -90,7 +89,7 @@ private extension StatementPositionRule {
     func defaultValidate(file: SwiftLintFile) -> [StyleViolation] {
         return defaultViolationRanges(in: file, matching: Self.defaultPattern).compactMap { range in
             StyleViolation(ruleDescription: Self.description,
-                           severity: configuration.severity.severity,
+                           severity: configuration.severity,
                            location: Location(file: file, characterOffset: range.location))
         }
     }
@@ -125,7 +124,7 @@ private extension StatementPositionRule {
     func uncuddledValidate(file: SwiftLintFile) -> [StyleViolation] {
         return uncuddledViolationRanges(in: file).compactMap { range in
             StyleViolation(ruleDescription: Self.uncuddledDescription,
-                           severity: configuration.severity.severity,
+                           severity: configuration.severity,
                            location: Location(file: file, characterOffset: range.location))
         }
     }

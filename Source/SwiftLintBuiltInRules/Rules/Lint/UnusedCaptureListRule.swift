@@ -1,21 +1,18 @@
 import SwiftSyntax
 
+// TODO: [12/22/2024] Remove deprecation warning after ~2 years.
 private let warnDeprecatedOnceImpl: Void = {
-    queuedPrintError("""
-        warning: The `\(UnusedCaptureListRule.description.identifier)` rule is now deprecated and will be completely \
-        removed in a future release due to an equivalent warning issued by the Swift compiler.
-        """
-    )
+    Issue.ruleDeprecated(ruleID: UnusedCaptureListRule.description.identifier).print()
 }()
 
 private func warnDeprecatedOnce() {
     _ = warnDeprecatedOnceImpl
 }
 
-struct UnusedCaptureListRule: SwiftSyntaxRule, ConfigurationProviderRule, OptInRule {
-    var configuration = SeverityConfiguration(.warning)
+struct UnusedCaptureListRule: SwiftSyntaxRule, OptInRule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
-    static var description = RuleDescription(
+    static let description = RuleDescription(
         identifier: "unused_capture_list",
         name: "Unused Capture List",
         description: "Unused reference in a capture list should be removed",
@@ -147,14 +144,14 @@ struct UnusedCaptureListRule: SwiftSyntaxRule, ConfigurationProviderRule, OptInR
         ]
     )
 
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
+    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor<ConfigurationType> {
         warnDeprecatedOnce()
-        return Visitor(viewMode: .sourceAccurate)
+        return Visitor(configuration: configuration, file: file)
     }
 }
 
 private extension UnusedCaptureListRule {
-    final class Visitor: ViolationsSyntaxVisitor {
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
         override func visitPost(_ node: ClosureExprSyntax) {
             guard let captureItems = node.signature?.capture?.items,
                   captureItems.isNotEmpty else {
@@ -162,23 +159,23 @@ private extension UnusedCaptureListRule {
             }
 
             let captureItemsWithNames = captureItems
-                .compactMap { item -> (name: String, item: ClosureCaptureItemSyntax)? in
+                .compactMap { item -> (name: String, item: ClosureCaptureSyntax)? in
                     if let name = item.name {
                         return (name.text, item)
-                    } else if let expr = item.expression.as(IdentifierExprSyntax.self) {
+                    } else if let expr = item.expression.as(DeclReferenceExprSyntax.self) {
                         // allow "[unowned self]"
-                        if expr.identifier.tokenKind == .keyword(.self),
+                        if expr.baseName.tokenKind == .keyword(.self),
                            item.specifier?.specifier.tokenKind == .keyword(.unowned) {
                             return nil
                         }
 
                         // allow "[self]" capture (SE-0269)
-                        if expr.identifier.tokenKind == .keyword(.self),
+                        if expr.baseName.tokenKind == .keyword(.self),
                            item.specifier == nil {
                             return nil
                         }
 
-                        return (expr.identifier.text, item)
+                        return (expr.baseName.text, item)
                     }
 
                     return nil
@@ -213,8 +210,8 @@ private final class IdentifierReferenceVisitor: SyntaxVisitor {
         super.init(viewMode: .sourceAccurate)
     }
 
-    override func visitPost(_ node: IdentifierExprSyntax) {
-        collectReference(by: node.identifier)
+    override func visitPost(_ node: DeclReferenceExprSyntax) {
+        collectReference(by: node.baseName)
     }
 
     override func visitPost(_ node: IdentifierPatternSyntax) {

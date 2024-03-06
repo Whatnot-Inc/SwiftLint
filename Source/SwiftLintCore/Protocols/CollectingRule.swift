@@ -149,28 +149,10 @@ public extension CollectingCorrectableRule where Self: AnalyzerRule {
     }
 }
 
-public extension ConfigurationProviderRule {
-    init(configuration: Any) throws {
-        self.init()
-        try self.configuration.apply(configuration: configuration)
-    }
-
-    func isEqualTo(_ rule: Rule) -> Bool {
-        if let rule = rule as? Self {
-            return configuration.isEqualTo(rule.configuration)
-        }
-        return false
-    }
-
-    var configurationDescription: String {
-        return configuration.consoleDescription
-    }
-}
-
 // MARK: - == Implementations
 
 /// :nodoc:
-public extension Array where Element == Rule {
+public extension Array where Element == any Rule {
     static func == (lhs: Array, rhs: Array) -> Bool {
         if lhs.count != rhs.count { return false }
         return !zip(lhs, rhs).contains { !$0.0.isEqualTo($0.1) }

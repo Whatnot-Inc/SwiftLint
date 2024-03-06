@@ -1,7 +1,8 @@
 import SwiftSyntax
 
-struct PreferZeroOverExplicitInitRule: SwiftSyntaxCorrectableRule, OptInRule, ConfigurationProviderRule {
-    var configuration = SeverityConfiguration(.warning)
+@SwiftSyntaxRule(explicitRewriter: true)
+struct PreferZeroOverExplicitInitRule: OptInRule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
     static let description = RuleDescription(
         identifier: "prefer_zero_over_explicit_init",
@@ -33,21 +34,10 @@ struct PreferZeroOverExplicitInitRule: SwiftSyntaxCorrectableRule, OptInRule, Co
             Example("↓UIEdgeInsets(top: 0, left: 0, bottom: 0, right: 0)"): Example("UIEdgeInsets.zero")
         ]
     )
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(viewMode: .sourceAccurate)
-    }
-
-    func makeRewriter(file: SwiftLintFile) -> ViolationsSyntaxRewriter? {
-        Rewriter(
-            locationConverter: file.locationConverter,
-            disabledRegions: disabledRegions(file: file)
-        )
-    }
 }
 
 private extension PreferZeroOverExplicitInitRule {
-    final class Visitor: ViolationsSyntaxVisitor {
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
         override func visitPost(_ node: FunctionCallExprSyntax) {
             if node.hasViolation {
                 violations.append(node.positionAfterSkippingLeadingTrivia)
@@ -55,20 +45,9 @@ private extension PreferZeroOverExplicitInitRule {
         }
     }
 
-    private final class Rewriter: SyntaxRewriter, ViolationsSyntaxRewriter {
-        private(set) var correctionPositions: [AbsolutePosition] = []
-        let locationConverter: SourceLocationConverter
-        let disabledRegions: [SourceRange]
-
-        init(locationConverter: SourceLocationConverter, disabledRegions: [SourceRange]) {
-            self.locationConverter = locationConverter
-            self.disabledRegions = disabledRegions
-        }
-
+    final class Rewriter: ViolationsSyntaxRewriter {
         override func visit(_ node: FunctionCallExprSyntax) -> ExprSyntax {
-            guard node.hasViolation,
-                  let name = node.name,
-                  !node.isContainedIn(regions: disabledRegions, locationConverter: locationConverter) else {
+            guard node.hasViolation, let name = node.name else {
                 return super.visit(node)
             }
 
@@ -125,19 +104,19 @@ private extension FunctionCallExprSyntax {
     }
 
     var name: String? {
-        guard let expr = calledExpression.as(IdentifierExprSyntax.self) else {
+        guard let expr = calledExpression.as(DeclReferenceExprSyntax.self) else {
             return nil
         }
 
-        return expr.identifier.text
+        return expr.baseName.text
     }
 
     var argumentNames: [String?] {
-        argumentList.map(\.label?.text)
+        arguments.map(\.label?.text)
     }
 
     var argumentsAreAllZero: Bool {
-        argumentList.allSatisfy { arg in
+        arguments.allSatisfy { arg in
             if let intExpr = arg.expression.as(IntegerLiteralExprSyntax.self) {
                 return intExpr.isZero
             } else if let floatExpr = arg.expression.as(FloatLiteralExprSyntax.self) {

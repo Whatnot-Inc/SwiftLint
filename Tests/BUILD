@@ -2,6 +2,8 @@ load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library", "swift_test")
 
 exports_files(["BUILD"])
 
+copts = ["-enable-upcoming-feature", "ExistentialAny"]
+
 # CLITests
 
 swift_library(
@@ -12,12 +14,33 @@ swift_library(
     deps = [
         "//:swiftlint.library",
     ],
+    copts = copts,
 )
 
 swift_test(
     name = "CLITests",
     visibility = ["//visibility:public"],
     deps = [":CLITests.library"],
+)
+
+# MacroTests
+
+swift_library(
+    name = "MacroTests.library",
+    testonly = True,
+    srcs = glob(["MacroTests/**/*.swift"]),
+    module_name = "MacroTests",
+    deps = [
+        "//:SwiftLintCoreMacrosLib",
+        "@SwiftSyntax//:SwiftSyntaxMacrosTestSupport_opt",
+    ],
+    copts = copts,
+)
+
+swift_test(
+    name = "MacroTests",
+    visibility = ["//visibility:public"],
+    deps = [":MacroTests.library"],
 )
 
 # SwiftLintTestHelpers
@@ -30,6 +53,7 @@ swift_library(
     deps = [
         "//:SwiftLintFramework",
     ],
+    copts = copts,
 )
 
 # SwiftLintFrameworkTests
@@ -64,6 +88,7 @@ swift_library(
     deps = [
         ":SwiftLintTestHelpers",
     ],
+    copts = copts,
 )
 
 swift_test(
@@ -87,6 +112,7 @@ swift_library(
     deps = [
         ":SwiftLintTestHelpers",
     ],
+    copts = copts,
 )
 
 swift_test(
@@ -105,6 +131,7 @@ swift_library(
     deps = [
         ":SwiftLintTestHelpers",
     ],
+    copts = copts,
 )
 
 swift_test(

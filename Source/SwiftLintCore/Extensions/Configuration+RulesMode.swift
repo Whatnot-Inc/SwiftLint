@@ -4,15 +4,15 @@ public extension Configuration {
     /// - parameter ruleID: The identifier for the rule to look up.
     ///
     /// - returns: The rule for the specified ID, if configured in this configuration.
-    func configuredRule(forID ruleID: String) -> Rule? {
+    func configuredRule(forID ruleID: String) -> (any Rule)? {
         rules.first { rule in
-            guard type(of: rule).description.identifier == ruleID else {
-                return false
-            }
-            guard let customRules = rule as? CustomRules else {
+            if type(of: rule).description.identifier == ruleID {
+                if let customRules = rule as? CustomRules {
+                    return customRules.configuration.customRuleConfigurations.isNotEmpty
+                }
                 return true
             }
-            return !customRules.configuration.customRuleConfigurations.isEmpty
+            return false
         }
     }
 
@@ -41,7 +41,7 @@ public extension Configuration {
                     let duplicateRules = identifiers.reduce(into: [String: Int]()) { $0[$1, default: 0] += 1 }
                         .filter { $0.1 > 1 }
                     for duplicateRule in duplicateRules {
-                        queuedPrintError("warning: '\(duplicateRule.0)' is listed \(duplicateRule.1) times")
+                        Issue.listedMultipleTime(ruleID: duplicateRule.0, times: duplicateRule.1).print()
                     }
                 }
             }
@@ -50,7 +50,7 @@ public extension Configuration {
                 self = .allEnabled
             } else if onlyRules.isNotEmpty {
                 if disabledRules.isNotEmpty || optInRules.isNotEmpty {
-                    throw ConfigurationError.generic(
+                    throw Issue.genericWarning(
                         "'\(Configuration.Key.disabledRules.rawValue)' or " +
                             "'\(Configuration.Key.optInRules.rawValue)' cannot be used in combination " +
                         "with '\(Configuration.Key.onlyRules.rawValue)'"
@@ -65,7 +65,7 @@ public extension Configuration {
                 let effectiveOptInRules: [String]
                 if optInRules.contains(RuleIdentifier.all.stringRepresentation) {
                     let allOptInRules = RuleRegistry.shared.list.list.compactMap { ruleID, ruleType in
-                        ruleType is OptInRule.Type && !(ruleType is AnalyzerRule.Type) ? ruleID : nil
+                        ruleType is any OptInRule.Type && !(ruleType is any AnalyzerRule.Type) ? ruleID : nil
                     }
                     effectiveOptInRules = Array(Set(allOptInRules + optInRules))
                 } else {

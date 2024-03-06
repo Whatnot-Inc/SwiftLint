@@ -9,8 +9,8 @@ import SourceKittenFramework
 /// Known false negatives for Images declared as instance variables and containers that provide a label but are
 /// not accessibility elements. Known false positives for Images created in a separate function from where they
 /// have accessibility properties applied.
-struct AccessibilityLabelForImageRule: ASTRule, ConfigurationProviderRule, OptInRule {
-    var configuration = SeverityConfiguration(.warning)
+struct AccessibilityLabelForImageRule: ASTRule, OptInRule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
     static let description = RuleDescription(
         identifier: "accessibility_label_for_image",
@@ -47,7 +47,7 @@ struct AccessibilityLabelForImageRule: ASTRule, ConfigurationProviderRule, OptIn
 
             // If it's image, and does not hide from accessibility or provide a label, it's a violation.
             if dictionary.isImage {
-                if dictionary.isDecorativeOrLabeledOrSystemImage ||
+                if dictionary.isDecorativeOrLabeledImage ||
                   dictionary.hasAccessibilityHiddenModifier(in: file) ||
                     dictionary.hasAccessibilityLabelModifier(in: file) {
                     continue
@@ -101,15 +101,15 @@ private extension SourceKittenDictionary {
     }
 
     /// Whether or not the dictionary represents a SwiftUI Image using the `Image(decorative:)` constructor (hides
-    /// from a11y), or one of the `Image(_:label:)` or `Image(systemName:)` constructors (provides label).
-    var isDecorativeOrLabeledOrSystemImage: Bool {
+    /// from a11y), or the `Image(_:label:)` constructors (which provide labels).
+    var isDecorativeOrLabeledImage: Bool {
         guard isImage else {
             return false
         }
 
-        // Check for Image(decorative:), Image(_:label:), or Image(systemName:) constructor.
+        // Check for Image(decorative:) or Image(_:label:) constructor.
         if expressionKind == .call &&
-            enclosedArguments.contains(where: { ["decorative", "label", "systemName"].contains($0.name) }) {
+            enclosedArguments.contains(where: { ["decorative", "label"].contains($0.name) }) {
             return true
         }
 
@@ -118,7 +118,7 @@ private extension SourceKittenDictionary {
         // Image(decorative: "myImage").resizable().frame
         //     --> Image(decorative: "myImage").resizable
         //         --> Image
-        return substructure.contains(where: { $0.isDecorativeOrLabeledOrSystemImage })
+        return substructure.contains(where: { $0.isDecorativeOrLabeledImage })
     }
 
     /// Whether or not the dictionary represents a SwiftUI View with an `accesibilityLabel(_:)`

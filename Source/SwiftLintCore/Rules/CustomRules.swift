@@ -2,28 +2,30 @@ import Foundation
 
 // MARK: - CustomRulesConfiguration
 
-struct CustomRulesConfiguration: RuleConfiguration, Equatable, CacheDescriptionProvider {
-    var consoleDescription: String { return "user-defined" }
+struct CustomRulesConfiguration: RuleConfiguration, CacheDescriptionProvider {
+    typealias Parent = CustomRules
+
+    var parameterDescription: RuleConfigurationDescription? { RuleConfigurationOption.noOptions }
     var cacheDescription: String {
-        return customRuleConfigurations
+        customRuleConfigurations
             .sorted { $0.identifier < $1.identifier }
             .map { $0.cacheDescription }
             .joined(separator: "\n")
     }
-    var customRuleConfigurations = [RegexConfiguration]()
+    var customRuleConfigurations = [RegexConfiguration<Parent>]()
 
     mutating func apply(configuration: Any) throws {
         guard let configurationDict = configuration as? [String: Any] else {
-            throw ConfigurationError.unknownConfiguration
+            throw Issue.unknownConfiguration(ruleID: Parent.identifier)
         }
 
         for (key, value) in configurationDict {
-            var ruleConfiguration = RegexConfiguration(identifier: key)
+            var ruleConfiguration = RegexConfiguration<Parent>(identifier: key)
 
             do {
                 try ruleConfiguration.apply(configuration: value)
             } catch {
-                queuedPrintError("warning: Invalid configuration for custom rule '\(key)'.")
+                Issue.invalidConfiguration(ruleID: key).print()
                 continue
             }
 
@@ -34,7 +36,7 @@ struct CustomRulesConfiguration: RuleConfiguration, Equatable, CacheDescriptionP
 
 // MARK: - CustomRules
 
-struct CustomRules: Rule, ConfigurationProviderRule, CacheDescriptionProvider {
+struct CustomRules: Rule, CacheDescriptionProvider {
     var cacheDescription: String {
         return configuration.cacheDescription
     }

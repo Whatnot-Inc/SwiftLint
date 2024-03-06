@@ -1,9 +1,17 @@
-struct ProhibitedSuperConfiguration: SeverityBasedRuleConfiguration, Equatable {
-    private(set) var severityConfiguration = SeverityConfiguration(.warning)
-    var excluded = [String]()
-    var included = ["*"]
+import SwiftLintCore
 
-    private(set) var resolvedMethodNames = [
+@AutoApply
+struct ProhibitedSuperConfiguration: SeverityBasedRuleConfiguration {
+    typealias Parent = ProhibitedSuperRule
+
+    @ConfigurationElement(key: "severity")
+    private(set) var severityConfiguration = SeverityConfiguration<Parent>(.warning)
+    @ConfigurationElement(key: "excluded")
+    private(set) var excluded = [String]()
+    @ConfigurationElement(key: "included")
+    private(set) var included = ["*"]
+
+    private static let methodNames = [
         // NSFileProviderExtension
         "providePlaceholder(at:completionHandler:)",
         // NSTextInput
@@ -14,38 +22,10 @@ struct ProhibitedSuperConfiguration: SeverityBasedRuleConfiguration, Equatable {
         "loadView()"
     ]
 
-    init() {}
-
-    var consoleDescription: String {
-        return "severity: \(severityConfiguration.consoleDescription)" +
-            ", excluded: [\(excluded)]" +
-            ", included: [\(included)]"
-    }
-
-    mutating func apply(configuration: Any) throws {
-        guard let configuration = configuration as? [String: Any] else {
-            throw ConfigurationError.unknownConfiguration
-        }
-
-        if let severityString = configuration["severity"] as? String {
-            try severityConfiguration.apply(configuration: severityString)
-        }
-
-        if let excluded = [String].array(of: configuration["excluded"]) {
-            self.excluded = excluded
-        }
-
-        if let included = [String].array(of: configuration["included"]) {
-            self.included = included
-        }
-
-        resolvedMethodNames = calculateResolvedMethodNames()
-    }
-
-    private func calculateResolvedMethodNames() -> [String] {
+    var resolvedMethodNames: [String] {
         var names = [String]()
         if included.contains("*") && !excluded.contains("*") {
-            names += resolvedMethodNames
+            names += Self.methodNames
         }
         names += included.filter { $0 != "*" }
         names = names.filter { !excluded.contains($0) }

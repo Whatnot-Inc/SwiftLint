@@ -1,43 +1,18 @@
-// swiftlint:disable:next type_name
-enum ImplicitlyUnwrappedOptionalModeConfiguration: String {
-    case all = "all"
-    case allExceptIBOutlets = "all_except_iboutlets"
+import SwiftLintCore
 
-    init(value: Any) throws {
-        if let string = (value as? String)?.lowercased(),
-            let value = Self(rawValue: string) {
-            self = value
-        } else {
-            throw ConfigurationError.unknownConfiguration
-        }
-    }
-}
+@AutoApply
+struct ImplicitlyUnwrappedOptionalConfiguration: SeverityBasedRuleConfiguration {
+    typealias Parent = ImplicitlyUnwrappedOptionalRule
 
-struct ImplicitlyUnwrappedOptionalConfiguration: SeverityBasedRuleConfiguration, Equatable {
-    private(set) var severityConfiguration: SeverityConfiguration
-    private(set) var mode: ImplicitlyUnwrappedOptionalModeConfiguration
-
-    init(mode: ImplicitlyUnwrappedOptionalModeConfiguration, severityConfiguration: SeverityConfiguration) {
-        self.mode = mode
-        self.severityConfiguration = severityConfiguration
+    @MakeAcceptableByConfigurationElement
+    enum ImplicitlyUnwrappedOptionalModeConfiguration: String { // swiftlint:disable:this type_name
+        case all = "all"
+        case allExceptIBOutlets = "all_except_iboutlets"
+        case weakExceptIBOutlets = "weak_except_iboutlets"
     }
 
-    var consoleDescription: String {
-        return "severity: \(severityConfiguration.consoleDescription)" +
-            ", mode: \(mode.rawValue)"
-    }
-
-    mutating func apply(configuration: Any) throws {
-        guard let configuration = configuration as? [String: Any] else {
-            throw ConfigurationError.unknownConfiguration
-        }
-
-        if let modeString = configuration["mode"] {
-            try mode = ImplicitlyUnwrappedOptionalModeConfiguration(value: modeString)
-        }
-
-        if let severityString = configuration["severity"] as? String {
-            try severityConfiguration.apply(configuration: severityString)
-        }
-    }
+    @ConfigurationElement(key: "severity")
+    private(set) var severityConfiguration = SeverityConfiguration<Parent>.warning
+    @ConfigurationElement(key: "mode")
+    private(set) var mode = ImplicitlyUnwrappedOptionalModeConfiguration.allExceptIBOutlets
 }

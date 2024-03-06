@@ -1,7 +1,8 @@
 import SwiftSyntax
 
-struct EmptyStringRule: ConfigurationProviderRule, OptInRule, SwiftSyntaxRule {
-    var configuration = SeverityConfiguration(.warning)
+@SwiftSyntaxRule
+struct EmptyStringRule: OptInRule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
     static let description = RuleDescription(
         identifier: "empty_string",
@@ -21,18 +22,14 @@ struct EmptyStringRule: ConfigurationProviderRule, OptInRule, SwiftSyntaxRule {
             Example(###"myString↓ == ##""##"###)
         ]
     )
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(viewMode: .sourceAccurate)
-    }
 }
 
 private extension EmptyStringRule {
-    final class Visitor: ViolationsSyntaxVisitor {
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
         override func visitPost(_ node: StringLiteralExprSyntax) {
             guard
                 // Empty string literal: `""`, `#""#`, etc.
-                node.segments.onlyElement?.contentLength == .zero,
+                node.segments.onlyElement?.trimmedLength == .zero,
                 let previousToken = node.previousToken(viewMode: .sourceAccurate),
                 // On the rhs of an `==` or `!=` operator
                 previousToken.tokenKind.isEqualityComparison,

@@ -1,22 +1,8 @@
 import Foundation
 import SourceKittenFramework
 
-struct ModifierOrderRule: ASTRule, OptInRule, ConfigurationProviderRule, CorrectableRule {
-    var configuration = ModifierOrderConfiguration(
-        preferredModifierOrder: [
-            .override,
-            .acl,
-            .setterACL,
-            .dynamic,
-            .mutators,
-            .lazy,
-            .final,
-            .required,
-            .convenience,
-            .typeMethods,
-            .owned
-        ]
-    )
+struct ModifierOrderRule: ASTRule, OptInRule, CorrectableRule {
+    var configuration = ModifierOrderConfiguration()
 
     static let description = RuleDescription(
         identifier: "modifier_order",

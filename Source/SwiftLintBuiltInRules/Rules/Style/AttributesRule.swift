@@ -1,6 +1,7 @@
 import SwiftSyntax
 
-struct AttributesRule: SwiftSyntaxRule, OptInRule, ConfigurationProviderRule {
+@SwiftSyntaxRule
+struct AttributesRule: OptInRule {
     var configuration = AttributesConfiguration()
 
     static let description = RuleDescription(
@@ -14,26 +15,10 @@ struct AttributesRule: SwiftSyntaxRule, OptInRule, ConfigurationProviderRule {
         nonTriggeringExamples: AttributesRuleExamples.nonTriggeringExamples,
         triggeringExamples: AttributesRuleExamples.triggeringExamples
     )
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(
-            locationConverter: file.locationConverter,
-            configuration: configuration
-        )
-    }
 }
 
 private extension AttributesRule {
-    final class Visitor: ViolationsSyntaxVisitor {
-        private let locationConverter: SourceLocationConverter
-        private let configuration: AttributesConfiguration
-
-        init(locationConverter: SourceLocationConverter, configuration: AttributesConfiguration) {
-            self.locationConverter = locationConverter
-            self.configuration = configuration
-            super.init(viewMode: .sourceAccurate)
-        }
-
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
         override func visitPost(_ node: AttributeListSyntax) {
             guard let helper = node.makeHelper(locationConverter: locationConverter) else {
                 return
@@ -46,12 +31,30 @@ private extension AttributesRule {
 
             let hasViolation = helper.hasViolation(
                 locationConverter: locationConverter,
-                attributesAndPlacements: attributesAndPlacements
+                attributesAndPlacements: attributesAndPlacements,
+                attributesWithArgumentsAlwaysOnNewLine: configuration.attributesWithArgumentsAlwaysOnNewLine
             )
 
-            if hasViolation {
+            switch hasViolation {
+            case .argumentsAlwaysOnNewLineViolation:
+                let reason = """
+                    Attributes with arguments or inside always_on_line_above must be on a new line \
+                    instead of the same line
+                    """
+
+                violations.append(
+                    ReasonedRuleViolation(
+                        position: helper.violationPosition,
+                        reason: reason,
+                        severity: configuration.severityConfiguration.severity
+                    )
+                )
+                return
+            case .violation:
                 violations.append(helper.violationPosition)
                 return
+            case .noViolation:
+                break
             }
 
             let linesForAttributes = attributesAndPlacements
@@ -112,6 +115,12 @@ private enum AttributePlacement {
     case dedicatedLine
 }
 
+private enum Violation {
+    case argumentsAlwaysOnNewLineViolation
+    case noViolation
+    case violation
+}
+
 private struct RuleHelper {
     let violationPosition: AbsolutePosition
     let keywordLine: Int
@@ -119,8 +128,9 @@ private struct RuleHelper {
 
     func hasViolation(
         locationConverter: SourceLocationConverter,
-        attributesAndPlacements: [(AttributeSyntax, AttributePlacement)]
-    ) -> Bool {
+        attributesAndPlacements: [(AttributeSyntax, AttributePlacement)],
+        attributesWithArgumentsAlwaysOnNewLine: Bool
+    ) -> (Violation) {
         var linesWithAttributes: Set<Int> = [keywordLine]
         for (attribute, placement) in attributesAndPlacements {
             guard let attributeStartLine = attribute.startLine(locationConverter: locationConverter) else {
@@ -130,18 +140,22 @@ private struct RuleHelper {
             switch placement {
             case .sameLineAsDeclaration:
                 if attributeStartLine != keywordLine {
-                    return true
+                    return .violation
                 }
             case .dedicatedLine:
                 let hasViolation = attributeStartLine == keywordLine ||
                     linesWithAttributes.contains(attributeStartLine)
                 linesWithAttributes.insert(attributeStartLine)
                 if hasViolation {
-                    return true
+                    if attributesWithArgumentsAlwaysOnNewLine && shouldBeOnSameLine {
+                        return .argumentsAlwaysOnNewLineViolation
+                    } else {
+                        return .violation
+                    }
                 }
             }
         }
-        return false
+        return .noViolation
     }
 }
 
@@ -157,7 +171,7 @@ private extension AttributeListSyntax {
                     return (attribute, .sameLineAsDeclaration)
                 } else if configuration.alwaysOnNewLine.contains(atPrefixedName) {
                     return (attribute, .dedicatedLine)
-                } else if attribute.argument != nil, configuration.attributesWithArgumentsAlwaysOnNewLine {
+                } else if attribute.arguments != nil, configuration.attributesWithArgumentsAlwaysOnNewLine {
                     return (attribute, .dedicatedLine)
                 }
 
@@ -194,10 +208,10 @@ private extension AttributeListSyntax {
         } else if let protocolKeyword = parent.as(ProtocolDeclSyntax.self)?.protocolKeyword {
             keyword = protocolKeyword
             shouldBeOnSameLine = false
-        } else if let importTok = parent.as(ImportDeclSyntax.self)?.importTok {
+        } else if let importTok = parent.as(ImportDeclSyntax.self)?.importKeyword {
             keyword = importTok
             shouldBeOnSameLine = true
-        } else if let letOrVarKeyword = parent.as(VariableDeclSyntax.self)?.bindingKeyword {
+        } else if let letOrVarKeyword = parent.as(VariableDeclSyntax.self)?.bindingSpecifier {
             keyword = letOrVarKeyword
             shouldBeOnSameLine = true
         } else {

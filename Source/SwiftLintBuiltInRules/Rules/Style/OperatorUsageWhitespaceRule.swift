@@ -2,7 +2,7 @@ import Foundation
 import SourceKittenFramework
 import SwiftSyntax
 
-struct OperatorUsageWhitespaceRule: OptInRule, CorrectableRule, ConfigurationProviderRule, SourceKitFreeRule {
+struct OperatorUsageWhitespaceRule: OptInRule, CorrectableRule, SourceKitFreeRule {
     var configuration = OperatorUsageWhitespaceConfiguration()
 
     static let description = RuleDescription(
@@ -128,7 +128,7 @@ private class OperatorUsageWhitespaceVisitor: SyntaxVisitor {
     }
 
     override func visitPost(_ node: BinaryOperatorExprSyntax) {
-        if let violation = violation(operatorToken: node.operatorToken) {
+        if let violation = violation(operatorToken: node.operator) {
             violationRanges.append(violation)
         }
     }
@@ -146,13 +146,13 @@ private class OperatorUsageWhitespaceVisitor: SyntaxVisitor {
     }
 
     override func visitPost(_ node: AssignmentExprSyntax) {
-        if let violation = violation(operatorToken: node.assignToken) {
+        if let violation = violation(operatorToken: node.equal) {
             violationRanges.append(violation)
         }
     }
 
     override func visitPost(_ node: TernaryExprSyntax) {
-        if let violation = violation(operatorToken: node.colonMark) {
+        if let violation = violation(operatorToken: node.colon) {
             violationRanges.append(violation)
         }
 
@@ -162,7 +162,7 @@ private class OperatorUsageWhitespaceVisitor: SyntaxVisitor {
     }
 
     override func visitPost(_ node: UnresolvedTernaryExprSyntax) {
-        if let violation = violation(operatorToken: node.colonMark) {
+        if let violation = violation(operatorToken: node.colon) {
             violationRanges.append(violation)
         }
 
@@ -224,12 +224,12 @@ private extension Trivia {
     }
 
     var containsComments: Bool {
-        return contains { element in
+        contains { (element: TriviaPiece) in
             switch element {
             case .blockComment, .docLineComment, .docBlockComment, .lineComment:
                 return true
             case .backslashes, .carriageReturnLineFeeds, .carriageReturns, .formfeeds, .newlines, .pounds,
-                 .shebang, .spaces, .tabs, .unexpectedText, .verticalTabs:
+                 .spaces, .tabs, .unexpectedText, .verticalTabs:
                 return false
             }
         }

@@ -2,9 +2,9 @@ import Foundation
 import SourceKittenFramework
 import SwiftSyntax
 
-struct CommaInheritanceRule: OptInRule, SubstitutionCorrectableRule, ConfigurationProviderRule,
+struct CommaInheritanceRule: OptInRule, SubstitutionCorrectableRule,
                                     SourceKitFreeRule {
-    var configuration = SeverityConfiguration(.warning)
+    var configuration = SeverityConfiguration<Self>(.warning)
 
     static let description = RuleDescription(
         identifier: "comma_inheritance",

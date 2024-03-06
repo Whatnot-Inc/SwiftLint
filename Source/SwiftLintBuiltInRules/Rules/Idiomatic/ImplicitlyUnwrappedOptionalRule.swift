@@ -1,10 +1,8 @@
 import SwiftSyntax
 
-struct ImplicitlyUnwrappedOptionalRule: SwiftSyntaxRule, ConfigurationProviderRule, OptInRule {
-    var configuration = ImplicitlyUnwrappedOptionalConfiguration(
-        mode: .allExceptIBOutlets,
-        severityConfiguration: SeverityConfiguration(.warning)
-    )
+@SwiftSyntaxRule
+struct ImplicitlyUnwrappedOptionalRule: OptInRule {
+    var configuration = ImplicitlyUnwrappedOptionalConfiguration()
 
     static let description = RuleDescription(
         identifier: "implicitly_unwrapped_optional",
@@ -43,31 +41,22 @@ struct ImplicitlyUnwrappedOptionalRule: SwiftSyntaxRule, ConfigurationProviderRu
             """)
         ]
     )
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(mode: configuration.mode)
-    }
 }
 
 private extension ImplicitlyUnwrappedOptionalRule {
-    final class Visitor: ViolationsSyntaxVisitor {
-        private let mode: ImplicitlyUnwrappedOptionalModeConfiguration
-
-        init(mode: ImplicitlyUnwrappedOptionalModeConfiguration) {
-            self.mode = mode
-            super.init(viewMode: .sourceAccurate)
-        }
-
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
         override func visitPost(_ node: ImplicitlyUnwrappedOptionalTypeSyntax) {
             violations.append(node.positionAfterSkippingLeadingTrivia)
         }
 
         override func visit(_ node: VariableDeclSyntax) -> SyntaxVisitorContinueKind {
-            switch mode {
+            switch configuration.mode {
             case .all:
                 return .visitChildren
             case .allExceptIBOutlets:
                 return node.isIBOutlet ? .skipChildren : .visitChildren
+            case .weakExceptIBOutlets:
+                return (node.isIBOutlet || node.weakOrUnownedModifier == nil) ? .skipChildren : .visitChildren
             }
         }
     }

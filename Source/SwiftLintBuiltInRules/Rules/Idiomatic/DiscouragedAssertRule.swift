@@ -1,7 +1,8 @@
 import SwiftSyntax
 
-struct DiscouragedAssertRule: SwiftSyntaxRule, OptInRule, ConfigurationProviderRule {
-    var configuration = SeverityConfiguration(.warning)
+@SwiftSyntaxRule
+struct DiscouragedAssertRule: OptInRule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
     static let description = RuleDescription(
         identifier: "discouraged_assert",
@@ -22,20 +23,16 @@ struct DiscouragedAssertRule: SwiftSyntaxRule, OptInRule, ConfigurationProviderR
             Example(#"↓assert(   false    , "foobar")"#)
         ]
     )
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(viewMode: .sourceAccurate)
-    }
 }
 
 private extension DiscouragedAssertRule {
-    final class Visitor: ViolationsSyntaxVisitor {
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
         override func visitPost(_ node: FunctionCallExprSyntax) {
-            guard node.calledExpression.as(IdentifierExprSyntax.self)?.identifier.text == "assert",
-                  let firstArg = node.argumentList.first,
+            guard node.calledExpression.as(DeclReferenceExprSyntax.self)?.baseName.text == "assert",
+                  let firstArg = node.arguments.first,
                   firstArg.label == nil,
                   let boolExpr = firstArg.expression.as(BooleanLiteralExprSyntax.self),
-                  boolExpr.booleanLiteral.tokenKind == .keyword(.false) else {
+                  boolExpr.literal.tokenKind == .keyword(.false) else {
                 return
             }
 

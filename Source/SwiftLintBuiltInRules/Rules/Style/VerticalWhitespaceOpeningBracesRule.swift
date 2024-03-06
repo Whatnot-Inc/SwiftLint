@@ -7,8 +7,8 @@ private extension SwiftLintFile {
     }
 }
 
-struct VerticalWhitespaceOpeningBracesRule: ConfigurationProviderRule {
-    var configuration = SeverityConfiguration(.warning)
+struct VerticalWhitespaceOpeningBracesRule: Rule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
     private static let nonTriggeringExamples = [
         Example("[1, 2].map { $0 }.foo()"),

@@ -1,4 +1,5 @@
 @testable import SwiftLintBuiltInRules
+@testable import SwiftLintCore
 import XCTest
 
 class ExplicitTypeInterfaceConfigurationTests: SwiftLintTestCase {
@@ -12,7 +13,7 @@ class ExplicitTypeInterfaceConfigurationTests: SwiftLintTestCase {
         var config = ExplicitTypeInterfaceConfiguration()
         try config.apply(configuration: ["severity": "error",
                                          "excluded": ["local"],
-                                         "allow_redundancy": true] as [String: Any])
+                                         "allow_redundancy": true] as [String: any Sendable])
         XCTAssertEqual(config.severityConfiguration.severity, .error)
         XCTAssertEqual(config.allowedKinds, Set([.instance, .class, .static]))
         XCTAssertTrue(config.allowRedundancy)
@@ -20,21 +21,21 @@ class ExplicitTypeInterfaceConfigurationTests: SwiftLintTestCase {
 
     func testInvalidKeyInCustomConfiguration() {
         var config = ExplicitTypeInterfaceConfiguration()
-        checkError(ConfigurationError.unknownConfiguration) {
+        checkError(Issue.invalidConfigurationKeys(ruleID: ExplicitTypeInterfaceRule.identifier, keys: ["invalidKey"])) {
             try config.apply(configuration: ["invalidKey": "error"])
         }
     }
 
     func testInvalidTypeOfCustomConfiguration() {
         var config = ExplicitTypeInterfaceConfiguration()
-        checkError(ConfigurationError.unknownConfiguration) {
+        checkError(Issue.invalidConfiguration(ruleID: ExplicitTypeInterfaceRule.description.identifier)) {
             try config.apply(configuration: "invalidKey")
         }
     }
 
     func testInvalidTypeOfValueInCustomConfiguration() {
         var config = ExplicitTypeInterfaceConfiguration()
-        checkError(ConfigurationError.unknownConfiguration) {
+        checkError(Issue.unknownConfiguration(ruleID: ExplicitTypeInterfaceRule.description.identifier)) {
             try config.apply(configuration: ["severity": 1])
         }
     }
@@ -43,8 +44,8 @@ class ExplicitTypeInterfaceConfigurationTests: SwiftLintTestCase {
         var config = ExplicitTypeInterfaceConfiguration()
         try config.apply(configuration: ["excluded": ["class", "instance"]])
         XCTAssertEqual(
-            config.consoleDescription,
-            "severity: warning, excluded: [\"class\", \"instance\"], allow_redundancy: false"
+            RuleConfigurationDescription.from(configuration: config).oneLiner(),
+            "severity: warning; excluded: [class, instance]; allow_redundancy: false"
         )
     }
 }

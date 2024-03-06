@@ -1,8 +1,8 @@
 import Foundation
 import SourceKittenFramework
 
-struct ExplicitSelfRule: CorrectableRule, ConfigurationProviderRule, AnalyzerRule {
-    var configuration = SeverityConfiguration(.warning)
+struct ExplicitSelfRule: CorrectableRule, AnalyzerRule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
     static let description = RuleDescription(
         identifier: "explicit_self",
@@ -42,14 +42,11 @@ struct ExplicitSelfRule: CorrectableRule, ConfigurationProviderRule, AnalyzerRul
 
     private func violationRanges(in file: SwiftLintFile, compilerArguments: [String]) -> [NSRange] {
         guard compilerArguments.isNotEmpty else {
-            queuedPrintError("""
-                warning: Attempted to lint file at path '\(file.path ?? "...")' with the \
-                \(Self.description.identifier) rule without any compiler arguments.
-                """)
+            Issue.missingCompilerArguments(path: file.path, ruleID: Self.description.identifier).print()
             return []
         }
 
-        let allCursorInfo: [[String: SourceKitRepresentable]]
+        let allCursorInfo: [[String: any SourceKitRepresentable]]
         do {
             let byteOffsets = try binaryOffsets(file: file, compilerArguments: compilerArguments)
             allCursorInfo = try file.allCursorInfo(compilerArguments: compilerArguments,
@@ -72,7 +69,7 @@ struct ExplicitSelfRule: CorrectableRule, ConfigurationProviderRule, AnalyzerRul
 
         return cursorsMissingExplicitSelf.compactMap { cursorInfo in
             guard let byteOffset = (cursorInfo["swiftlint.offset"] as? Int64).flatMap(ByteCount.init) else {
-                queuedPrintError("couldn't convert offsets")
+                Issue.genericWarning("Cannot convert offsets in '\(Self.description.identifier)' rule.").print()
                 return nil
             }
 
@@ -88,7 +85,7 @@ private let kindsToFind: Set = [
 
 private extension SwiftLintFile {
     func allCursorInfo(compilerArguments: [String], atByteOffsets byteOffsets: [ByteCount]) throws
-        -> [[String: SourceKitRepresentable]] {
+        -> [[String: any SourceKitRepresentable]] {
         return try byteOffsets.compactMap { offset in
             if isExplicitAccess(at: offset) { return nil }
             let cursorInfoRequest = Request.cursorInfoWithoutSymbolGraph(

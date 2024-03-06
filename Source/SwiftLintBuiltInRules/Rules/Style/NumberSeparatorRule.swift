@@ -1,12 +1,9 @@
 import Foundation
 import SwiftSyntax
 
-struct NumberSeparatorRule: OptInRule, SwiftSyntaxCorrectableRule, ConfigurationProviderRule {
-    var configuration = NumberSeparatorConfiguration(
-        minimumLength: 0,
-        minimumFractionLength: nil,
-        excludeRanges: []
-    )
+@SwiftSyntaxRule
+struct NumberSeparatorRule: OptInRule, SwiftSyntaxCorrectableRule {
+    var configuration = NumberSeparatorConfiguration()
 
     static let description = RuleDescription(
         identifier: "number_separator",
@@ -29,11 +26,7 @@ struct NumberSeparatorRule: OptInRule, SwiftSyntaxCorrectableRule, Configuration
         Underscore(s) used as thousand separator(s) should be added after every 3 digits only
         """
 
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(configuration: configuration)
-    }
-
-    func makeRewriter(file: SwiftLintFile) -> ViolationsSyntaxRewriter? {
+    func makeRewriter(file: SwiftLintFile) -> (some ViolationsSyntaxRewriter)? {
         Rewriter(
             configuration: configuration,
             locationConverter: file.locationConverter,
@@ -43,64 +36,51 @@ struct NumberSeparatorRule: OptInRule, SwiftSyntaxCorrectableRule, Configuration
 }
 
 private extension NumberSeparatorRule {
-    final class Visitor: ViolationsSyntaxVisitor, NumberSeparatorValidator {
-        let configuration: NumberSeparatorConfiguration
-
-        init(configuration: NumberSeparatorConfiguration) {
-            self.configuration = configuration
-            super.init(viewMode: .sourceAccurate)
-        }
-
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType>, NumberSeparatorValidator {
         override func visitPost(_ node: FloatLiteralExprSyntax) {
-            if let violation = violation(token: node.floatingDigits) {
+            if let violation = violation(token: node.literal) {
                 violations.append(ReasonedRuleViolation(position: violation.position, reason: violation.reason))
             }
         }
 
         override func visitPost(_ node: IntegerLiteralExprSyntax) {
-            if let violation = violation(token: node.digits) {
+            if let violation = violation(token: node.literal) {
                 violations.append(ReasonedRuleViolation(position: violation.position, reason: violation.reason))
             }
         }
     }
 
-    private final class Rewriter: SyntaxRewriter, ViolationsSyntaxRewriter, NumberSeparatorValidator {
-        private(set) var correctionPositions: [AbsolutePosition] = []
+    final class Rewriter: ViolationsSyntaxRewriter, NumberSeparatorValidator {
         let configuration: NumberSeparatorConfiguration
-        let locationConverter: SourceLocationConverter
-        let disabledRegions: [SourceRange]
 
         init(configuration: NumberSeparatorConfiguration,
              locationConverter: SourceLocationConverter,
              disabledRegions: [SourceRange]) {
             self.configuration = configuration
-            self.locationConverter = locationConverter
-            self.disabledRegions = disabledRegions
+            super.init(locationConverter: locationConverter, disabledRegions: disabledRegions)
         }
 
         override func visit(_ node: FloatLiteralExprSyntax) -> ExprSyntax {
-            guard
-                let violation = violation(token: node.floatingDigits),
-                !node.isContainedIn(regions: disabledRegions, locationConverter: locationConverter)
-            else {
+            guard let violation = violation(token: node.literal) else {
                 return super.visit(node)
             }
 
-            let newNode = node.with(\.floatingDigits,
-                                    node.floatingDigits.with(\.tokenKind, .floatingLiteral(violation.correction)))
+            let newNode = node.with(
+                \.literal,
+                node.literal.with(
+                    \.tokenKind,
+                    .floatLiteral(violation.correction)
+                )
+            )
             correctionPositions.append(violation.position)
             return super.visit(newNode)
         }
 
         override func visit(_ node: IntegerLiteralExprSyntax) -> ExprSyntax {
-            guard
-                let violation = violation(token: node.digits),
-                !node.isContainedIn(regions: disabledRegions, locationConverter: locationConverter)
-            else {
+            guard let violation = violation(token: node.literal) else {
                 return super.visit(node)
             }
-
-            let newNode = node.with(\.digits, node.digits.with(\.tokenKind, .integerLiteral(violation.correction)))
+            let newNode = node.with(\.literal, node.literal.with(\.tokenKind, .integerLiteral(violation.correction)))
             correctionPositions.append(violation.position)
             return super.visit(newNode)
         }

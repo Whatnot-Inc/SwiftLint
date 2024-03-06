@@ -30,17 +30,15 @@ private extension Trivia {
         for trivia in self {
             triviaOffset += trivia.sourceLength
             switch trivia {
-            case .lineComment(let comment), .blockComment(let comment):
-                if
-                    let lower = comment.range(of: "swiftlint:")?.lowerBound,
-                    case let actionString = String(comment[lower...]),
-                    case let end = locationConverter.location(for: offset + triviaOffset),
-                    let line = end.line,
-                    let column = end.column
-                {
-                    let command = Command(actionString: actionString, line: line, character: column)
-                    results.append(command)
+            case .lineComment(let comment):
+                guard let lower = comment.range(of: "swiftlint:")?.lowerBound else {
+                    break
                 }
+
+                let actionString = String(comment[lower...])
+                let end = locationConverter.location(for: offset + triviaOffset)
+                let command = Command(actionString: actionString, line: end.line, character: end.column)
+                results.append(command)
             default:
                 break
             }

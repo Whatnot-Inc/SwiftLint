@@ -2,7 +2,7 @@ import Foundation
 import SourceKittenFramework
 
 /// A rule configuration used for defining custom rules in yaml.
-public struct RegexConfiguration: SeverityBasedRuleConfiguration, Hashable, CacheDescriptionProvider {
+public struct RegexConfiguration<Parent: Rule>: SeverityBasedRuleConfiguration, Hashable, CacheDescriptionProvider {
     /// The identifier for this custom rule.
     public let identifier: String
     /// The name for this custom rule.
@@ -10,7 +10,8 @@ public struct RegexConfiguration: SeverityBasedRuleConfiguration, Hashable, Cach
     /// The message to be presented when producing violations.
     public var message = "Regex matched"
     /// The regular expression to apply to trigger violations for this custom rule.
-    public var regex: NSRegularExpression!
+    @ConfigurationElement(key: "regex")
+    var regex: RegularExpression!
     /// Regular expressions to include when matching the file path.
     public var included: [NSRegularExpression] = []
     /// Regular expressions to exclude when matching the file path.
@@ -18,13 +19,10 @@ public struct RegexConfiguration: SeverityBasedRuleConfiguration, Hashable, Cach
     /// The syntax kinds to exclude from matches. If the regex matched syntax kinds from this list, it would
     /// be ignored and not count as a rule violation.
     public var excludedMatchKinds = Set<SyntaxKind>()
-    public var severityConfiguration = SeverityConfiguration(.warning)
+    @ConfigurationElement(key: "severity")
+    public var severityConfiguration = SeverityConfiguration<Parent>(.warning)
     /// The index of the regex capture group to match.
     public var captureGroup: Int = 0
-
-    public var consoleDescription: String {
-        return "\(severity.rawValue): \(regex.pattern)"
-    }
 
     public var cacheDescription: String {
         let jsonObject: [String] = [
@@ -36,11 +34,10 @@ public struct RegexConfiguration: SeverityBasedRuleConfiguration, Hashable, Cach
             excluded.map(\.pattern).joined(separator: ","),
             SyntaxKind.allKinds.subtracting(excludedMatchKinds)
                 .map({ $0.rawValue }).sorted(by: <).joined(separator: ","),
-            severityConfiguration.consoleDescription
+            severity.rawValue
         ]
-        if let jsonData = try? JSONSerialization.data(withJSONObject: jsonObject),
-          let jsonString = String(data: jsonData, encoding: .utf8) {
-              return jsonString
+        if let jsonData = try? JSONSerialization.data(withJSONObject: jsonObject) {
+            return String(decoding: jsonData, as: UTF8.self)
         }
         queuedFatalError("Could not serialize regex configuration for cache")
     }
@@ -60,11 +57,11 @@ public struct RegexConfiguration: SeverityBasedRuleConfiguration, Hashable, Cach
 
     public mutating func apply(configuration: Any) throws {
         guard let configurationDict = configuration as? [String: Any],
-            let regexString = configurationDict["regex"] as? String else {
-                throw ConfigurationError.unknownConfiguration
+              let regexString = configurationDict[$regex.key] as? String else {
+            throw Issue.unknownConfiguration(ruleID: Parent.description.identifier)
         }
 
-        regex = try .cached(pattern: regexString)
+        regex = try RegularExpression(pattern: regexString)
 
         if let includedString = configurationDict["included"] as? String {
             included = [try .cached(pattern: includedString)]
@@ -88,12 +85,12 @@ public struct RegexConfiguration: SeverityBasedRuleConfiguration, Hashable, Cach
         if let message = configurationDict["message"] as? String {
             self.message = message
         }
-        if let severityString = configurationDict["severity"] as? String {
+        if let severityString = configurationDict[$severityConfiguration.key] as? String {
             try severityConfiguration.apply(configuration: severityString)
         }
         if let captureGroup = configurationDict["capture_group"] as? Int {
             guard (0 ... regex.numberOfCaptureGroups).contains(captureGroup) else {
-                throw ConfigurationError.unknownConfiguration
+                throw Issue.unknownConfiguration(ruleID: Parent.description.identifier)
             }
             self.captureGroup = captureGroup
         }
@@ -126,14 +123,25 @@ public struct RegexConfiguration: SeverityBasedRuleConfiguration, Hashable, Cach
 
         switch (matchKinds, excludedMatchKinds) {
         case (.some(let matchKinds), nil):
-            let includedKinds = Set(try matchKinds.map({ try SyntaxKind(shortName: $0) }))
-            return SyntaxKind.allKinds.subtracting(includedKinds)
+            return SyntaxKind.allKinds.subtracting(try toSyntaxKinds(matchKinds))
         case (nil, .some(let excludedMatchKinds)):
-            return Set(try excludedMatchKinds.map({ try SyntaxKind(shortName: $0) }))
+            return try toSyntaxKinds(excludedMatchKinds)
         case (nil, nil):
             return .init()
         case (.some, .some):
-            throw ConfigurationError.ambiguousMatchKindParameters
+            throw Issue.genericWarning(
+                "The configuration keys 'match_kinds' and 'excluded_match_kinds' cannot appear at the same time."
+            )
         }
+    }
+
+    private func toSyntaxKinds(_ names: [String]) throws -> Set<SyntaxKind> {
+        let kinds = try names.map {
+            if let kind = SyntaxKind(shortName: $0) {
+                return kind
+            }
+            throw Issue.unknownConfiguration(ruleID: Parent.description.identifier)
+        }
+        return Set(kinds)
     }
 }

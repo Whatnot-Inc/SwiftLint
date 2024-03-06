@@ -1,7 +1,8 @@
 import SwiftSyntax
 
-struct UnusedEnumeratedRule: SwiftSyntaxRule, ConfigurationProviderRule {
-    var configuration = SeverityConfiguration(.warning)
+@SwiftSyntaxRule
+struct UnusedEnumeratedRule: Rule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
     static let description = RuleDescription(
         identifier: "unused_enumerated",
@@ -9,35 +10,31 @@ struct UnusedEnumeratedRule: SwiftSyntaxRule, ConfigurationProviderRule {
         description: "When the index or the item is not used, `.enumerated()` can be removed.",
         kind: .idiomatic,
         nonTriggeringExamples: [
-            Example("for (idx, foo) in bar.enumerated() { }\n"),
-            Example("for (_, foo) in bar.enumerated().something() { }\n"),
-            Example("for (_, foo) in bar.something() { }\n"),
-            Example("for foo in bar.enumerated() { }\n"),
-            Example("for foo in bar { }\n"),
-            Example("for (idx, _) in bar.enumerated().something() { }\n"),
-            Example("for (idx, _) in bar.something() { }\n"),
-            Example("for idx in bar.indices { }\n"),
-            Example("for (section, (event, _)) in data.enumerated() {}\n")
+            Example("for (idx, foo) in bar.enumerated() { }"),
+            Example("for (_, foo) in bar.enumerated().something() { }"),
+            Example("for (_, foo) in bar.something() { }"),
+            Example("for foo in bar.enumerated() { }"),
+            Example("for foo in bar { }"),
+            Example("for (idx, _) in bar.enumerated().something() { }"),
+            Example("for (idx, _) in bar.something() { }"),
+            Example("for idx in bar.indices { }"),
+            Example("for (section, (event, _)) in data.enumerated() {}")
         ],
         triggeringExamples: [
-            Example("for (↓_, foo) in bar.enumerated() { }\n"),
-            Example("for (↓_, foo) in abc.bar.enumerated() { }\n"),
-            Example("for (↓_, foo) in abc.something().enumerated() { }\n"),
-            Example("for (idx, ↓_) in bar.enumerated() { }\n")
+            Example("for (↓_, foo) in bar.enumerated() { }"),
+            Example("for (↓_, foo) in abc.bar.enumerated() { }"),
+            Example("for (↓_, foo) in abc.something().enumerated() { }"),
+            Example("for (idx, ↓_) in bar.enumerated() { }")
         ]
     )
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(viewMode: .sourceAccurate)
-    }
 }
 
 private extension UnusedEnumeratedRule {
-    final class Visitor: ViolationsSyntaxVisitor {
-        override func visitPost(_ node: ForInStmtSyntax) {
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
+        override func visitPost(_ node: ForStmtSyntax) {
             guard let tuplePattern = node.pattern.as(TuplePatternSyntax.self),
                   tuplePattern.elements.count == 2,
-                  let functionCall = node.sequenceExpr.asFunctionCall,
+                  let functionCall = node.sequence.asFunctionCall,
                   functionCall.isEnumerated,
                   let firstElement = tuplePattern.elements.first,
                   let secondElement = tuplePattern.elements.last,
@@ -66,7 +63,7 @@ private extension FunctionCallExprSyntax {
     var isEnumerated: Bool {
         guard let memberAccess = calledExpression.as(MemberAccessExprSyntax.self),
               memberAccess.base != nil,
-              memberAccess.name.text == "enumerated",
+              memberAccess.declName.baseName.text == "enumerated",
               hasNoArguments else {
             return false
         }
@@ -75,9 +72,9 @@ private extension FunctionCallExprSyntax {
     }
 
     var hasNoArguments: Bool {
-        trailingClosure == nil &&
-            (additionalTrailingClosures?.isEmpty ?? true) &&
-            argumentList.isEmpty
+           trailingClosure == nil
+        && additionalTrailingClosures.isEmpty
+        && arguments.isEmpty
     }
 }
 

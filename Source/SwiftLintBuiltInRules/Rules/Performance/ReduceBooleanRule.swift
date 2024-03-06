@@ -1,7 +1,8 @@
 import SwiftSyntax
 
-struct ReduceBooleanRule: SwiftSyntaxRule, ConfigurationProviderRule {
-    var configuration = SeverityConfiguration(.warning)
+@SwiftSyntaxRule
+struct ReduceBooleanRule: Rule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
     static let description = RuleDescription(
         identifier: "reduce_boolean",
@@ -25,29 +26,25 @@ struct ReduceBooleanRule: SwiftSyntaxRule, ConfigurationProviderRule {
             Example("nums.reduce(into: true) { (r: inout Bool, s) in r = r && (s == 3) }")
         ]
     )
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(viewMode: .sourceAccurate)
-    }
 }
 
 private extension ReduceBooleanRule {
-    final class Visitor: ViolationsSyntaxVisitor {
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
         override func visitPost(_ node: FunctionCallExprSyntax) {
             guard
                 let calledExpression = node.calledExpression.as(MemberAccessExprSyntax.self),
-                calledExpression.name.text == "reduce",
-                let firstArgument = node.argumentList.first,
+                calledExpression.declName.baseName.text == "reduce",
+                let firstArgument = node.arguments.first,
                 firstArgument.label?.text ?? "into" == "into",
                 let bool = firstArgument.expression.as(BooleanLiteralExprSyntax.self)
             else {
                 return
             }
 
-            let suggestedFunction = bool.booleanLiteral.tokenKind == .keyword(.true) ? "allSatisfy" : "contains"
+            let suggestedFunction = bool.literal.tokenKind == .keyword(.true) ? "allSatisfy" : "contains"
             violations.append(
                 ReasonedRuleViolation(
-                    position: calledExpression.name.positionAfterSkippingLeadingTrivia,
+                    position: calledExpression.declName.baseName.positionAfterSkippingLeadingTrivia,
                     reason: "Use `\(suggestedFunction)` instead"
                 )
             )

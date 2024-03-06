@@ -1,5 +1,5 @@
-struct ClosureBodyLengthRule: OptInRule, SwiftSyntaxRule, ConfigurationProviderRule {
-    var configuration = SeverityLevelsConfiguration(warning: 30, error: 100)
+struct ClosureBodyLengthRule: OptInRule, SwiftSyntaxRule {
+    var configuration = SeverityLevelsConfiguration<Self>(warning: 30, error: 100)
 
     static let description = RuleDescription(
         identifier: "closure_body_length",
@@ -10,7 +10,7 @@ struct ClosureBodyLengthRule: OptInRule, SwiftSyntaxRule, ConfigurationProviderR
         triggeringExamples: ClosureBodyLengthRuleExamples.triggeringExamples
     )
 
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
+    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor<ConfigurationType> {
         BodyLengthRuleVisitor(kind: .closure, file: file, configuration: configuration)
     }
 }

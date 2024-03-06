@@ -1,4 +1,4 @@
-// Generated using Sourcery 2.0.2 — https://github.com/krzysztofzablocki/Sourcery
+// Generated using Sourcery 2.1.2 — https://github.com/krzysztofzablocki/Sourcery
 // DO NOT EDIT
 @testable import SwiftLintBuiltInRules
 @_spi(TestHelper)
@@ -416,6 +416,12 @@ class FileTypesOrderRuleGeneratedTests: SwiftLintTestCase {
     }
 }
 
+class FinalTestCaseRuleGeneratedTests: SwiftLintTestCase {
+    func testWithDefaultConfiguration() {
+        verifyRule(FinalTestCaseRule.description)
+    }
+}
+
 class FirstWhereRuleGeneratedTests: SwiftLintTestCase {
     func testWithDefaultConfiguration() {
         verifyRule(FirstWhereRule.description)
@@ -626,9 +632,9 @@ class LineLengthRuleGeneratedTests: SwiftLintTestCase {
     }
 }
 
-class LiteralExpressionEndIdentationRuleGeneratedTests: SwiftLintTestCase {
+class LiteralExpressionEndIndentationRuleGeneratedTests: SwiftLintTestCase {
     func testWithDefaultConfiguration() {
-        verifyRule(LiteralExpressionEndIdentationRule.description)
+        verifyRule(LiteralExpressionEndIndentationRule.description)
     }
 }
 
@@ -776,6 +782,18 @@ class NoSpaceInMethodCallRuleGeneratedTests: SwiftLintTestCase {
     }
 }
 
+class NonOptionalStringDataConversionRuleGeneratedTests: SwiftLintTestCase {
+    func testWithDefaultConfiguration() {
+        verifyRule(NonOptionalStringDataConversionRule.description)
+    }
+}
+
+class NonOverridableClassDeclarationRuleGeneratedTests: SwiftLintTestCase {
+    func testWithDefaultConfiguration() {
+        verifyRule(NonOverridableClassDeclarationRule.description)
+    }
+}
+
 class NotificationCenterDetachmentRuleGeneratedTests: SwiftLintTestCase {
     func testWithDefaultConfiguration() {
         verifyRule(NotificationCenterDetachmentRule.description)
@@ -791,6 +809,12 @@ class NumberSeparatorRuleGeneratedTests: SwiftLintTestCase {
 class ObjectLiteralRuleGeneratedTests: SwiftLintTestCase {
     func testWithDefaultConfiguration() {
         verifyRule(ObjectLiteralRule.description)
+    }
+}
+
+class OneDelarationPerFileRuleGeneratedTests: SwiftLintTestCase {
+    func testWithDefaultConfiguration() {
+        verifyRule(OneDelarationPerFileRule.description)
     }
 }
 
@@ -899,6 +923,12 @@ class PrivateOverFilePrivateRuleGeneratedTests: SwiftLintTestCase {
 class PrivateSubjectRuleGeneratedTests: SwiftLintTestCase {
     func testWithDefaultConfiguration() {
         verifyRule(PrivateSubjectRule.description)
+    }
+}
+
+class PrivateSwiftUIStatePropertyRuleGeneratedTests: SwiftLintTestCase {
+    func testWithDefaultConfiguration() {
+        verifyRule(PrivateSwiftUIStatePropertyRule.description)
     }
 }
 
@@ -1052,6 +1082,12 @@ class SelfInPropertyInitializationRuleGeneratedTests: SwiftLintTestCase {
     }
 }
 
+class ShorthandArgumentRuleGeneratedTests: SwiftLintTestCase {
+    func testWithDefaultConfiguration() {
+        verifyRule(ShorthandArgumentRule.description)
+    }
+}
+
 class ShorthandOperatorRuleGeneratedTests: SwiftLintTestCase {
     func testWithDefaultConfiguration() {
         verifyRule(ShorthandOperatorRule.description)
@@ -1109,12 +1145,6 @@ class StrictFilePrivateRuleGeneratedTests: SwiftLintTestCase {
 class StrongIBOutletRuleGeneratedTests: SwiftLintTestCase {
     func testWithDefaultConfiguration() {
         verifyRule(StrongIBOutletRule.description)
-    }
-}
-
-class SuperfluousDisableCommandRuleGeneratedTests: SwiftLintTestCase {
-    func testWithDefaultConfiguration() {
-        verifyRule(SuperfluousDisableCommandRule.description)
     }
 }
 
@@ -1226,15 +1256,33 @@ class UnavailableFunctionRuleGeneratedTests: SwiftLintTestCase {
     }
 }
 
+class UnhandledThrowingTaskRuleGeneratedTests: SwiftLintTestCase {
+    func testWithDefaultConfiguration() {
+        verifyRule(UnhandledThrowingTaskRule.description)
+    }
+}
+
 class UnneededBreakInSwitchRuleGeneratedTests: SwiftLintTestCase {
     func testWithDefaultConfiguration() {
         verifyRule(UnneededBreakInSwitchRule.description)
     }
 }
 
+class UnneededOverrideRuleGeneratedTests: SwiftLintTestCase {
+    func testWithDefaultConfiguration() {
+        verifyRule(UnneededOverrideRule.description)
+    }
+}
+
 class UnneededParenthesesInClosureArgumentRuleGeneratedTests: SwiftLintTestCase {
     func testWithDefaultConfiguration() {
         verifyRule(UnneededParenthesesInClosureArgumentRule.description)
+    }
+}
+
+class UnneededSynthesizedInitializerRuleGeneratedTests: SwiftLintTestCase {
+    func testWithDefaultConfiguration() {
+        verifyRule(UnneededSynthesizedInitializerRule.description)
     }
 }
 

@@ -1,7 +1,8 @@
 import SwiftSyntax
 
-struct IsDisjointRule: SwiftSyntaxRule, ConfigurationProviderRule {
-    var configuration = SeverityConfiguration(.warning)
+@SwiftSyntaxRule
+struct IsDisjointRule: Rule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
     static let description = RuleDescription(
         identifier: "is_disjoint",
@@ -19,25 +20,21 @@ struct IsDisjointRule: SwiftSyntaxRule, ConfigurationProviderRule {
             Example("let isObjc = !objcAttributes.↓intersection(dictionary.enclosedSwiftAttributes).isEmpty")
         ]
     )
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(viewMode: .sourceAccurate)
-    }
 }
 
 private extension IsDisjointRule {
-    final class Visitor: ViolationsSyntaxVisitor {
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
         override func visitPost(_ node: MemberAccessExprSyntax) {
             guard
-                node.name.text == "isEmpty",
+                node.declName.baseName.text == "isEmpty",
                 let firstBase = node.base?.asFunctionCall,
                 let firstBaseCalledExpression = firstBase.calledExpression.as(MemberAccessExprSyntax.self),
-                firstBaseCalledExpression.name.text == "intersection"
+                firstBaseCalledExpression.declName.baseName.text == "intersection"
             else {
                 return
             }
 
-            violations.append(firstBaseCalledExpression.name.positionAfterSkippingLeadingTrivia)
+            violations.append(firstBaseCalledExpression.declName.baseName.positionAfterSkippingLeadingTrivia)
         }
     }
 }

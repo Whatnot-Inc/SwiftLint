@@ -28,11 +28,8 @@ enum PreferSelfInStaticReferencesRuleExamples {
                 static private(set) var i = 0, j = C.i
                 static let k = { C.i }()
                 let h = C.i
-                @GreaterThan(C.j) var k: Int
-                func f() {
-                    _ = [Int: C]()
-                    _ = [C]()
-                }
+                var n: Int = C.k { didSet { m += 1 } }
+                @GreaterThan(C.j) var m: Int
             }
         """, excludeFromDocumentation: true),
         Example("""
@@ -76,6 +73,33 @@ enum PreferSelfInStaticReferencesRuleExamples {
                 let c: C = C()
                 func f(c: C) -> KeyPath<C, Int> { \\Self.i }
             }
+        """, excludeFromDocumentation: true),
+        Example("""
+            class C1<T> {}
+            class C2: C1<C2> {}
+        """, excludeFromDocumentation: true),
+        Example("""
+                class C1<T> {}
+                class C2: C1<C2.C3> {
+                    class C3 {}
+                }
+                """, excludeFromDocumentation: true),
+        Example("""
+            class C1<T> {}
+            class C2: C1<C2.C3.C4> {
+                class C3 {
+                    class C4 {}
+                }
+            }
+        """, excludeFromDocumentation: true),
+        Example("""
+            class S1<T> {
+                class S2 {}
+                func f() {
+                    let s1 = S1<S1.S2>()
+                    let s2 = S1<S1>()
+                }
+            }
         """, excludeFromDocumentation: true)
     ]
 
@@ -93,14 +117,19 @@ enum PreferSelfInStaticReferencesRuleExamples {
         """),
         Example("""
             class C {
-                struct S {
-                    static let i = 2
-                    let h = ↓S.i
-                }
                 static let i = 1
-                let h = C.i
-                var j: Int { ↓C.i }
-                func f() -> Int { ↓C.i + h }
+                var j: Int {
+                    let ii = ↓C.i
+                    return ii
+                }
+            }
+        """),
+        Example("""
+            class C {
+                func f() {
+                    _ = [↓C]()
+                    _ = [Int: ↓C]()
+                }
             }
         """),
         Example("""
@@ -141,35 +170,56 @@ enum PreferSelfInStaticReferencesRuleExamples {
                         get { ↓C.i }
                         set { ↓C.i = newValue }
                     }
+                    var l: Int {
+                        let ii = ↓C.i
+                        return ii
+                    }
                 }
             }
         """, excludeFromDocumentation: true),
         Example("""
             class C {
+                typealias A = C
                 let d: C? = nil
                 var c: C { C() }
+                let b: [C] = [C]()
                 init() {}
                 func f(e: C) -> C {
                     let f: C = C()
                     return f
                 }
+                func g(a: [C]) -> [C] { a }
             }
             final class D {
+                typealias A = D
                 let c: D? = nil
                 var d: D { D() }
+                let b: [D] = [D]()
                 init() {}
                 func f(e: D) -> D {
                     let f: D = D()
                     return f
                 }
+                func g(a: [D]) -> [D] { a }
             }
             struct S {
+                typealias A = ↓S
                 // let s: S? = nil // Struct cannot contain itself
                 var t: ↓S { ↓S() }
+                let b: [↓S] = [↓S]()
                 init() {}
                 func f(e: ↓S) -> ↓S {
                     let f: ↓S = ↓S()
                     return f
+                }
+                func g(a: [↓S]) -> [↓S] { a }
+            }
+        """, excludeFromDocumentation: true),
+        Example("""
+            class T {
+                let child: T
+                init(input: Any) {
+                    child = (input as! T).child
                 }
             }
         """, excludeFromDocumentation: true)

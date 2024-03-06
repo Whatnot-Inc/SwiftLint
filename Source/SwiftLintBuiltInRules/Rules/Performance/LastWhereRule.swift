@@ -1,7 +1,8 @@
 import SwiftSyntax
 
-struct LastWhereRule: SwiftSyntaxRule, OptInRule, ConfigurationProviderRule {
-    var configuration = SeverityConfiguration(.warning)
+@SwiftSyntaxRule
+struct LastWhereRule: OptInRule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
     static let description = RuleDescription(
         identifier: "last_where",
@@ -9,37 +10,33 @@ struct LastWhereRule: SwiftSyntaxRule, OptInRule, ConfigurationProviderRule {
         description: "Prefer using `.last(where:)` over `.filter { }.last` in collections",
         kind: .performance,
         nonTriggeringExamples: [
-            Example("kinds.filter(excludingKinds.contains).isEmpty && kinds.last == .identifier\n"),
-            Example("myList.last(where: { $0 % 2 == 0 })\n"),
-            Example("match(pattern: pattern).filter { $0.last == .identifier }\n"),
-            Example("(myList.filter { $0 == 1 }.suffix(2)).last\n"),
+            Example("kinds.filter(excludingKinds.contains).isEmpty && kinds.last == .identifier"),
+            Example("myList.last(where: { $0 % 2 == 0 })"),
+            Example("match(pattern: pattern).filter { $0.last == .identifier }"),
+            Example("(myList.filter { $0 == 1 }.suffix(2)).last"),
             Example(#"collection.filter("stringCol = '3'").last"#)
         ],
         triggeringExamples: [
-            Example("↓myList.filter { $0 % 2 == 0 }.last\n"),
-            Example("↓myList.filter({ $0 % 2 == 0 }).last\n"),
-            Example("↓myList.map { $0 + 1 }.filter({ $0 % 2 == 0 }).last\n"),
-            Example("↓myList.map { $0 + 1 }.filter({ $0 % 2 == 0 }).last?.something()\n"),
-            Example("↓myList.filter(someFunction).last\n"),
-            Example("↓myList.filter({ $0 % 2 == 0 })\n.last\n"),
-            Example("(↓myList.filter { $0 == 1 }).last\n")
+            Example("↓myList.filter { $0 % 2 == 0 }.last"),
+            Example("↓myList.filter({ $0 % 2 == 0 }).last"),
+            Example("↓myList.map { $0 + 1 }.filter({ $0 % 2 == 0 }).last"),
+            Example("↓myList.map { $0 + 1 }.filter({ $0 % 2 == 0 }).last?.something()"),
+            Example("↓myList.filter(someFunction).last"),
+            Example("↓myList.filter({ $0 % 2 == 0 })\n.last"),
+            Example("(↓myList.filter { $0 == 1 }).last")
         ]
     )
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(viewMode: .sourceAccurate)
-    }
 }
 
 private extension LastWhereRule {
-    final class Visitor: ViolationsSyntaxVisitor {
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
         override func visitPost(_ node: MemberAccessExprSyntax) {
             guard
-                node.name.text == "last",
+                node.declName.baseName.text == "last",
                 let functionCall = node.base?.asFunctionCall,
                 let calledExpression = functionCall.calledExpression.as(MemberAccessExprSyntax.self),
-                calledExpression.name.text == "filter",
-                !functionCall.argumentList.contains(where: \.expression.shouldSkip)
+                calledExpression.declName.baseName.text == "filter",
+                !functionCall.arguments.contains(where: \.expression.shouldSkip)
             else {
                 return
             }
@@ -54,8 +51,8 @@ private extension ExprSyntax {
         if self.is(StringLiteralExprSyntax.self) {
             return true
         } else if let functionCall = self.as(FunctionCallExprSyntax.self),
-                  let calledExpression = functionCall.calledExpression.as(IdentifierExprSyntax.self),
-                  calledExpression.identifier.text == "NSPredicate" {
+                  let calledExpression = functionCall.calledExpression.as(DeclReferenceExprSyntax.self),
+                  calledExpression.baseName.text == "NSPredicate" {
             return true
         } else {
             return false

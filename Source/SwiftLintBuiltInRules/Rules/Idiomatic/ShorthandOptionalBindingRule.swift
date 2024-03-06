@@ -1,9 +1,10 @@
 import SwiftSyntax
 
-struct ShorthandOptionalBindingRule: OptInRule, SwiftSyntaxCorrectableRule, ConfigurationProviderRule {
-    var configuration = SeverityConfiguration(.warning)
+@SwiftSyntaxRule(explicitRewriter: true)
+struct ShorthandOptionalBindingRule: OptInRule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
-    static var description = RuleDescription(
+    static let description = RuleDescription(
         identifier: "shorthand_optional_binding",
         name: "Shorthand Optional Binding",
         description: "Use shorthand syntax for optional binding",
@@ -78,58 +79,37 @@ struct ShorthandOptionalBindingRule: OptInRule, SwiftSyntaxCorrectableRule, Conf
         ],
         deprecatedAliases: ["if_let_shadowing"]
     )
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(viewMode: .sourceAccurate)
-    }
-
-    func makeRewriter(file: SwiftLintFile) -> ViolationsSyntaxRewriter? {
-        Rewriter(
-            locationConverter: file.locationConverter,
-            disabledRegions: disabledRegions(file: file)
-        )
-    }
 }
 
-private class Visitor: ViolationsSyntaxVisitor {
-    override func visitPost(_ node: OptionalBindingConditionSyntax) {
-        if node.isShadowingOptionalBinding {
-            violations.append(node.bindingKeyword.positionAfterSkippingLeadingTrivia)
+private extension ShorthandOptionalBindingRule {
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
+        override func visitPost(_ node: OptionalBindingConditionSyntax) {
+            if node.isShadowingOptionalBinding {
+                violations.append(node.bindingSpecifier.positionAfterSkippingLeadingTrivia)
+            }
         }
     }
-}
 
-private class Rewriter: SyntaxRewriter, ViolationsSyntaxRewriter {
-    private(set) var correctionPositions: [AbsolutePosition] = []
-    private let locationConverter: SourceLocationConverter
-    private let disabledRegions: [SourceRange]
+    final class Rewriter: ViolationsSyntaxRewriter {
+        override func visit(_ node: OptionalBindingConditionSyntax) -> OptionalBindingConditionSyntax {
+            guard node.isShadowingOptionalBinding else {
+                return super.visit(node)
+            }
 
-    init(locationConverter: SourceLocationConverter, disabledRegions: [SourceRange]) {
-        self.locationConverter = locationConverter
-        self.disabledRegions = disabledRegions
-    }
-
-    override func visit(_ node: OptionalBindingConditionSyntax) -> OptionalBindingConditionSyntax {
-        guard
-            node.isShadowingOptionalBinding,
-            !node.isContainedIn(regions: disabledRegions, locationConverter: locationConverter)
-        else {
-            return super.visit(node)
+            correctionPositions.append(node.positionAfterSkippingLeadingTrivia)
+            let newNode = node
+                .with(\.initializer, nil)
+                .with(\.pattern, node.pattern.with(\.trailingTrivia, node.trailingTrivia))
+            return super.visit(newNode)
         }
-
-        correctionPositions.append(node.positionAfterSkippingLeadingTrivia)
-        let newNode = node
-            .with(\.initializer, nil)
-            .with(\.pattern, node.pattern.with(\.trailingTrivia, node.trailingTrivia))
-        return super.visit(newNode)
     }
 }
 
 private extension OptionalBindingConditionSyntax {
     var isShadowingOptionalBinding: Bool {
         if let id = pattern.as(IdentifierPatternSyntax.self),
-           let value = initializer?.value.as(IdentifierExprSyntax.self),
-           id.identifier.text == value.identifier.text {
+           let value = initializer?.value.as(DeclReferenceExprSyntax.self),
+           id.identifier.text == value.baseName.text {
             return true
         }
         return false

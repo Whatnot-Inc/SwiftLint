@@ -1,7 +1,8 @@
 import SwiftSyntax
 
-struct VoidFunctionInTernaryConditionRule: ConfigurationProviderRule, SwiftSyntaxRule {
-    var configuration = SeverityConfiguration(.warning)
+@SwiftSyntaxRule
+struct VoidFunctionInTernaryConditionRule: Rule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
     static let description = RuleDescription(
         identifier: "void_function_in_ternary",
@@ -105,41 +106,39 @@ struct VoidFunctionInTernaryConditionRule: ConfigurationProviderRule, SwiftSynta
             """)
         ]
     )
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        VoidFunctionInTernaryConditionVisitor(viewMode: .sourceAccurate)
-    }
 }
 
-private class VoidFunctionInTernaryConditionVisitor: ViolationsSyntaxVisitor {
-    override func visitPost(_ node: TernaryExprSyntax) {
-        guard node.firstChoice.is(FunctionCallExprSyntax.self),
-              node.secondChoice.is(FunctionCallExprSyntax.self),
-              let parent = node.parent?.as(ExprListSyntax.self),
-              !parent.containsAssignment,
-              let grandparent = parent.parent,
-              grandparent.is(SequenceExprSyntax.self),
-              let blockItem = grandparent.parent?.as(CodeBlockItemSyntax.self),
-              !blockItem.isImplicitReturn else {
-            return
+private extension VoidFunctionInTernaryConditionRule {
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
+        override func visitPost(_ node: TernaryExprSyntax) {
+            guard node.thenExpression.is(FunctionCallExprSyntax.self),
+                  node.elseExpression.is(FunctionCallExprSyntax.self),
+                  let parent = node.parent?.as(ExprListSyntax.self),
+                  !parent.containsAssignment,
+                  let grandparent = parent.parent,
+                  grandparent.is(SequenceExprSyntax.self),
+                  let blockItem = grandparent.parent?.as(CodeBlockItemSyntax.self),
+                  !blockItem.isImplicitReturn else {
+                return
+            }
+
+            violations.append(node.questionMark.positionAfterSkippingLeadingTrivia)
         }
 
-        violations.append(node.questionMark.positionAfterSkippingLeadingTrivia)
-    }
+        override func visitPost(_ node: UnresolvedTernaryExprSyntax) {
+            guard node.thenExpression.is(FunctionCallExprSyntax.self),
+                  let parent = node.parent?.as(ExprListSyntax.self),
+                  parent.last?.is(FunctionCallExprSyntax.self) == true,
+                  !parent.containsAssignment,
+                  let grandparent = parent.parent,
+                  grandparent.is(SequenceExprSyntax.self),
+                  let blockItem = grandparent.parent?.as(CodeBlockItemSyntax.self),
+                  !blockItem.isImplicitReturn else {
+                return
+            }
 
-    override func visitPost(_ node: UnresolvedTernaryExprSyntax) {
-        guard node.firstChoice.is(FunctionCallExprSyntax.self),
-              let parent = node.parent?.as(ExprListSyntax.self),
-              parent.last?.is(FunctionCallExprSyntax.self) == true,
-              !parent.containsAssignment,
-              let grandparent = parent.parent,
-              grandparent.is(SequenceExprSyntax.self),
-              let blockItem = grandparent.parent?.as(CodeBlockItemSyntax.self),
-              !blockItem.isImplicitReturn else {
-            return
+            violations.append(node.questionMark.positionAfterSkippingLeadingTrivia)
         }
-
-        violations.append(node.questionMark.positionAfterSkippingLeadingTrivia)
     }
 }
 
@@ -204,21 +203,21 @@ private extension CodeBlockItemSyntax {
 
 private extension FunctionSignatureSyntax {
      var allowsImplicitReturns: Bool {
-         output?.allowsImplicitReturns ?? false
+         returnClause?.allowsImplicitReturns ?? false
      }
 }
 
 private extension SubscriptDeclSyntax {
     var allowsImplicitReturns: Bool {
-        result.allowsImplicitReturns
+        returnClause.allowsImplicitReturns
     }
 }
 
 private extension ReturnClauseSyntax {
     var allowsImplicitReturns: Bool {
-        if let simpleType = returnType.as(SimpleTypeIdentifierSyntax.self) {
+        if let simpleType = type.as(IdentifierTypeSyntax.self) {
             return simpleType.name.text != "Void" && simpleType.name.text != "Never"
-        } else if let tupleType = returnType.as(TupleTypeSyntax.self) {
+        } else if let tupleType = type.as(TupleTypeSyntax.self) {
             return !tupleType.elements.isEmpty
         } else {
             return true

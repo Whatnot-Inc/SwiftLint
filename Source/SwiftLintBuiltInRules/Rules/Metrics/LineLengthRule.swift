@@ -1,8 +1,8 @@
 import Foundation
 import SourceKittenFramework
 
-struct LineLengthRule: ConfigurationProviderRule {
-    var configuration = LineLengthConfiguration(warning: 120, error: 200)
+struct LineLengthRule: Rule {
+    var configuration = LineLengthConfiguration()
 
     private let commentKinds = SyntaxKind.commentKinds
     private let nonCommentKinds = SyntaxKind.allKinds.subtracting(SyntaxKind.commentKinds)
@@ -14,14 +14,14 @@ struct LineLengthRule: ConfigurationProviderRule {
         description: "Lines should not span too many characters.",
         kind: .metrics,
         nonTriggeringExamples: [
-            Example(String(repeating: "/", count: 120) + "\n"),
-            Example(String(repeating: "#colorLiteral(red: 0.9607843161, green: 0.7058823705, blue: 0.200000003, alpha: 1)", count: 120) + "\n"),
-            Example(String(repeating: "#imageLiteral(resourceName: \"image.jpg\")", count: 120) + "\n")
+            Example(String(repeating: "/", count: 120) + ""),
+            Example(String(repeating: "#colorLiteral(red: 0.9607843161, green: 0.7058823705, blue: 0.200000003, alpha: 1)", count: 120) + ""),
+            Example(String(repeating: "#imageLiteral(resourceName: \"image.jpg\")", count: 120) + "")
         ],
         triggeringExamples: [
-            Example(String(repeating: "/", count: 121) + "\n"),
-            Example(String(repeating: "#colorLiteral(red: 0.9607843161, green: 0.7058823705, blue: 0.200000003, alpha: 1)", count: 121) + "\n"),
-            Example(String(repeating: "#imageLiteral(resourceName: \"image.jpg\")", count: 121) + "\n")
+            Example(String(repeating: "/", count: 121) + ""),
+            Example(String(repeating: "#colorLiteral(red: 0.9607843161, green: 0.7058823705, blue: 0.200000003, alpha: 1)", count: 121) + ""),
+            Example(String(repeating: "#imageLiteral(resourceName: \"image.jpg\")", count: 121) + "")
         ].skipWrappingInCommentTests().skipWrappingInStringTests()
     )
 
@@ -59,6 +59,10 @@ struct LineLengthRule: ConfigurationProviderRule {
                 lineHasKinds(line: line,
                              kinds: [.stringInterpolationAnchor],
                              kindsByLine: syntaxKindsByLine.value) {
+                return nil
+            }
+
+            for pattern in configuration.excludedLinesPatterns where line.containsMatchingPattern(pattern) {
                 return nil
             }
 
@@ -118,6 +122,12 @@ struct LineLengthRule: ConfigurationProviderRule {
             return false
         }
         return !kinds.isDisjoint(with: kindsByLine[index])
+    }
+}
+
+private extension Line {
+    func containsMatchingPattern(_ pattern: String) -> Bool {
+        regex(pattern).firstMatch(in: content, range: content.fullNSRange) != nil
     }
 }
 

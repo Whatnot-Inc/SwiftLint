@@ -1,7 +1,8 @@
 import SwiftSyntax
 
-struct ForceUnwrappingRule: OptInRule, SwiftSyntaxRule, ConfigurationProviderRule {
-    var configuration = SeverityConfiguration(.warning)
+@SwiftSyntaxRule
+struct ForceUnwrappingRule: OptInRule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
     static let description = RuleDescription(
         identifier: "force_unwrapping",
@@ -64,14 +65,12 @@ struct ForceUnwrappingRule: OptInRule, SwiftSyntaxRule, ConfigurationProviderRul
             Example("map[\"a\"]↓!↓!")
         ]
     )
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        ForceUnwrappingVisitor(viewMode: .sourceAccurate)
-    }
 }
 
-private final class ForceUnwrappingVisitor: ViolationsSyntaxVisitor {
-    override func visitPost(_ node: ForcedValueExprSyntax) {
-        violations.append(node.exclamationMark.positionAfterSkippingLeadingTrivia)
+private extension ForceUnwrappingRule {
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
+        override func visitPost(_ node: ForceUnwrapExprSyntax) {
+            violations.append(node.exclamationMark.positionAfterSkippingLeadingTrivia)
+        }
     }
 }

@@ -1,7 +1,8 @@
 import SwiftSyntax
 
-struct UnownedVariableCaptureRule: SwiftSyntaxRule, OptInRule, ConfigurationProviderRule {
-    var configuration = SeverityConfiguration(.warning)
+@SwiftSyntaxRule
+struct UnownedVariableCaptureRule: OptInRule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
     static let description = RuleDescription(
         identifier: "unowned_variable_capture",
@@ -31,16 +32,14 @@ struct UnownedVariableCaptureRule: SwiftSyntaxRule, OptInRule, ConfigurationProv
             Example("foo { [bar, ↓unowned self] in _ }")
         ]
     )
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        UnownedVariableCaptureRuleVisitor(viewMode: .sourceAccurate)
-    }
 }
 
-private final class UnownedVariableCaptureRuleVisitor: ViolationsSyntaxVisitor {
-    override func visitPost(_ node: TokenSyntax) {
-        if case .keyword(.unowned) = node.tokenKind, node.parent?.is(ClosureCaptureItemSpecifierSyntax.self) == true {
-            violations.append(node.positionAfterSkippingLeadingTrivia)
+private extension UnownedVariableCaptureRule {
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
+        override func visitPost(_ node: TokenSyntax) {
+            if case .keyword(.unowned) = node.tokenKind, node.parent?.is(ClosureCaptureSpecifierSyntax.self) == true {
+                violations.append(node.positionAfterSkippingLeadingTrivia)
+            }
         }
     }
 }

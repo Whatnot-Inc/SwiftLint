@@ -1,7 +1,8 @@
 import SwiftSyntax
 
-struct ProtocolPropertyAccessorsOrderRule: ConfigurationProviderRule, SwiftSyntaxCorrectableRule {
-    var configuration = SeverityConfiguration(.warning)
+@SwiftSyntaxRule(explicitRewriter: true)
+struct ProtocolPropertyAccessorsOrderRule: Rule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
     static let description = RuleDescription(
         identifier: "protocol_property_accessors_order",
@@ -21,22 +22,11 @@ struct ProtocolPropertyAccessorsOrderRule: ConfigurationProviderRule, SwiftSynta
                 Example("protocol Foo {\n var bar: String { get set }\n }")
         ]
     )
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(viewMode: .sourceAccurate)
-    }
-
-    func makeRewriter(file: SwiftLintFile) -> ViolationsSyntaxRewriter? {
-        Rewriter(
-            locationConverter: file.locationConverter,
-            disabledRegions: disabledRegions(file: file)
-        )
-    }
 }
 
 private extension ProtocolPropertyAccessorsOrderRule {
-    final class Visitor: ViolationsSyntaxVisitor {
-        override var skippableDeclarations: [DeclSyntaxProtocol.Type] {
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
+        override var skippableDeclarations: [any DeclSyntaxProtocol.Type] {
             .allExcept(ProtocolDeclSyntax.self, VariableDeclSyntax.self)
         }
 
@@ -49,29 +39,17 @@ private extension ProtocolPropertyAccessorsOrderRule {
         }
     }
 
-    private final class Rewriter: SyntaxRewriter, ViolationsSyntaxRewriter {
-        private(set) var correctionPositions: [AbsolutePosition] = []
-        let locationConverter: SourceLocationConverter
-        let disabledRegions: [SourceRange]
-
-        init(locationConverter: SourceLocationConverter, disabledRegions: [SourceRange]) {
-            self.locationConverter = locationConverter
-            self.disabledRegions = disabledRegions
-        }
-
+    final class Rewriter: ViolationsSyntaxRewriter {
         override func visit(_ node: AccessorBlockSyntax) -> AccessorBlockSyntax {
-            guard
-                node.hasViolation,
-                !node.isContainedIn(regions: disabledRegions, locationConverter: locationConverter)
-            else {
+            guard node.hasViolation else {
                 return super.visit(node)
             }
 
             correctionPositions.append(node.accessors.positionAfterSkippingLeadingTrivia)
 
-            let reversedAccessors = AccessorListSyntax(Array(node.accessors.reversed()))
+            let reversedAccessors = AccessorDeclListSyntax(Array(node.accessorsList.reversed()))
             return super.visit(
-                node.with(\.accessors, reversedAccessors)
+                node.with(\.accessors, .accessors(reversedAccessors))
             )
         }
     }
@@ -79,12 +57,9 @@ private extension ProtocolPropertyAccessorsOrderRule {
 
 private extension AccessorBlockSyntax {
     var hasViolation: Bool {
-        guard accessors.count == 2,
-              accessors.allSatisfy({ $0.body == nil }),
-              accessors.first?.accessorKind.tokenKind == .keyword(.set) else {
-            return false
-        }
-
-        return true
+        let accessorsList = accessorsList
+        return accessorsList.count == 2
+            && accessorsList.allSatisfy({ $0.body == nil })
+            && accessorsList.first?.accessorSpecifier.tokenKind == .keyword(.set)
     }
 }

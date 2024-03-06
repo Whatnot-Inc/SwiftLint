@@ -1,7 +1,8 @@
 import SwiftSyntax
 
-struct EmptyParenthesesWithTrailingClosureRule: SwiftSyntaxCorrectableRule, ConfigurationProviderRule {
-    var configuration = SeverityConfiguration(.warning)
+@SwiftSyntaxRule(explicitRewriter: true)
+struct EmptyParenthesesWithTrailingClosureRule: Rule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
     static let description = RuleDescription(
         identifier: "empty_parentheses_with_trailing_closure",
@@ -10,11 +11,11 @@ struct EmptyParenthesesWithTrailingClosureRule: SwiftSyntaxCorrectableRule, Conf
                      "after the method call",
         kind: .style,
         nonTriggeringExamples: [
-            Example("[1, 2].map { $0 + 1 }\n"),
-            Example("[1, 2].map({ $0 + 1 })\n"),
+            Example("[1, 2].map { $0 + 1 }"),
+            Example("[1, 2].map({ $0 + 1 })"),
             Example("[1, 2].reduce(0) { $0 + $1 }"),
-            Example("[1, 2].map { number in\n number + 1 \n}\n"),
-            Example("let isEmpty = [1, 2].isEmpty()\n"),
+            Example("[1, 2].map { number in\n number + 1 \n}"),
+            Example("let isEmpty = [1, 2].isEmpty()"),
             Example("""
             UIView.animateWithDuration(0.3, animations: {
                self.disableInteractionRightView.alpha = 0
@@ -24,40 +25,29 @@ struct EmptyParenthesesWithTrailingClosureRule: SwiftSyntaxCorrectableRule, Conf
             """)
         ],
         triggeringExamples: [
-            Example("[1, 2].map↓() { $0 + 1 }\n"),
-            Example("[1, 2].map↓( ) { $0 + 1 }\n"),
-            Example("[1, 2].map↓() { number in\n number + 1 \n}\n"),
-            Example("[1, 2].map↓(  ) { number in\n number + 1 \n}\n"),
-            Example("func foo() -> [Int] {\n    return [1, 2].map↓() { $0 + 1 }\n}\n")
+            Example("[1, 2].map↓() { $0 + 1 }"),
+            Example("[1, 2].map↓( ) { $0 + 1 }"),
+            Example("[1, 2].map↓() { number in\n number + 1 \n}"),
+            Example("[1, 2].map↓(  ) { number in\n number + 1 \n}"),
+            Example("func foo() -> [Int] {\n    return [1, 2].map↓() { $0 + 1 }\n}")
         ],
         corrections: [
-            Example("[1, 2].map↓() { $0 + 1 }\n"): Example("[1, 2].map { $0 + 1 }\n"),
-            Example("[1, 2].map↓( ) { $0 + 1 }\n"): Example("[1, 2].map { $0 + 1 }\n"),
-            Example("[1, 2].map↓() { number in\n number + 1 \n}\n"):
-                Example("[1, 2].map { number in\n number + 1 \n}\n"),
-            Example("[1, 2].map↓(  ) { number in\n number + 1 \n}\n"):
-                Example("[1, 2].map { number in\n number + 1 \n}\n"),
-            Example("func foo() -> [Int] {\n    return [1, 2].map↓() { $0 + 1 }\n}\n"):
-                Example("func foo() -> [Int] {\n    return [1, 2].map { $0 + 1 }\n}\n"),
+            Example("[1, 2].map↓() { $0 + 1 }"): Example("[1, 2].map { $0 + 1 }"),
+            Example("[1, 2].map↓( ) { $0 + 1 }"): Example("[1, 2].map { $0 + 1 }"),
+            Example("[1, 2].map↓() { number in\n number + 1 \n}"):
+                Example("[1, 2].map { number in\n number + 1 \n}"),
+            Example("[1, 2].map↓(  ) { number in\n number + 1 \n}"):
+                Example("[1, 2].map { number in\n number + 1 \n}"),
+            Example("func foo() -> [Int] {\n    return [1, 2].map↓() { $0 + 1 }\n}"):
+                Example("func foo() -> [Int] {\n    return [1, 2].map { $0 + 1 }\n}"),
             Example("class C {\n#if true\nfunc f() {\n[1, 2].map↓() { $0 + 1 }\n}\n#endif\n}"):
                 Example("class C {\n#if true\nfunc f() {\n[1, 2].map { $0 + 1 }\n}\n#endif\n}")
         ]
     )
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(viewMode: .sourceAccurate)
-    }
-
-    func makeRewriter(file: SwiftLintFile) -> ViolationsSyntaxRewriter? {
-        Rewriter(
-            locationConverter: file.locationConverter,
-            disabledRegions: disabledRegions(file: file)
-        )
-    }
 }
 
 private extension EmptyParenthesesWithTrailingClosureRule {
-    final class Visitor: ViolationsSyntaxVisitor {
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
         override func visitPost(_ node: FunctionCallExprSyntax) {
             guard let position = node.violationPosition else {
                 return
@@ -67,21 +57,9 @@ private extension EmptyParenthesesWithTrailingClosureRule {
         }
     }
 
-    private final class Rewriter: SyntaxRewriter, ViolationsSyntaxRewriter {
-        private(set) var correctionPositions: [AbsolutePosition] = []
-        let locationConverter: SourceLocationConverter
-        let disabledRegions: [SourceRange]
-
-        init(locationConverter: SourceLocationConverter, disabledRegions: [SourceRange]) {
-            self.locationConverter = locationConverter
-            self.disabledRegions = disabledRegions
-        }
-
+    final class Rewriter: ViolationsSyntaxRewriter {
         override func visit(_ node: FunctionCallExprSyntax) -> ExprSyntax {
-            guard
-                let violationPosition = node.violationPosition,
-                !node.isContainedIn(regions: disabledRegions, locationConverter: locationConverter)
-            else {
+            guard let violationPosition = node.violationPosition else {
                 return super.visit(node)
             }
 
@@ -99,7 +77,7 @@ private extension FunctionCallExprSyntax {
     var violationPosition: AbsolutePosition? {
         guard trailingClosure != nil,
               let leftParen,
-              argumentList.isEmpty else {
+              arguments.isEmpty else {
             return nil
         }
 

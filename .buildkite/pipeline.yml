@@ -5,6 +5,14 @@ steps:
       - bazel build :swiftlint
       - echo "+++ Test"
       - bazel test --test_output=errors //Tests/...
+  - label: "Build With Strict Concurrency"
+    commands:
+      - echo "+++ Add @preconcurrency imports"
+      - ./tools/add-preconcurrency-imports.sh
+      - echo "+++ Build"
+      - bazel build --define strict_concurrency_builtin_rules=true :swiftlint
+      - echo "--- Clean up"
+      - git reset --hard
   - label: "SwiftPM"
     commands:
       - echo "+++ Test"
@@ -12,7 +20,7 @@ steps:
   - label: "Danger"
     commands:
       - echo "--- Install Bundler"
-      - gem install bundler
+      - gem install bundler -v 2.4.22
       - echo "--- Bundle Install"
       - bundle install
       - echo "+++ Run Danger"
@@ -20,7 +28,7 @@ steps:
   - label: "TSan Tests"
     commands:
       - echo "+++ Test"
-      - bazel test --test_output=streamed --build_tests_only --features=tsan --test_timeout=1000 //Tests/...
+      - bazel test --test_output=errors --build_tests_only --features=tsan --test_timeout=1000 //Tests/...
   - label: "Sourcery"
     commands:
       - echo "+++ Run Sourcery"

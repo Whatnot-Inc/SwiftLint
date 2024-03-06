@@ -1,7 +1,8 @@
 import SwiftSyntax
 
-struct ClassDelegateProtocolRule: SwiftSyntaxRule, ConfigurationProviderRule {
-    var configuration = SeverityConfiguration(.warning)
+@SwiftSyntaxRule
+struct ClassDelegateProtocolRule: Rule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
     static let description = RuleDescription(
         identifier: "class_delegate_protocol",
@@ -9,39 +10,35 @@ struct ClassDelegateProtocolRule: SwiftSyntaxRule, ConfigurationProviderRule {
         description: "Delegate protocols should be class-only so they can be weakly referenced",
         kind: .lint,
         nonTriggeringExamples: [
-            Example("protocol FooDelegate: class {}\n"),
-            Example("protocol FooDelegate: class, BarDelegate {}\n"),
-            Example("protocol Foo {}\n"),
-            Example("class FooDelegate {}\n"),
-            Example("@objc protocol FooDelegate {}\n"),
-            Example("@objc(MyFooDelegate)\n protocol FooDelegate {}\n"),
-            Example("protocol FooDelegate: BarDelegate {}\n"),
-            Example("protocol FooDelegate: AnyObject {}\n"),
-            Example("protocol FooDelegate: NSObjectProtocol {}\n"),
-            Example("protocol FooDelegate where Self: BarDelegate {}\n"),
-            Example("protocol FooDelegate where Self: AnyObject {}\n"),
-            Example("protocol FooDelegate where Self: NSObjectProtocol {}\n")
+            Example("protocol FooDelegate: class {}"),
+            Example("protocol FooDelegate: class, BarDelegate {}"),
+            Example("protocol Foo {}"),
+            Example("class FooDelegate {}"),
+            Example("@objc protocol FooDelegate {}"),
+            Example("@objc(MyFooDelegate)\n protocol FooDelegate {}"),
+            Example("protocol FooDelegate: BarDelegate {}"),
+            Example("protocol FooDelegate: AnyObject {}"),
+            Example("protocol FooDelegate: NSObjectProtocol {}"),
+            Example("protocol FooDelegate where Self: BarDelegate {}"),
+            Example("protocol FooDelegate where Self: AnyObject {}"),
+            Example("protocol FooDelegate where Self: NSObjectProtocol {}")
         ],
         triggeringExamples: [
-            Example("↓protocol FooDelegate {}\n"),
-            Example("↓protocol FooDelegate: Bar {}\n"),
-            Example("↓protocol FooDelegate where Self: StringProtocol {}\n")
+            Example("↓protocol FooDelegate {}"),
+            Example("↓protocol FooDelegate: Bar {}"),
+            Example("↓protocol FooDelegate where Self: StringProtocol {}")
         ]
     )
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(viewMode: .sourceAccurate)
-    }
 }
 
 private extension ClassDelegateProtocolRule {
-    private final class Visitor: ViolationsSyntaxVisitor {
-        override var skippableDeclarations: [DeclSyntaxProtocol.Type] {
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
+        override var skippableDeclarations: [any DeclSyntaxProtocol.Type] {
             .allExcept(ProtocolDeclSyntax.self)
         }
 
         override func visitPost(_ node: ProtocolDeclSyntax) {
-            if node.identifier.text.hasSuffix("Delegate") &&
+            if node.name.text.hasSuffix("Delegate") &&
                 !node.hasObjCAttribute() &&
                 !node.isClassRestricted() &&
                 !node.inheritsFromObjectOrDelegate() {
@@ -57,34 +54,34 @@ private extension ProtocolDeclSyntax {
     }
 
     func isClassRestricted() -> Bool {
-        inheritanceClause?.inheritedTypeCollection.contains { $0.typeName.is(ClassRestrictionTypeSyntax.self) } == true
+        inheritanceClause?.inheritedTypes.contains { $0.type.is(ClassRestrictionTypeSyntax.self) } == true
     }
 
     func inheritsFromObjectOrDelegate() -> Bool {
-        if inheritanceClause?.inheritedTypeCollection.contains(where: { $0.typeName.isObjectOrDelegate() }) == true {
+        if inheritanceClause?.inheritedTypes.contains(where: { $0.type.isObjectOrDelegate() }) == true {
             return true
         }
 
-        guard let requirementList = genericWhereClause?.requirementList else {
+        guard let requirementList = genericWhereClause?.requirements else {
             return false
         }
 
         return requirementList.contains { requirement in
-            guard let conformanceRequirement = requirement.body.as(ConformanceRequirementSyntax.self),
-                  let simpleLeftType = conformanceRequirement.leftTypeIdentifier.as(SimpleTypeIdentifierSyntax.self),
+            guard let conformanceRequirement = requirement.requirement.as(ConformanceRequirementSyntax.self),
+                  let simpleLeftType = conformanceRequirement.leftType.as(IdentifierTypeSyntax.self),
                   simpleLeftType.typeName == "Self"
             else {
                 return false
             }
 
-            return conformanceRequirement.rightTypeIdentifier.isObjectOrDelegate()
+            return conformanceRequirement.rightType.isObjectOrDelegate()
         }
     }
 }
 
 private extension TypeSyntax {
     func isObjectOrDelegate() -> Bool {
-        guard let typeName = self.as(SimpleTypeIdentifierSyntax.self)?.typeName else {
+        guard let typeName = self.as(IdentifierTypeSyntax.self)?.typeName else {
             return false
         }
 

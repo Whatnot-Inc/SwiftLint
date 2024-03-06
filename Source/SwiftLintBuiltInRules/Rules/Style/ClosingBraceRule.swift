@@ -1,7 +1,8 @@
 import SwiftSyntax
 
-struct ClosingBraceRule: SwiftSyntaxCorrectableRule, ConfigurationProviderRule {
-    var configuration = SeverityConfiguration(.warning)
+@SwiftSyntaxRule(explicitRewriter: true)
+struct ClosingBraceRule: Rule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
     static let description = RuleDescription(
         identifier: "closing_brace",
@@ -17,24 +18,13 @@ struct ClosingBraceRule: SwiftSyntaxCorrectableRule, ConfigurationProviderRule {
             Example("[].map({ ↓}\t)")
         ],
         corrections: [
-            Example("[].map({ ↓} )\n"): Example("[].map({ })\n")
+            Example("[].map({ ↓} )"): Example("[].map({ })")
         ]
     )
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(viewMode: .sourceAccurate)
-    }
-
-    func makeRewriter(file: SwiftLintFile) -> ViolationsSyntaxRewriter? {
-        Rewriter(
-            locationConverter: file.locationConverter,
-            disabledRegions: disabledRegions(file: file)
-        )
-    }
 }
 
 private extension ClosingBraceRule {
-    private final class Visitor: ViolationsSyntaxVisitor {
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
         override func visitPost(_ node: TokenSyntax) {
             if node.hasClosingBraceViolation {
                 violations.append(node.positionAfterSkippingLeadingTrivia)
@@ -42,24 +32,11 @@ private extension ClosingBraceRule {
         }
     }
 
-    private final class Rewriter: SyntaxRewriter, ViolationsSyntaxRewriter {
-        private(set) var correctionPositions: [AbsolutePosition] = []
-        let locationConverter: SourceLocationConverter
-        let disabledRegions: [SourceRange]
-
-        init(locationConverter: SourceLocationConverter, disabledRegions: [SourceRange]) {
-            self.locationConverter = locationConverter
-            self.disabledRegions = disabledRegions
-        }
-
+    final class Rewriter: ViolationsSyntaxRewriter {
         override func visit(_ node: TokenSyntax) -> TokenSyntax {
-            guard
-                node.hasClosingBraceViolation,
-                !node.isContainedIn(regions: disabledRegions, locationConverter: locationConverter)
-            else {
+            guard node.hasClosingBraceViolation else {
                 return super.visit(node)
             }
-
             correctionPositions.append(node.positionAfterSkippingLeadingTrivia)
             return super.visit(node.with(\.trailingTrivia, Trivia()))
         }

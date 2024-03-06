@@ -1,7 +1,8 @@
 import SwiftSyntax
 
-struct QuickDiscouragedPendingTestRule: OptInRule, ConfigurationProviderRule, SwiftSyntaxRule {
-    var configuration = SeverityConfiguration(.warning)
+@SwiftSyntaxRule
+struct QuickDiscouragedPendingTestRule: OptInRule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
     static let description = RuleDescription(
         identifier: "quick_discouraged_pending_test",
@@ -11,19 +12,15 @@ struct QuickDiscouragedPendingTestRule: OptInRule, ConfigurationProviderRule, Sw
         nonTriggeringExamples: QuickDiscouragedPendingTestRuleExamples.nonTriggeringExamples,
         triggeringExamples: QuickDiscouragedPendingTestRuleExamples.triggeringExamples
     )
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(viewMode: .sourceAccurate)
-    }
 }
 
 private extension QuickDiscouragedPendingTestRule {
-    final class Visitor: ViolationsSyntaxVisitor {
-        override var skippableDeclarations: [DeclSyntaxProtocol.Type] { .all }
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
+        override var skippableDeclarations: [any DeclSyntaxProtocol.Type] { .all }
 
         override func visitPost(_ node: FunctionCallExprSyntax) {
-            if let identifierExpr = node.calledExpression.as(IdentifierExprSyntax.self),
-               case let name = identifierExpr.identifier.text,
+            if let identifierExpr = node.calledExpression.as(DeclReferenceExprSyntax.self),
+               case let name = identifierExpr.baseName.text,
                QuickPendingCallKind(rawValue: name) != nil {
                 violations.append(node.positionAfterSkippingLeadingTrivia)
             }
@@ -41,7 +38,7 @@ private extension QuickDiscouragedPendingTestRule {
 
 private extension ClassDeclSyntax {
     var containsInheritance: Bool {
-        guard let inheritanceList = inheritanceClause?.inheritedTypeCollection else {
+        guard let inheritanceList = inheritanceClause?.inheritedTypes else {
             return false
         }
 
@@ -51,9 +48,9 @@ private extension ClassDeclSyntax {
 
 private extension FunctionDeclSyntax {
     var isSpecFunction: Bool {
-        return identifier.tokenKind == .identifier("spec") &&
-            signature.input.parameterList.isEmpty &&
-            modifiers.containsOverride
+        return name.tokenKind == .identifier("spec") &&
+        signature.parameterClause.parameters.isEmpty &&
+            modifiers.contains(keyword: .override)
     }
 }
 

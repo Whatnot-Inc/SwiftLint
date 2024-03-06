@@ -1,7 +1,8 @@
 import SwiftSyntax
 
-struct NSLocalizedStringKeyRule: SwiftSyntaxRule, OptInRule, ConfigurationProviderRule {
-    var configuration = SeverityConfiguration(.warning)
+@SwiftSyntaxRule
+struct NSLocalizedStringKeyRule: OptInRule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
     static let description = RuleDescription(
         identifier: "nslocalizedstring_key",
@@ -30,25 +31,21 @@ struct NSLocalizedStringKeyRule: SwiftSyntaxRule, OptInRule, ConfigurationProvid
             Example("NSLocalizedString(↓\"key_\\(param)\", comment: ↓method())")
         ]
     )
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(viewMode: .sourceAccurate)
-    }
 }
 
 private extension NSLocalizedStringKeyRule {
-    final class Visitor: ViolationsSyntaxVisitor {
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
         override func visitPost(_ node: FunctionCallExprSyntax) {
-            guard node.calledExpression.as(IdentifierExprSyntax.self)?.identifier.text == "NSLocalizedString" else {
+            guard node.calledExpression.as(DeclReferenceExprSyntax.self)?.baseName.text == "NSLocalizedString" else {
                 return
             }
 
-            if let keyArgument = node.argumentList.first(where: { $0.label == nil })?.expression,
+            if let keyArgument = node.arguments.first(where: { $0.label == nil })?.expression,
                keyArgument.hasViolation {
                 violations.append(keyArgument.positionAfterSkippingLeadingTrivia)
             }
 
-            if let commentArgument = node.argumentList.first(where: { $0.label?.text == "comment" })?.expression,
+            if let commentArgument = node.arguments.first(where: { $0.label?.text == "comment" })?.expression,
                commentArgument.hasViolation {
                 violations.append(commentArgument.positionAfterSkippingLeadingTrivia)
             }

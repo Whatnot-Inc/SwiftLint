@@ -3,6 +3,7 @@ import SourceKittenFramework
 import XCTest
 
 class CustomRulesTests: SwiftLintTestCase {
+    typealias Configuration = RegexConfiguration<CustomRules>
     func testCustomRuleConfigurationSetsCorrectlyWithMatchKinds() {
         let configDict = [
             "my_custom_rule": [
@@ -13,10 +14,10 @@ class CustomRulesTests: SwiftLintTestCase {
                 "severity": "error"
             ]
         ]
-        var comp = RegexConfiguration(identifier: "my_custom_rule")
+        var comp = Configuration(identifier: "my_custom_rule")
         comp.name = "MyCustomRule"
         comp.message = "Message"
-        comp.regex = regex("regex")
+        comp.regex = "regex"
         comp.severityConfiguration = SeverityConfiguration(.error)
         comp.excludedMatchKinds = SyntaxKind.allKinds.subtracting([.comment])
         var compRules = CustomRulesConfiguration()
@@ -40,10 +41,10 @@ class CustomRulesTests: SwiftLintTestCase {
                 "severity": "error"
             ]
         ]
-        var comp = RegexConfiguration(identifier: "my_custom_rule")
+        var comp = Configuration(identifier: "my_custom_rule")
         comp.name = "MyCustomRule"
         comp.message = "Message"
-        comp.regex = regex("regex")
+        comp.regex = "regex"
         comp.severityConfiguration = SeverityConfiguration(.error)
         comp.excludedMatchKinds = Set<SyntaxKind>([.comment])
         var compRules = CustomRulesConfiguration()
@@ -60,7 +61,7 @@ class CustomRulesTests: SwiftLintTestCase {
     func testCustomRuleConfigurationThrows() {
         let config = 17
         var customRulesConfig = CustomRulesConfiguration()
-        checkError(ConfigurationError.unknownConfiguration) {
+        checkError(Issue.unknownConfiguration(ruleID: CustomRules.description.identifier)) {
             try customRulesConfig.apply(configuration: config)
         }
     }
@@ -75,8 +76,11 @@ class CustomRulesTests: SwiftLintTestCase {
             "severity": "error"
         ]
 
-        var configuration = RegexConfiguration(identifier: "my_custom_rule")
-        checkError(ConfigurationError.ambiguousMatchKindParameters) {
+        var configuration = Configuration(identifier: "my_custom_rule")
+        let expectedError = Issue.genericWarning(
+            "The configuration keys 'match_kinds' and 'excluded_match_kinds' cannot appear at the same time."
+        )
+        checkError(expectedError) {
             try configuration.apply(configuration: configDict)
         }
     }
@@ -175,12 +179,12 @@ class CustomRulesTests: SwiftLintTestCase {
         XCTAssertEqual(violations[0].location.character, 6)
     }
 
-    private func getCustomRules(_ extraConfig: [String: Any] = [:]) -> (RegexConfiguration, CustomRules) {
+    private func getCustomRules(_ extraConfig: [String: Any] = [:]) -> (Configuration, CustomRules) {
         var config: [String: Any] = ["regex": "pattern",
                                      "match_kinds": "comment"]
         extraConfig.forEach { config[$0] = $1 }
 
-        var regexConfig = RegexConfiguration(identifier: "custom")
+        var regexConfig = RegexConfiguration<CustomRules>(identifier: "custom")
         do {
             try regexConfig.apply(configuration: config)
         } catch {
@@ -195,11 +199,11 @@ class CustomRulesTests: SwiftLintTestCase {
         return (regexConfig, customRules)
     }
 
-    private func getCustomRulesWithTwoRules() -> ((RegexConfiguration, RegexConfiguration), CustomRules) {
+    private func getCustomRulesWithTwoRules() -> ((Configuration, Configuration), CustomRules) {
         let config1 = ["regex": "pattern",
                        "match_kinds": "comment"]
 
-        var regexConfig1 = RegexConfiguration(identifier: "custom1")
+        var regexConfig1 = Configuration(identifier: "custom1")
         do {
             try regexConfig1.apply(configuration: config1)
         } catch {
@@ -209,7 +213,7 @@ class CustomRulesTests: SwiftLintTestCase {
         let config2 = ["regex": "something",
                        "match_kinds": "comment"]
 
-        var regexConfig2 = RegexConfiguration(identifier: "custom2")
+        var regexConfig2 = Configuration(identifier: "custom2")
         do {
             try regexConfig2.apply(configuration: config2)
         } catch {

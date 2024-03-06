@@ -1,7 +1,7 @@
 import Foundation
 import SourceKittenFramework
 
-struct UnusedDeclarationRule: ConfigurationProviderRule, AnalyzerRule, CollectingRule {
+struct UnusedDeclarationRule: AnalyzerRule, CollectingRule {
     struct FileUSRs: Hashable {
         var referenced: Set<String>
         var declared: Set<DeclaredUSR>
@@ -16,11 +16,7 @@ struct UnusedDeclarationRule: ConfigurationProviderRule, AnalyzerRule, Collectin
 
     typealias FileInfo = FileUSRs
 
-    var configuration = UnusedDeclarationConfiguration(
-        severity: .error,
-        includePublicAndOpen: false,
-        relatedUSRsToSkip: ["s:7SwiftUI15PreviewProviderP"]
-    )
+    var configuration = UnusedDeclarationConfiguration()
 
     static let description = RuleDescription(
         identifier: "unused_declaration",
@@ -34,27 +30,18 @@ struct UnusedDeclarationRule: ConfigurationProviderRule, AnalyzerRule, Collectin
 
     func collectInfo(for file: SwiftLintFile, compilerArguments: [String]) -> UnusedDeclarationRule.FileUSRs {
         guard compilerArguments.isNotEmpty else {
-            queuedPrintError("""
-                warning: Attempted to lint file at path '\(file.path ?? "...")' with the \
-                \(Self.description.identifier) rule without any compiler arguments.
-                """)
+            Issue.missingCompilerArguments(path: file.path, ruleID: Self.description.identifier).print()
             return .empty
         }
 
         guard let index = file.index(compilerArguments: compilerArguments), index.value.isNotEmpty else {
-            queuedPrintError("""
-                warning: Could not index file at path '\(file.path ?? "...")' with the \
-                \(Self.description.identifier) rule.
-                """)
+            Issue.indexingError(path: file.path, ruleID: Self.description.identifier).print()
             return .empty
         }
 
         guard let editorOpen = (try? Request.editorOpen(file: file.file).sendIfNotDisabled())
                 .map(SourceKittenDictionary.init) else {
-            queuedPrintError("""
-                warning: Could not open file at path '\(file.path ?? "...")' with the \
-                \(Self.description.identifier) rule.
-                """)
+            Issue.fileNotReadable(path: file.path, ruleID: Self.description.identifier).print()
             return .empty
         }
 
@@ -258,7 +245,7 @@ private extension SourceKittenDictionary {
     }
 
     func shouldSkipRelated(relatedUSRsToSkip: Set<String>) -> Bool {
-        return (value["key.related"] as? [[String: SourceKitRepresentable]])?
+        return (value["key.related"] as? [[String: any SourceKitRepresentable]])?
             .compactMap { SourceKittenDictionary($0).usr }
             .contains(where: relatedUSRsToSkip.contains) == true
     }

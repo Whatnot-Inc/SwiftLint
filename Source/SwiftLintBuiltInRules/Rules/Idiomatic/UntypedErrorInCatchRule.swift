@@ -1,7 +1,8 @@
 import SwiftSyntax
 
-struct UntypedErrorInCatchRule: OptInRule, ConfigurationProviderRule, SwiftSyntaxCorrectableRule {
-    var configuration = SeverityConfiguration(.warning)
+@SwiftSyntaxRule(explicitRewriter: true)
+struct UntypedErrorInCatchRule: OptInRule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
     static let description = RuleDescription(
         identifier: "untyped_error_in_catch",
@@ -84,17 +85,6 @@ struct UntypedErrorInCatchRule: OptInRule, ConfigurationProviderRule, SwiftSynta
             Example("do {\n    try foo() \n} ↓catch(let error) {}"): Example("do {\n    try foo() \n} catch {}"),
             Example("do {\n    try foo() \n} ↓catch (let error) {}"): Example("do {\n    try foo() \n} catch {}")
         ])
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        UntypedErrorInCatchRuleVisitor(viewMode: .sourceAccurate)
-    }
-
-    func makeRewriter(file: SwiftLintFile) -> ViolationsSyntaxRewriter? {
-        UntypedErrorInCatchRuleRewriter(
-            locationConverter: file.locationConverter,
-            disabledRegions: disabledRegions(file: file)
-        )
-    }
 }
 
 private extension CatchItemSyntax {
@@ -104,56 +94,43 @@ private extension CatchItemSyntax {
         }
 
         if let pattern = pattern?.as(ValueBindingPatternSyntax.self) {
-            return pattern.valuePattern.is(IdentifierPatternSyntax.self)
+            return pattern.pattern.is(IdentifierPatternSyntax.self)
         }
 
         if let pattern = pattern?.as(ExpressionPatternSyntax.self),
            let tupleExpr = pattern.expression.as(TupleExprSyntax.self),
-           let tupleElement = tupleExpr.elementList.onlyElement,
-           let unresolvedPattern = tupleElement.expression.as(UnresolvedPatternExprSyntax.self),
+           let tupleElement = tupleExpr.elements.onlyElement,
+           let unresolvedPattern = tupleElement.expression.as(PatternExprSyntax.self),
            let valueBindingPattern = unresolvedPattern.pattern.as(ValueBindingPatternSyntax.self) {
-            return valueBindingPattern.valuePattern.is(IdentifierPatternSyntax.self)
+            return valueBindingPattern.pattern.is(IdentifierPatternSyntax.self)
         }
 
         return false
     }
 }
 
-private final class UntypedErrorInCatchRuleVisitor: ViolationsSyntaxVisitor {
-    override func visitPost(_ node: CatchClauseSyntax) {
-        guard let item = node.catchItems?.onlyElement,
-              item.isIdentifierPattern else {
-            return
+private extension UntypedErrorInCatchRule {
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
+        override func visitPost(_ node: CatchClauseSyntax) {
+            guard let item = node.catchItems.onlyElement, item.isIdentifierPattern else {
+                return
+            }
+            violations.append(node.catchKeyword.positionAfterSkippingLeadingTrivia)
         }
-
-        violations.append(node.catchKeyword.positionAfterSkippingLeadingTrivia)
-    }
-}
-
-private final class UntypedErrorInCatchRuleRewriter: SyntaxRewriter, ViolationsSyntaxRewriter {
-    private(set) var correctionPositions: [AbsolutePosition] = []
-    let locationConverter: SourceLocationConverter
-    let disabledRegions: [SourceRange]
-
-    init(locationConverter: SourceLocationConverter, disabledRegions: [SourceRange]) {
-        self.locationConverter = locationConverter
-        self.disabledRegions = disabledRegions
     }
 
-    override func visit(_ node: CatchClauseSyntax) -> CatchClauseSyntax {
-        guard
-            let item = node.catchItems?.onlyElement,
-            item.isIdentifierPattern,
-            !node.isContainedIn(regions: disabledRegions, locationConverter: locationConverter)
-        else {
-            return super.visit(node)
-        }
+    final class Rewriter: ViolationsSyntaxRewriter {
+        override func visit(_ node: CatchClauseSyntax) -> CatchClauseSyntax {
+            guard let item = node.catchItems.onlyElement, item.isIdentifierPattern else {
+                return super.visit(node)
+            }
 
-        correctionPositions.append(node.catchKeyword.positionAfterSkippingLeadingTrivia)
-        return super.visit(
-            node
-                .with(\.catchKeyword, node.catchKeyword.with(\.trailingTrivia, .spaces(1)))
-                .with(\.catchItems, CatchItemListSyntax([]))
-        )
+            correctionPositions.append(node.catchKeyword.positionAfterSkippingLeadingTrivia)
+            return super.visit(
+                node
+                    .with(\.catchKeyword, node.catchKeyword.with(\.trailingTrivia, .spaces(1)))
+                    .with(\.catchItems, CatchItemListSyntax([]))
+            )
+        }
     }
 }

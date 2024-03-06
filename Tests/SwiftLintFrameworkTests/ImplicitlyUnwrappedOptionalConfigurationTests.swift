@@ -5,8 +5,8 @@ import XCTest
 class ImplicitlyUnwrappedOptionalConfigurationTests: SwiftLintTestCase {
     func testImplicitlyUnwrappedOptionalConfigurationProperlyAppliesConfigurationFromDictionary() throws {
         var configuration = ImplicitlyUnwrappedOptionalConfiguration(
-            mode: .allExceptIBOutlets,
-            severityConfiguration: SeverityConfiguration(.warning)
+            severityConfiguration: SeverityConfiguration(.warning),
+            mode: .allExceptIBOutlets
         )
 
         try configuration.apply(configuration: ["mode": "all", "severity": "error"])
@@ -35,11 +35,11 @@ class ImplicitlyUnwrappedOptionalConfigurationTests: SwiftLintTestCase {
 
         for badConfig in badConfigs {
             var configuration = ImplicitlyUnwrappedOptionalConfiguration(
-                mode: .allExceptIBOutlets,
-                severityConfiguration: SeverityConfiguration(.warning)
+                severityConfiguration: SeverityConfiguration(.warning),
+                mode: .allExceptIBOutlets
             )
 
-            checkError(ConfigurationError.unknownConfiguration) {
+            checkError(Issue.unknownConfiguration(ruleID: ImplicitlyUnwrappedOptionalRule.description.identifier)) {
                 try configuration.apply(configuration: badConfig)
             }
         }

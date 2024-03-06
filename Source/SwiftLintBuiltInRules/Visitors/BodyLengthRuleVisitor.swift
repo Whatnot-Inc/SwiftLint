@@ -1,10 +1,7 @@
 import SwiftSyntax
 
-final class BodyLengthRuleVisitor: ViolationsSyntaxVisitor {
+final class BodyLengthRuleVisitor<Parent: Rule>: ViolationsSyntaxVisitor<SeverityLevelsConfiguration<Parent>> {
     private let kind: Kind
-    private let file: SwiftLintFile
-    private let configuration: SeverityLevelsConfiguration
-    private let locationConverter: SourceLocationConverter
 
     enum Kind {
         case closure
@@ -23,20 +20,17 @@ final class BodyLengthRuleVisitor: ViolationsSyntaxVisitor {
         }
     }
 
-    init(kind: Kind, file: SwiftLintFile, configuration: SeverityLevelsConfiguration) {
+    init(kind: Kind, file: SwiftLintFile, configuration: SeverityLevelsConfiguration<Parent>) {
         self.kind = kind
-        self.file = file
-        self.configuration = configuration
-        locationConverter = file.locationConverter
-        super.init(viewMode: .sourceAccurate)
+        super.init(configuration: configuration, file: file)
     }
 
     override func visitPost(_ node: EnumDeclSyntax) {
         if kind == .type {
             registerViolations(
-                getLeftBrace: { node.memberBlock.leftBrace },
-                getRightBrace: { node.memberBlock.rightBrace },
-                getViolationNode: { node.enumKeyword }
+                leftBrace: node.memberBlock.leftBrace,
+                rightBrace: node.memberBlock.rightBrace,
+                violationNode: node.enumKeyword
             )
         }
     }
@@ -44,9 +38,9 @@ final class BodyLengthRuleVisitor: ViolationsSyntaxVisitor {
     override func visitPost(_ node: ClassDeclSyntax) {
         if kind == .type {
             registerViolations(
-                getLeftBrace: { node.memberBlock.leftBrace },
-                getRightBrace: { node.memberBlock.rightBrace },
-                getViolationNode: { node.classKeyword }
+                leftBrace: node.memberBlock.leftBrace,
+                rightBrace: node.memberBlock.rightBrace,
+                violationNode: node.classKeyword
             )
         }
     }
@@ -54,9 +48,9 @@ final class BodyLengthRuleVisitor: ViolationsSyntaxVisitor {
     override func visitPost(_ node: StructDeclSyntax) {
         if kind == .type {
             registerViolations(
-                getLeftBrace: { node.memberBlock.leftBrace },
-                getRightBrace: { node.memberBlock.rightBrace },
-                getViolationNode: { node.structKeyword }
+                leftBrace: node.memberBlock.leftBrace,
+                rightBrace: node.memberBlock.rightBrace,
+                violationNode: node.structKeyword
             )
         }
     }
@@ -64,9 +58,9 @@ final class BodyLengthRuleVisitor: ViolationsSyntaxVisitor {
     override func visitPost(_ node: ActorDeclSyntax) {
         if kind == .type {
             registerViolations(
-                getLeftBrace: { node.memberBlock.leftBrace },
-                getRightBrace: { node.memberBlock.rightBrace },
-                getViolationNode: { node.actorKeyword }
+                leftBrace: node.memberBlock.leftBrace,
+                rightBrace: node.memberBlock.rightBrace,
+                violationNode: node.actorKeyword
             )
         }
     }
@@ -74,45 +68,40 @@ final class BodyLengthRuleVisitor: ViolationsSyntaxVisitor {
     override func visitPost(_ node: ClosureExprSyntax) {
         if kind == .closure {
             registerViolations(
-                getLeftBrace: { node.leftBrace },
-                getRightBrace: { node.rightBrace },
-                getViolationNode: { node.leftBrace }
+                leftBrace: node.leftBrace,
+                rightBrace: node.rightBrace,
+                violationNode: node.leftBrace
             )
         }
     }
 
     override func visitPost(_ node: FunctionDeclSyntax) {
-        if kind == .function {
+        if kind == .function, let body = node.body {
             registerViolations(
-                getLeftBrace: { node.body?.leftBrace },
-                getRightBrace: { node.body?.rightBrace },
-                getViolationNode: { node.identifier }
+                leftBrace: body.leftBrace,
+                rightBrace: body.rightBrace,
+                violationNode: node.name
             )
         }
     }
 
     override func visitPost(_ node: InitializerDeclSyntax) {
-        if kind == .function {
+        if kind == .function, let body = node.body {
             registerViolations(
-                getLeftBrace: { node.body?.leftBrace },
-                getRightBrace: { node.body?.rightBrace },
-                getViolationNode: { node.initKeyword }
+                leftBrace: body.leftBrace,
+                rightBrace: body.rightBrace,
+                violationNode: node.initKeyword
             )
         }
     }
 
     private func registerViolations(
-        getLeftBrace: () -> TokenSyntax?, getRightBrace: () -> TokenSyntax?, getViolationNode: () -> some SyntaxProtocol
+        leftBrace: TokenSyntax, rightBrace: TokenSyntax, violationNode: some SyntaxProtocol
     ) {
-        guard
-            let leftBracePosition = getLeftBrace()?.positionAfterSkippingLeadingTrivia,
-            let leftBraceLine = locationConverter.location(for: leftBracePosition).line,
-            let rightBracePosition = getRightBrace()?.positionAfterSkippingLeadingTrivia,
-            let rightBraceLine = locationConverter.location(for: rightBracePosition).line
-        else {
-            return
-        }
-
+        let leftBracePosition = leftBrace.positionAfterSkippingLeadingTrivia
+        let leftBraceLine = locationConverter.location(for: leftBracePosition).line
+        let rightBracePosition = rightBrace.positionAfterSkippingLeadingTrivia
+        let rightBraceLine = locationConverter.location(for: rightBracePosition).line
         let lineCount = file.bodyLineCountIgnoringCommentsAndWhitespace(leftBraceLine: leftBraceLine,
                                                                         rightBraceLine: rightBraceLine)
         let severity: ViolationSeverity, upperBound: Int
@@ -132,7 +121,7 @@ final class BodyLengthRuleVisitor: ViolationsSyntaxVisitor {
             """
 
         let violation = ReasonedRuleViolation(
-            position: getViolationNode().positionAfterSkippingLeadingTrivia,
+            position: violationNode.positionAfterSkippingLeadingTrivia,
             reason: reason,
             severity: severity
         )

@@ -1,26 +1,10 @@
 /// A rule configuration that allows specifying thresholds for `warning` and `error` severities.
-public struct SeverityLevelsConfiguration: RuleConfiguration, Equatable {
-    public var consoleDescription: String {
-        let errorString: String
-        if let errorValue = error {
-            errorString = ", error: \(errorValue)"
-        } else {
-            errorString = ""
-        }
-        return "warning: \(warning)" + errorString
-    }
-
-    /// A condensed console description.
-    public var shortConsoleDescription: String {
-        if let errorValue = error {
-            return "w/e: \(warning)/\(errorValue)"
-        }
-        return "w: \(warning)"
-    }
-
+public struct SeverityLevelsConfiguration<Parent: Rule>: RuleConfiguration {
     /// The threshold for a violation to be a warning.
-    public var warning: Int
+    @ConfigurationElement(key: "warning")
+    public var warning: Int = 12
     /// The threshold for a violation to be an error.
+    @ConfigurationElement(key: "error")
     public var error: Int?
 
     /// Create a `SeverityLevelsConfiguration` based on the sepecified `warning` and `error` thresholds.
@@ -45,12 +29,27 @@ public struct SeverityLevelsConfiguration: RuleConfiguration, Equatable {
         if let configurationArray = [Int].array(of: configuration), configurationArray.isNotEmpty {
             warning = configurationArray[0]
             error = (configurationArray.count > 1) ? configurationArray[1] : nil
-        } else if let configDict = configuration as? [String: Int?],
-            configDict.isNotEmpty, Set(configDict.keys).isSubset(of: ["warning", "error"]) {
-            warning = (configDict["warning"] as? Int) ?? warning
-            error = configDict["error"] as? Int
+        } else if let configDict = configuration as? [String: Any?] {
+            if let warningValue = configDict[$warning.key] {
+                if let warning = warningValue as? Int {
+                    self.warning = warning
+                } else {
+                    throw Issue.invalidConfiguration(ruleID: Parent.description.identifier)
+                }
+            }
+            if let errorValue = configDict[$error.key] {
+                if errorValue == nil {
+                    self.error = nil
+                } else if let error = errorValue as? Int {
+                    self.error = error
+                } else {
+                    throw Issue.invalidConfiguration(ruleID: Parent.description.identifier)
+                }
+            } else {
+                self.error = nil
+            }
         } else {
-            throw ConfigurationError.unknownConfiguration
+            throw Issue.invalidConfiguration(ruleID: Parent.description.identifier)
         }
     }
 }

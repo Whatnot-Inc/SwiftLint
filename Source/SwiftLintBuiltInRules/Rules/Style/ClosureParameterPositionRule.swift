@@ -1,7 +1,8 @@
 import SwiftSyntax
 
-struct ClosureParameterPositionRule: SwiftSyntaxRule, ConfigurationProviderRule {
-    var configuration = SeverityConfiguration(.warning)
+@SwiftSyntaxRule
+struct ClosureParameterPositionRule: Rule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
     static let description = RuleDescription(
         identifier: "closure_parameter_position",
@@ -9,14 +10,14 @@ struct ClosureParameterPositionRule: SwiftSyntaxRule, ConfigurationProviderRule 
         description: "Closure parameters should be on the same line as opening brace",
         kind: .style,
         nonTriggeringExamples: [
-            Example("[1, 2].map { $0 + 1 }\n"),
-            Example("[1, 2].map({ $0 + 1 })\n"),
-            Example("[1, 2].map { number in\n number + 1 \n}\n"),
-            Example("[1, 2].map { number -> Int in\n number + 1 \n}\n"),
-            Example("[1, 2].map { (number: Int) -> Int in\n number + 1 \n}\n"),
-            Example("[1, 2].map { [weak self] number in\n number + 1 \n}\n"),
-            Example("[1, 2].something(closure: { number in\n number + 1 \n})\n"),
-            Example("let isEmpty = [1, 2].isEmpty()\n"),
+            Example("[1, 2].map { $0 + 1 }"),
+            Example("[1, 2].map({ $0 + 1 })"),
+            Example("[1, 2].map { number in\n number + 1 \n}"),
+            Example("[1, 2].map { number -> Int in\n number + 1 \n}"),
+            Example("[1, 2].map { (number: Int) -> Int in\n number + 1 \n}"),
+            Example("[1, 2].map { [weak self] number in\n number + 1 \n}"),
+            Example("[1, 2].something(closure: { number in\n number + 1 \n})"),
+            Example("let isEmpty = [1, 2].isEmpty()"),
             Example("""
             rlmConfiguration.migrationBlock.map { rlmMigration in
                 return { migration, schemaVersion in
@@ -93,38 +94,37 @@ struct ClosureParameterPositionRule: SwiftSyntaxRule, ConfigurationProviderRule 
             """)
         ]
     )
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(locationConverter: file.locationConverter)
-    }
 }
 
 private extension ClosureParameterPositionRule {
-    final class Visitor: ViolationsSyntaxVisitor {
-        private let locationConverter: SourceLocationConverter
-
-        init(locationConverter: SourceLocationConverter) {
-            self.locationConverter = locationConverter
-            super.init(viewMode: .sourceAccurate)
-        }
-
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
         override func visitPost(_ node: ClosureExprSyntax) {
-            guard let signature = node.signature,
-                  case let leftBracePosition = node.leftBrace.positionAfterSkippingLeadingTrivia,
-                  let startLine = locationConverter.location(for: leftBracePosition).line else {
+            guard let signature = node.signature else {
                 return
             }
 
-            let localViolations = signature.positionsToCheck
-                .filter { position in
-                    guard let line = locationConverter.location(for: position).line else {
-                        return false
-                    }
+            let leftBracePosition = node.leftBrace.positionAfterSkippingLeadingTrivia
+            let startLine = locationConverter.location(for: leftBracePosition).line
 
-                    return line != startLine
+            let positionsToCheck = signature.positionsToCheck
+            guard let lastPosition = positionsToCheck.last else {
+                return
+            }
+
+            // fast path: we can check the last position only, and if that
+            // doesn't have a violation, we don't need to check any other positions,
+            // since calling `locationConverter.location(for:)` is expensive
+            let lastPositionLine = locationConverter.location(for: lastPosition).line
+            if lastPositionLine == startLine {
+                return
+            } else {
+                let localViolations = positionsToCheck.dropLast().filter { position in
+                    return locationConverter.location(for: position).line != startLine
                 }
 
-            violations.append(contentsOf: localViolations)
+                violations.append(contentsOf: localViolations)
+                violations.append(lastPosition)
+            }
         }
     }
 }
@@ -136,10 +136,10 @@ private extension ClosureSignatureSyntax {
             positions.append(contentsOf: captureItems.map(\.expression.positionAfterSkippingLeadingTrivia))
         }
 
-        if let input = input?.as(ClosureParamListSyntax.self) {
+        if let input = parameterClause?.as(ClosureShorthandParameterListSyntax.self) {
             positions.append(contentsOf: input.map(\.positionAfterSkippingLeadingTrivia))
-        } else if let input = input?.as(ClosureParameterClauseSyntax.self) {
-            positions.append(contentsOf: input.parameterList.map(\.positionAfterSkippingLeadingTrivia))
+        } else if let input = parameterClause?.as(ClosureParameterClauseSyntax.self) {
+            positions.append(contentsOf: input.parameters.map(\.positionAfterSkippingLeadingTrivia))
         }
 
         return positions

@@ -28,7 +28,7 @@ private extension SwiftLintFile {
         }
 
         guard let kind = dictionary.declarationKind,
-            (!SwiftDeclarationKind.extensionKinds.contains(kind) || !excludesExtensions),
+            !SwiftDeclarationKind.extensionKinds.contains(kind) || !excludesExtensions,
             case let isDeinit = kind == .functionMethodInstance && dictionary.name == "deinit",
             !isDeinit,
             let offset = dictionary.offset,
@@ -43,14 +43,14 @@ private extension SwiftLintFile {
     }
 }
 
-struct MissingDocsRule: OptInRule, ConfigurationProviderRule {
+struct MissingDocsRule: OptInRule {
     init() {
-        configuration = MissingDocsRuleConfiguration()
+        configuration = MissingDocsConfiguration()
     }
 
-    typealias ConfigurationType = MissingDocsRuleConfiguration
+    typealias ConfigurationType = MissingDocsConfiguration
 
-    var configuration: MissingDocsRuleConfiguration
+    var configuration: MissingDocsConfiguration
 
     static let description = RuleDescription(
         identifier: "missing_docs",
@@ -94,11 +94,11 @@ struct MissingDocsRule: OptInRule, ConfigurationProviderRule {
         ],
         triggeringExamples: [
             // public, undocumented
-            Example("public func a() {}\n"),
+            Example("public func a() {}"),
             // public, undocumented
-            Example("// regular comment\npublic func a() {}\n"),
+            Example("// regular comment\npublic func a() {}"),
             // public, undocumented
-            Example("/* regular comment */\npublic func a() {}\n"),
+            Example("/* regular comment */\npublic func a() {}"),
             // protocol member and inherited member are both undocumented
             Example("""
             /// docs

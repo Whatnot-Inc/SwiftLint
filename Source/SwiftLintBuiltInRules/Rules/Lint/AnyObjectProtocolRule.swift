@@ -1,18 +1,16 @@
 import SwiftSyntax
 
+// TODO: [09/07/2024] Remove deprecation warning after ~2 years.
 private let warnDeprecatedOnceImpl: Void = {
-    queuedPrintError("""
-        warning: The `anyobject_protocol` rule is now deprecated and will be completely removed in a future release.
-        """
-    )
+    Issue.ruleDeprecated(ruleID: AnyObjectProtocolRule.description.identifier).print()
 }()
 
 private func warnDeprecatedOnce() {
     _ = warnDeprecatedOnceImpl
 }
 
-struct AnyObjectProtocolRule: SwiftSyntaxCorrectableRule, OptInRule, ConfigurationProviderRule {
-    var configuration = SeverityConfiguration(.warning)
+struct AnyObjectProtocolRule: SwiftSyntaxCorrectableRule, OptInRule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
     static let description = RuleDescription(
         identifier: "anyobject_protocol",
@@ -20,32 +18,32 @@ struct AnyObjectProtocolRule: SwiftSyntaxCorrectableRule, OptInRule, Configurati
         description: "Prefer using `AnyObject` over `class` for class-only protocols",
         kind: .lint,
         nonTriggeringExamples: [
-            Example("protocol SomeProtocol {}\n"),
-            Example("protocol SomeClassOnlyProtocol: AnyObject {}\n"),
-            Example("protocol SomeClassOnlyProtocol: AnyObject, SomeInheritedProtocol {}\n"),
-            Example("@objc protocol SomeClassOnlyProtocol: AnyObject, SomeInheritedProtocol {}\n")
+            Example("protocol SomeProtocol {}"),
+            Example("protocol SomeClassOnlyProtocol: AnyObject {}"),
+            Example("protocol SomeClassOnlyProtocol: AnyObject, SomeInheritedProtocol {}"),
+            Example("@objc protocol SomeClassOnlyProtocol: AnyObject, SomeInheritedProtocol {}")
         ],
         triggeringExamples: [
-            Example("protocol SomeClassOnlyProtocol: ↓class {}\n"),
-            Example("protocol SomeClassOnlyProtocol: ↓class, SomeInheritedProtocol {}\n"),
-            Example("@objc protocol SomeClassOnlyProtocol: ↓class, SomeInheritedProtocol {}\n")
+            Example("protocol SomeClassOnlyProtocol: ↓class {}"),
+            Example("protocol SomeClassOnlyProtocol: ↓class, SomeInheritedProtocol {}"),
+            Example("@objc protocol SomeClassOnlyProtocol: ↓class, SomeInheritedProtocol {}")
         ],
         corrections: [
-            Example("protocol SomeClassOnlyProtocol: ↓class {}\n"):
-                Example("protocol SomeClassOnlyProtocol: AnyObject {}\n"),
-            Example("protocol SomeClassOnlyProtocol: ↓class, SomeInheritedProtocol {}\n"):
-                Example("protocol SomeClassOnlyProtocol: AnyObject, SomeInheritedProtocol {}\n"),
-            Example("@objc protocol SomeClassOnlyProtocol: ↓class, SomeInheritedProtocol {}\n"):
-                Example("@objc protocol SomeClassOnlyProtocol: AnyObject, SomeInheritedProtocol {}\n")
+            Example("protocol SomeClassOnlyProtocol: ↓class {}"):
+                Example("protocol SomeClassOnlyProtocol: AnyObject {}"),
+            Example("protocol SomeClassOnlyProtocol: ↓class, SomeInheritedProtocol {}"):
+                Example("protocol SomeClassOnlyProtocol: AnyObject, SomeInheritedProtocol {}"),
+            Example("@objc protocol SomeClassOnlyProtocol: ↓class, SomeInheritedProtocol {}"):
+                Example("@objc protocol SomeClassOnlyProtocol: AnyObject, SomeInheritedProtocol {}")
         ]
     )
 
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
+    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor<ConfigurationType> {
         warnDeprecatedOnce()
-        return Visitor(viewMode: .sourceAccurate)
+        return Visitor(configuration: configuration, file: file)
     }
 
-    func makeRewriter(file: SwiftLintFile) -> ViolationsSyntaxRewriter? {
+    func makeRewriter(file: SwiftLintFile) -> (some ViolationsSyntaxRewriter)? {
         Rewriter(
             locationConverter: file.locationConverter,
             disabledRegions: disabledRegions(file: file)
@@ -54,37 +52,24 @@ struct AnyObjectProtocolRule: SwiftSyntaxCorrectableRule, OptInRule, Configurati
 }
 
 private extension AnyObjectProtocolRule {
-    private final class Visitor: ViolationsSyntaxVisitor {
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
         override func visitPost(_ node: ClassRestrictionTypeSyntax) {
             violations.append(node.positionAfterSkippingLeadingTrivia)
         }
     }
 
-    private final class Rewriter: SyntaxRewriter, ViolationsSyntaxRewriter {
-        private(set) var correctionPositions: [AbsolutePosition] = []
-        let locationConverter: SourceLocationConverter
-        let disabledRegions: [SourceRange]
-
-        init(locationConverter: SourceLocationConverter, disabledRegions: [SourceRange]) {
-            self.locationConverter = locationConverter
-            self.disabledRegions = disabledRegions
-        }
-
+    final class Rewriter: ViolationsSyntaxRewriter {
         override func visit(_ node: InheritedTypeSyntax) -> InheritedTypeSyntax {
-            let typeName = node.typeName
-            guard
-                typeName.is(ClassRestrictionTypeSyntax.self),
-                !node.isContainedIn(regions: disabledRegions, locationConverter: locationConverter)
-            else {
+            let typeName = node.type
+            guard typeName.is(ClassRestrictionTypeSyntax.self) else {
                 return super.visit(node)
             }
-
             correctionPositions.append(node.positionAfterSkippingLeadingTrivia)
             return super.visit(
                 node.with(
-                    \.typeName,
+                    \.type,
                     TypeSyntax(
-                        SimpleTypeIdentifierSyntax(name: .identifier("AnyObject"), genericArgumentClause: nil)
+                        IdentifierTypeSyntax(name: .identifier("AnyObject"), genericArgumentClause: nil)
                             .with(\.leadingTrivia, typeName.leadingTrivia)
                             .with(\.trailingTrivia, typeName.trailingTrivia)
                     )

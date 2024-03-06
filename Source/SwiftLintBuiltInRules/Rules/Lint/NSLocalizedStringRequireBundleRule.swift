@@ -1,7 +1,8 @@
 import SwiftSyntax
 
-struct NSLocalizedStringRequireBundleRule: SwiftSyntaxRule, OptInRule, ConfigurationProviderRule {
-    var configuration = SeverityConfiguration(.warning)
+@SwiftSyntaxRule
+struct NSLocalizedStringRequireBundleRule: OptInRule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
     static let description = RuleDescription(
         identifier: "nslocalizedstring_require_bundle",
@@ -39,25 +40,21 @@ struct NSLocalizedStringRequireBundleRule: SwiftSyntaxRule, OptInRule, Configura
             """)
         ]
     )
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(viewMode: .sourceAccurate)
-    }
 }
 
 private extension NSLocalizedStringRequireBundleRule {
-    final class Visitor: ViolationsSyntaxVisitor {
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
         override func visitPost(_ node: FunctionCallExprSyntax) {
-            if let identifierExpr = node.calledExpression.as(IdentifierExprSyntax.self),
-               identifierExpr.identifier.tokenKind == .identifier("NSLocalizedString"),
-               !node.argumentList.containsArgument(named: "bundle") {
+            if let identifierExpr = node.calledExpression.as(DeclReferenceExprSyntax.self),
+               identifierExpr.baseName.tokenKind == .identifier("NSLocalizedString"),
+               !node.arguments.containsArgument(named: "bundle") {
                 violations.append(node.positionAfterSkippingLeadingTrivia)
             }
         }
     }
 }
 
-private extension TupleExprElementListSyntax {
+private extension LabeledExprListSyntax {
     func containsArgument(named name: String) -> Bool {
         contains { arg in
             arg.label?.tokenKind == .identifier(name)

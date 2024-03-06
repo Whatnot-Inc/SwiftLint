@@ -1,7 +1,8 @@
 import SwiftSyntax
 
-struct NSObjectPreferIsEqualRule: SwiftSyntaxRule, ConfigurationProviderRule {
-    var configuration = SeverityConfiguration(.warning)
+@SwiftSyntaxRule
+struct NSObjectPreferIsEqualRule: Rule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
     static let description = RuleDescription(
         identifier: "nsobject_prefer_isequal",
@@ -11,15 +12,11 @@ struct NSObjectPreferIsEqualRule: SwiftSyntaxRule, ConfigurationProviderRule {
         nonTriggeringExamples: NSObjectPreferIsEqualRuleExamples.nonTriggeringExamples,
         triggeringExamples: NSObjectPreferIsEqualRuleExamples.triggeringExamples
     )
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(viewMode: .sourceAccurate)
-    }
 }
 
 private extension NSObjectPreferIsEqualRule {
-    final class Visitor: ViolationsSyntaxVisitor {
-        override var skippableDeclarations: [DeclSyntaxProtocol.Type] { .extensionsAndProtocols }
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
+        override var skippableDeclarations: [any DeclSyntaxProtocol.Type] { [ProtocolDeclSyntax.self] }
 
         override func visitPost(_ node: FunctionDeclSyntax) {
             if node.isSelfEqualFunction, node.isInObjcClass {
@@ -35,11 +32,11 @@ private extension ClassDeclSyntax {
             return true
         }
 
-        guard let inheritanceList = inheritanceClause?.inheritedTypeCollection else {
+        guard let inheritanceList = inheritanceClause?.inheritedTypes else {
             return false
         }
         return inheritanceList.contains { type in
-            type.typeName.as(SimpleTypeIdentifierSyntax.self)?.name.text == "NSObject"
+            type.type.as(IdentifierTypeSyntax.self)?.name.text == "NSObject"
         }
     }
 }
@@ -47,10 +44,10 @@ private extension ClassDeclSyntax {
 private extension FunctionDeclSyntax {
     var isSelfEqualFunction: Bool {
         guard
-            modifiers.isStatic,
-            identifier.text == "==",
+            modifiers.contains(keyword: .static),
+            name.text == "==",
             returnsBool,
-            case let parameterList = signature.input.parameterList,
+            case let parameterList = signature.parameterClause.parameters,
             parameterList.count == 2,
             let lhs = parameterList.first,
             let rhs = parameterList.last,
@@ -65,7 +62,7 @@ private extension FunctionDeclSyntax {
     }
 
     var returnsBool: Bool {
-        signature.output?.returnType.as(SimpleTypeIdentifierSyntax.self)?.name.text == "Bool"
+        signature.returnClause?.type.as(IdentifierTypeSyntax.self)?.name.text == "Bool"
     }
 }
 
@@ -81,7 +78,7 @@ private extension SyntaxProtocol {
     }
 }
 
-private extension AttributeListSyntax? {
+private extension AttributeListSyntax {
     var isObjc: Bool {
         contains(attributeNamed: "objc") || contains(attributeNamed: "objcMembers")
     }

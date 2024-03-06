@@ -1,7 +1,8 @@
 import SwiftSyntax
 
-struct MultilineArgumentsBracketsRule: SwiftSyntaxRule, OptInRule, ConfigurationProviderRule {
-    var configuration = SeverityConfiguration(.warning)
+@SwiftSyntaxRule
+struct MultilineArgumentsBracketsRule: OptInRule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
     static let description = RuleDescription(
         identifier: "multiline_arguments_brackets",
@@ -155,23 +156,19 @@ struct MultilineArgumentsBracketsRule: SwiftSyntaxRule, OptInRule, Configuration
             """, excludeFromDocumentation: true)
         ]
     )
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(viewMode: .sourceAccurate)
-    }
 }
 
 private extension MultilineArgumentsBracketsRule {
-    final class Visitor: ViolationsSyntaxVisitor {
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
         override func visitPost(_ node: FunctionCallExprSyntax) {
-            guard let firstArgument = node.argumentList.first,
+            guard let firstArgument = node.arguments.first,
                   let leftParen = node.leftParen,
                   let rightParen = node.rightParen else {
                 return
             }
 
             let hasMultilineFirstArgument = hasLeadingNewline(firstArgument)
-            let hasMultilineArgument = node.argumentList
+            let hasMultilineArgument = node.arguments
                 .contains { argument in
                     hasLeadingNewline(argument)
                 }
@@ -191,7 +188,7 @@ private extension MultilineArgumentsBracketsRule {
             }
         }
 
-        private func hasLeadingNewline(_ syntax: SyntaxProtocol) -> Bool {
+        private func hasLeadingNewline(_ syntax: some SyntaxProtocol) -> Bool {
             syntax.leadingTrivia.contains(where: \.isNewline)
         }
     }

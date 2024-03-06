@@ -3,9 +3,8 @@ import SourceKittenFramework
 
 private let moduleToLog = ProcessInfo.processInfo.environment["SWIFTLINT_LOG_MODULE_USAGE"]
 
-struct UnusedImportRule: CorrectableRule, ConfigurationProviderRule, AnalyzerRule {
-    var configuration = UnusedImportConfiguration(severity: .warning, requireExplicitImports: false,
-                                                  allowedTransitiveImports: [], alwaysKeepImports: [])
+struct UnusedImportRule: CorrectableRule, AnalyzerRule {
+    var configuration = UnusedImportConfiguration()
 
     static let description = RuleDescription(
         identifier: "unused_import",
@@ -21,7 +20,7 @@ struct UnusedImportRule: CorrectableRule, ConfigurationProviderRule, AnalyzerRul
     func validate(file: SwiftLintFile, compilerArguments: [String]) -> [StyleViolation] {
         return importUsage(in: file, compilerArguments: compilerArguments).map { importUsage in
             StyleViolation(ruleDescription: Self.description,
-                           severity: configuration.severity.severity,
+                           severity: configuration.severity,
                            location: Location(file: file, characterOffset: importUsage.violationRange?.location ?? 1),
                            reason: importUsage.violationReason)
         }
@@ -85,10 +84,7 @@ struct UnusedImportRule: CorrectableRule, ConfigurationProviderRule, AnalyzerRul
 
     private func importUsage(in file: SwiftLintFile, compilerArguments: [String]) -> [ImportUsage] {
         guard compilerArguments.isNotEmpty else {
-            queuedPrintError("""
-                warning: Attempted to lint file at path '\(file.path ?? "...")' with the \
-                \(Self.description.identifier) rule without any compiler arguments.
-                """)
+            Issue.missingCompilerArguments(path: file.path, ruleID: Self.description.identifier).print()
             return []
         }
 
@@ -166,7 +162,7 @@ private extension SwiftLintFile {
                 file: path!, offset: token.offset, arguments: compilerArguments
             )
             guard let cursorInfo = (try? cursorInfoRequest.sendIfNotDisabled()).map(SourceKittenDictionary.init) else {
-                queuedPrintError("Could not get cursor info")
+                Issue.missingCursorInfo(path: path, ruleID: UnusedImportRule.description.identifier).print()
                 continue
             }
             if nextIsModuleImport {
@@ -181,6 +177,11 @@ private extension SwiftLintFile {
             }
 
             appendUsedImports(cursorInfo: cursorInfo, usrFragments: &usrFragments)
+
+            // also collect modules from secondary symbol usage if available
+            for secondaryInfo in cursorInfo.secondarySymbols {
+                appendUsedImports(cursorInfo: secondaryInfo, usrFragments: &usrFragments)
+            }
         }
 
         return (imports: imports, usrFragments: usrFragments)
@@ -189,7 +190,7 @@ private extension SwiftLintFile {
     func rangedAndSortedUnusedImports(of unusedImports: [String]) -> [(String, NSRange)] {
         return unusedImports
             .compactMap { module in
-                match(pattern: "^(@\\w+ +)?import +\(module)\\b.*?\n").first.map { (module, $0.0) }
+                match(pattern: "^(@(?!_exported)\\w+ +)?import +\(module)\\b.*?\n").first.map { (module, $0.0) }
             }
             .sorted(by: { $0.1.location < $1.1.location })
     }
@@ -198,7 +199,7 @@ private extension SwiftLintFile {
     func operatorImports(arguments: [String], processedTokenOffsets: Set<ByteCount>) -> Set<String> {
         guard let index = (try? Request.index(file: path!, arguments: arguments).sendIfNotDisabled())
             .map(SourceKittenDictionary.init) else {
-            queuedPrintError("Could not get index")
+            Issue.indexingError(path: path, ruleID: UnusedImportRule.description.identifier).print()
             return []
         }
 
@@ -221,7 +222,7 @@ private extension SwiftLintFile {
                 )
                 guard let cursorInfo = (try? cursorInfoRequest.sendIfNotDisabled())
                     .map(SourceKittenDictionary.init) else {
-                    queuedPrintError("Could not get cursor info")
+                    Issue.missingCursorInfo(path: path, ruleID: UnusedImportRule.description.identifier).print()
                     continue
                 }
 

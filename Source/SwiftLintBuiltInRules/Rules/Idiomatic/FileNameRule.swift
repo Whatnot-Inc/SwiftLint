@@ -1,13 +1,7 @@
 import SwiftSyntax
 
-struct FileNameRule: ConfigurationProviderRule, OptInRule, SourceKitFreeRule {
-    var configuration = FileNameConfiguration(
-        severity: .warning,
-        excluded: ["main.swift", "LinuxMain.swift"],
-        prefixPattern: "",
-        suffixPattern: "\\+.*",
-        nestedTypeSeparator: "."
-    )
+struct FileNameRule: OptInRule, SourceKitFreeRule {
+    var configuration = FileNameConfiguration()
 
     static let description = RuleDescription(
         identifier: "file_name",
@@ -52,7 +46,7 @@ struct FileNameRule: ConfigurationProviderRule, OptInRule, SourceKitFreeRule {
         }
 
         return [StyleViolation(ruleDescription: Self.description,
-                               severity: configuration.severity.severity,
+                               severity: configuration.severity,
                                location: Location(file: filePath, line: 1))]
     }
 }
@@ -61,27 +55,27 @@ private class TypeNameCollectingVisitor: SyntaxVisitor {
     private(set) var names: Set<String> = []
 
     override func visitPost(_ node: ClassDeclSyntax) {
-        names.insert(node.identifier.text)
+        names.insert(node.name.text)
     }
 
     override func visitPost(_ node: ActorDeclSyntax) {
-        names.insert(node.identifier.text)
+        names.insert(node.name.text)
     }
 
     override func visitPost(_ node: StructDeclSyntax) {
-        names.insert(node.identifier.text)
+        names.insert(node.name.text)
     }
 
-    override func visitPost(_ node: TypealiasDeclSyntax) {
-        names.insert(node.identifier.text)
+    override func visitPost(_ node: TypeAliasDeclSyntax) {
+        names.insert(node.name.text)
     }
 
     override func visitPost(_ node: EnumDeclSyntax) {
-        names.insert(node.identifier.text)
+        names.insert(node.name.text)
     }
 
     override func visitPost(_ node: ProtocolDeclSyntax) {
-        names.insert(node.identifier.text)
+        names.insert(node.name.text)
     }
 
     override func visitPost(_ node: ExtensionDeclSyntax) {

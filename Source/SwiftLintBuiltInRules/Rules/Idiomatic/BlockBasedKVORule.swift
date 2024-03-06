@@ -1,7 +1,8 @@
 import SwiftSyntax
 
-struct BlockBasedKVORule: SwiftSyntaxRule, ConfigurationProviderRule {
-    var configuration = SeverityConfiguration(.warning)
+@SwiftSyntaxRule
+struct BlockBasedKVORule: Rule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
     static let description = RuleDescription(
         identifier: "block_based_kvo",
@@ -32,19 +33,15 @@ struct BlockBasedKVORule: SwiftSyntaxRule, ConfigurationProviderRule {
             """)
         ]
     )
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(viewMode: .sourceAccurate)
-    }
 }
 
 private extension BlockBasedKVORule {
-    private final class Visitor: ViolationsSyntaxVisitor {
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
         override func visitPost(_ node: FunctionDeclSyntax) {
-            guard node.modifiers.containsOverride,
-                  case let parameterList = node.signature.input.parameterList,
+            guard node.modifiers.contains(keyword: .override),
+                  case let parameterList = node.signature.parameterClause.parameters,
                   parameterList.count == 4,
-                  node.identifier.text == "observeValue",
+                  node.name.text == "observeValue",
                   parameterList.map(\.firstName.text) == ["forKeyPath", "of", "change", "context"]
             else {
                 return

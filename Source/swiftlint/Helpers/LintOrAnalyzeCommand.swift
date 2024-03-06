@@ -27,6 +27,7 @@ enum LintOrAnalyzeMode {
 struct LintOrAnalyzeCommand {
     static func run(_ options: LintOrAnalyzeOptions) async throws {
         if options.inProcessSourcekit {
+            // TODO: [08/11/2024] Remove deprecation warning after ~2 years.
             queuedPrintError(
                 """
                 warning: The --in-process-sourcekit option is deprecated. \
@@ -59,15 +60,22 @@ struct LintOrAnalyzeCommand {
                 let start = Date()
                 let (violationsBeforeLeniency, currentRuleTimes) = linter
                     .styleViolationsAndRuleTimes(using: builder.storage)
-                currentViolations = applyLeniency(options: options, violations: violationsBeforeLeniency)
+                currentViolations = applyLeniency(
+                    options: options,
+                    strict: builder.configuration.strict,
+                    violations: violationsBeforeLeniency
+                )
                 visitorMutationQueue.sync {
                     builder.fileBenchmark.record(file: linter.file, from: start)
                     currentRuleTimes.forEach { builder.ruleBenchmark.record(id: $0, time: $1) }
                     builder.violations += currentViolations
                 }
             } else {
-                currentViolations = applyLeniency(options: options,
-                                                  violations: linter.styleViolations(using: builder.storage))
+                currentViolations = applyLeniency(
+                    options: options,
+                    strict: builder.configuration.strict,
+                    violations: linter.styleViolations(using: builder.storage)
+                )
                 visitorMutationQueue.sync {
                     builder.violations += currentViolations
                 }
@@ -138,8 +146,14 @@ struct LintOrAnalyzeCommand {
             reason: "Number of warnings exceeded threshold of \(threshold).")
     }
 
-    private static func applyLeniency(options: LintOrAnalyzeOptions, violations: [StyleViolation]) -> [StyleViolation] {
-        switch (options.lenient, options.strict) {
+    private static func applyLeniency(
+        options: LintOrAnalyzeOptions,
+        strict: Bool,
+        violations: [StyleViolation]
+    ) -> [StyleViolation] {
+        let strict = (strict && !options.lenient) || options.strict
+
+        switch (options.lenient, strict) {
         case (false, false):
             return violations
 
@@ -252,7 +266,7 @@ private class LintOrAnalyzeResultBuilder {
     var violations = [StyleViolation]()
     let storage = RuleStorage()
     let configuration: Configuration
-    let reporter: Reporter.Type
+    let reporter: any Reporter.Type
     let cache: LinterCache?
     let options: LintOrAnalyzeOptions
 
@@ -273,7 +287,7 @@ private class LintOrAnalyzeResultBuilder {
             do {
                 try Data().write(to: URL(fileURLWithPath: outFile))
             } catch {
-                queuedPrintError("warning: Could not write to file at path \(outFile)")
+                Issue.fileNotWritable(path: outFile).print()
             }
         }
     }
@@ -302,7 +316,7 @@ private extension LintOrAnalyzeOptions {
             fileUpdater.write(Data((string + "\n").utf8))
             fileUpdater.closeFile()
         } catch {
-            queuedPrintError("warning: Could not write to file at path \(outFile)")
+            Issue.fileNotWritable(path: outFile).print()
         }
     }
 }

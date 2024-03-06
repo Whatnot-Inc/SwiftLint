@@ -6,7 +6,7 @@ import Foundation
 extension Configuration {
     // MARK: Caching Configurations By Identifier (In-Memory)
     private static var cachedConfigurationsByIdentifier = [String: Configuration]()
-    private static var cachedConfigurationsByIdentifierLock = NSLock()
+    private static let cachedConfigurationsByIdentifierLock = NSLock()
 
     /// Since the cache is stored in a static var, this function is used to reset the cache during tests
     internal static func resetCache() {
@@ -39,7 +39,7 @@ extension Configuration {
 
     // MARK: Nested Config Is Self Cache
     private static var nestedConfigIsSelfByIdentifier = [String: Bool]()
-    private static var nestedConfigIsSelfByIdentifierLock = NSLock()
+    private static let nestedConfigIsSelfByIdentifierLock = NSLock()
 
     internal static func setIsNestedConfigurationSelf(forIdentifier identifier: String, value: Bool) {
         Self.nestedConfigIsSelfByIdentifierLock.lock()
@@ -92,7 +92,7 @@ extension Configuration {
         do {
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true, attributes: nil)
         } catch {
-            queuedPrintError("Error while creating cache: " + error.localizedDescription)
+            Issue.genericWarning("Cannot create cache: " + error.localizedDescription).print()
         }
 
         return folder

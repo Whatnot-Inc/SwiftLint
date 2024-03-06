@@ -1,6 +1,6 @@
 import SourceKittenFramework
 
-struct CaptureVariableRule: ConfigurationProviderRule, AnalyzerRule, CollectingRule {
+struct CaptureVariableRule: AnalyzerRule, CollectingRule {
     struct Variable: Hashable {
         let usr: String
         let offset: ByteCount
@@ -152,7 +152,7 @@ struct CaptureVariableRule: ConfigurationProviderRule, AnalyzerRule, CollectingR
         requiresFileOnDisk: true
     )
 
-    var configuration = SeverityConfiguration(.warning)
+    var configuration = SeverityConfiguration<Self>(.warning)
 
     func collectInfo(for file: SwiftLintFile, compilerArguments: [String]) -> CaptureVariableRule.FileInfo {
         file.declaredVariables(compilerArguments: compilerArguments)
@@ -263,10 +263,7 @@ private extension SwiftLintFile {
             let path = self.path,
             let response = try? Request.index(file: path, arguments: compilerArguments).sendIfNotDisabled()
         else {
-            queuedPrintError("""
-                warning: Could not index file at path '\(self.path ?? "...")' with the \
-                \(CaptureVariableRule.description.identifier) rule.
-                """)
+            Issue.indexingError(path: path, ruleID: CaptureVariableRule.description.identifier).print()
             return nil
         }
 

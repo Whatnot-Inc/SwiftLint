@@ -1,7 +1,8 @@
 import SwiftSyntax
 
-struct FlatMapOverMapReduceRule: SwiftSyntaxRule, OptInRule, ConfigurationProviderRule {
-    var configuration = SeverityConfiguration(.warning)
+@SwiftSyntaxRule
+struct FlatMapOverMapReduceRule: OptInRule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
     static let description = RuleDescription(
         identifier: "flatmap_over_map_reduce",
@@ -16,23 +17,19 @@ struct FlatMapOverMapReduceRule: SwiftSyntaxRule, OptInRule, ConfigurationProvid
             Example("let foo = ↓bar.map { $0.array }.reduce([], +)")
         ]
     )
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(viewMode: .sourceAccurate)
-    }
 }
 
 private extension FlatMapOverMapReduceRule {
-    final class Visitor: ViolationsSyntaxVisitor {
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
         override func visitPost(_ node: FunctionCallExprSyntax) {
             guard
                 let memberAccess = node.calledExpression.as(MemberAccessExprSyntax.self),
-                memberAccess.name.text == "reduce",
-                node.argumentList.count == 2,
-                let firstArgument = node.argumentList.first?.expression.as(ArrayExprSyntax.self),
+                memberAccess.declName.baseName.text == "reduce",
+                node.arguments.count == 2,
+                let firstArgument = node.arguments.first?.expression.as(ArrayExprSyntax.self),
                 firstArgument.elements.isEmpty,
-                let secondArgument = node.argumentList.last?.expression.as(IdentifierExprSyntax.self),
-                secondArgument.identifier.text == "+"
+                let secondArgument = node.arguments.last?.expression.as(DeclReferenceExprSyntax.self),
+                secondArgument.baseName.text == "+"
             else {
                 return
             }

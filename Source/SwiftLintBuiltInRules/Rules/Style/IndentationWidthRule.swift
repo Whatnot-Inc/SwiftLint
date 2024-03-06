@@ -1,7 +1,7 @@
 import Foundation
 import SourceKittenFramework
 
-struct IndentationWidthRule: ConfigurationProviderRule, OptInRule {
+struct IndentationWidthRule: OptInRule {
     // MARK: - Subtypes
     private enum Indentation: Equatable {
         case tabs(Int)
@@ -16,13 +16,8 @@ struct IndentationWidthRule: ConfigurationProviderRule, OptInRule {
     }
 
     // MARK: - Properties
-    var configuration = IndentationWidthConfiguration(
-        severity: .warning,
-        indentationWidth: 4,
-        includeComments: true,
-        includeCompilerDirectives: true,
-        includeMultilineStrings: true
-    )
+    var configuration = IndentationWidthConfiguration()
+
     static let description = RuleDescription(
         identifier: "indentation_width",
         name: "Indentation Width",

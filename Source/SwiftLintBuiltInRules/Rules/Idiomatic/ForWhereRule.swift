@@ -1,7 +1,8 @@
 import SwiftSyntax
 
-struct ForWhereRule: SwiftSyntaxRule, ConfigurationProviderRule {
-    var configuration = ForWhereRuleConfiguration()
+@SwiftSyntaxRule
+struct ForWhereRule: Rule {
+    var configuration = ForWhereConfiguration()
 
     static let description = RuleDescription(
         identifier: "for_where",
@@ -115,22 +116,11 @@ struct ForWhereRule: SwiftSyntaxRule, ConfigurationProviderRule {
             """, configuration: ["allow_for_as_filter": true])
         ]
     )
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(allowForAsFilter: configuration.allowForAsFilter)
-    }
 }
 
 private extension ForWhereRule {
-    final class Visitor: ViolationsSyntaxVisitor {
-        private let allowForAsFilter: Bool
-
-        init(allowForAsFilter: Bool) {
-            self.allowForAsFilter = allowForAsFilter
-            super.init(viewMode: .sourceAccurate)
-        }
-
-        override func visitPost(_ node: ForInStmtSyntax) {
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
+        override func visitPost(_ node: ForStmtSyntax) {
             guard node.whereClause == nil,
                   let onlyExprStmt = node.body.statements.onlyElement?.item.as(ExpressionStmtSyntax.self),
                   let ifExpr = onlyExprStmt.expression.as(IfExprSyntax.self),
@@ -142,7 +132,7 @@ private extension ForWhereRule {
                 return
             }
 
-            if allowForAsFilter, ifExpr.containsReturnStatement {
+            if configuration.allowForAsFilter, ifExpr.containsReturnStatement {
                 return
             }
 
@@ -183,7 +173,7 @@ private extension ConditionElementSyntax {
             }
 
             let operators: Set = ["&&", "||"]
-            return operators.contains(binaryExpr.operatorToken.text)
+            return operators.contains(binaryExpr.operator.text)
         }
     }
 }

@@ -67,8 +67,9 @@ import SwiftSyntax
 ///     case accountCreated
 /// }
 /// ````
-struct RequiredEnumCaseRule: SwiftSyntaxRule, OptInRule, ConfigurationProviderRule {
-    var configuration = RequiredEnumCaseRuleConfiguration()
+@SwiftSyntaxRule
+struct RequiredEnumCaseRule: OptInRule {
+    var configuration = RequiredEnumCaseConfiguration()
 
     private static let exampleConfiguration = [
         "NetworkResponsable": ["success": "warning", "error": "warning", "notConnected": "warning"]
@@ -130,21 +131,10 @@ struct RequiredEnumCaseRule: SwiftSyntaxRule, OptInRule, ConfigurationProviderRu
             """, configuration: exampleConfiguration)
         ]
     )
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(configuration: configuration)
-    }
 }
 
 private extension RequiredEnumCaseRule {
-    final class Visitor: ViolationsSyntaxVisitor {
-        private let configuration: RequiredEnumCaseRuleConfiguration
-
-        init(configuration: RequiredEnumCaseRuleConfiguration) {
-            self.configuration = configuration
-            super.init(viewMode: .sourceAccurate)
-        }
-
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
         override func visitPost(_ node: EnumDeclSyntax) {
             guard configuration.protocols.isNotEmpty else {
                 return
@@ -183,7 +173,7 @@ private extension EnumDeclSyntax {
                     return []
                 }
 
-                return enumCaseDecl.elements.map(\.identifier.text)
+                return enumCaseDecl.elements.map(\.name.text)
             }
     }
 }

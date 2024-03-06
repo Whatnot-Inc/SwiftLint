@@ -154,10 +154,12 @@ extension Configuration {
                     let outputFilename = self.outputFilename(for: filePath, duplicateFileNames: duplicateFileNames)
                     let collected = await counter.next()
                     if skipFile {
-                        queuedPrintError("""
-                            warning: Skipping '\(outputFilename)' (\(collected)/\(total)) \
+                        Issue.genericWarning(
+                            """
+                            Skipping '\(outputFilename)' (\(collected)/\(total)) \
                             because its compiler arguments could not be found
-                            """)
+                            """
+                        ).print()
                     } else {
                         queuedPrintError("Collecting '\(outputFilename)' (\(collected)/\(total))")
                     }
@@ -211,10 +213,8 @@ extension Configuration {
     fileprivate func getFiles(with visitor: LintableFilesVisitor) async throws -> [SwiftLintFile] {
         if visitor.useSTDIN {
             let stdinData = FileHandle.standardInput.readDataToEndOfFile()
-            if let stdinString = String(data: stdinData, encoding: .utf8) {
-                return [SwiftLintFile(contents: stdinString)]
-            }
-            throw SwiftLintError.usageError(description: "stdin isn't a UTF8-encoded string")
+            let stdinString = String(decoding: stdinData, as: UTF8.self)
+            return [SwiftLintFile(contents: stdinString)]
         } else if visitor.useScriptInputFiles {
             let files = try scriptInputFiles()
             guard visitor.forceExclude else {
@@ -241,13 +241,14 @@ extension Configuration {
 
             queuedPrintError("\(visitor.action) Swift files \(filesInfo)")
         }
+        let excludeLintableFilesBy = visitor.useExcludingByPrefix
+                    ? Configuration.ExcludeBy.prefix
+                    : .paths(excludedPaths: excludedPaths())
         return visitor.paths.flatMap {
             self.lintableFiles(
                 inPath: $0,
                 forceExclude: visitor.forceExclude,
-                excludeBy: visitor.useExcludingByPrefix
-                    ? .prefix
-                    : .paths(excludedPaths: excludedPaths()))
+                excludeBy: excludeLintableFilesBy)
         }
     }
 

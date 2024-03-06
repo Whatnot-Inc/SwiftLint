@@ -59,7 +59,7 @@ enum LintOrAnalyzeModeWithCompilerArguments {
 }
 
 private func resolveParamsFiles(args: [String]) -> [String] {
-    return args.reduce(into: []) { (allArgs: inout [String], arg: String) -> Void in
+    return args.reduce(into: []) { (allArgs: inout [String], arg: String) in
         if arg.hasPrefix("@"), let contents = try? String(contentsOfFile: String(arg.dropFirst())) {
             allArgs.append(contentsOf: resolveParamsFiles(args: contents.split(separator: "\n").map(String.init)))
         } else {
@@ -178,8 +178,8 @@ struct LintableFilesVisitor {
     }
 
     private static func loadLogCompilerInvocations(_ path: String) -> [[String]]? {
-        if let data = FileManager.default.contents(atPath: path),
-            let logContents = String(data: data, encoding: .utf8) {
+        if let data = FileManager.default.contents(atPath: path) {
+            let logContents = String(decoding: data, as: UTF8.self)
             if logContents.isEmpty {
                 return nil
             }

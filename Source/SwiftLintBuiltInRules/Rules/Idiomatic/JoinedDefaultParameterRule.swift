@@ -1,7 +1,8 @@
 import SwiftSyntax
 
-struct JoinedDefaultParameterRule: SwiftSyntaxCorrectableRule, ConfigurationProviderRule, OptInRule {
-    var configuration = SeverityConfiguration(.warning)
+@SwiftSyntaxRule(explicitRewriter: true)
+struct JoinedDefaultParameterRule: OptInRule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
     static let description = RuleDescription(
         identifier: "joined_default_parameter",
@@ -35,21 +36,10 @@ struct JoinedDefaultParameterRule: SwiftSyntaxCorrectableRule, ConfigurationProv
                 Example("class C {\n#if true\nlet foo = bar.joined()\n#endif\n}")
         ]
     )
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(viewMode: .sourceAccurate)
-    }
-
-    func makeRewriter(file: SwiftLintFile) -> ViolationsSyntaxRewriter? {
-        Rewriter(
-            locationConverter: file.locationConverter,
-            disabledRegions: disabledRegions(file: file)
-        )
-    }
 }
 
 private extension JoinedDefaultParameterRule {
-    final class Visitor: ViolationsSyntaxVisitor {
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
         override func visitPost(_ node: FunctionCallExprSyntax) {
             if let violationPosition = node.violationPosition {
                 violations.append(violationPosition)
@@ -57,24 +47,13 @@ private extension JoinedDefaultParameterRule {
         }
     }
 
-    final class Rewriter: SyntaxRewriter, ViolationsSyntaxRewriter {
-        private(set) var correctionPositions: [AbsolutePosition] = []
-        private let locationConverter: SourceLocationConverter
-        private let disabledRegions: [SourceRange]
-
-        init(locationConverter: SourceLocationConverter, disabledRegions: [SourceRange]) {
-            self.locationConverter = locationConverter
-            self.disabledRegions = disabledRegions
-        }
-
+    final class Rewriter: ViolationsSyntaxRewriter {
         override func visit(_ node: FunctionCallExprSyntax) -> ExprSyntax {
-            guard let violationPosition = node.violationPosition,
-                    !node.isContainedIn(regions: disabledRegions, locationConverter: locationConverter) else {
+            guard let violationPosition = node.violationPosition else {
                 return super.visit(node)
             }
-
             correctionPositions.append(violationPosition)
-            let newNode = node.with(\.argumentList, [])
+            let newNode = node.with(\.arguments, [])
             return super.visit(newNode)
         }
     }
@@ -82,9 +61,9 @@ private extension JoinedDefaultParameterRule {
 
 private extension FunctionCallExprSyntax {
     var violationPosition: AbsolutePosition? {
-        guard let argument = argumentList.first,
+        guard let argument = arguments.first,
               let memberExp = calledExpression.as(MemberAccessExprSyntax.self),
-              memberExp.name.text == "joined",
+              memberExp.declName.baseName.text == "joined",
               argument.label?.text == "separator",
               let strLiteral = argument.expression.as(StringLiteralExprSyntax.self),
               strLiteral.isEmptyString else {

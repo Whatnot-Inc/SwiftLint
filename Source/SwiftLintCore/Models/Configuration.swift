@@ -35,6 +35,9 @@ public struct Configuration {
     /// Allow or disallow SwiftLint to exit successfully when passed only ignored or unlintable files.
     public let allowZeroLintableFiles: Bool
 
+    /// Treat warnings as errors
+    public let strict: Bool
+
     /// This value is `true` iff the `--config` parameter was used to specify (a) configuration file(s)
     /// In particular, this means that the value is also `true` if the `--config` parameter
     /// was used to explicitly specify the default `.swiftlint.yml` as the configuration file
@@ -42,7 +45,7 @@ public struct Configuration {
 
     // MARK: Public Computed
     /// All rules enabled in this configuration
-    public var rules: [Rule] { rulesWrapper.resultingRules }
+    public var rules: [any Rule] { rulesWrapper.resultingRules }
 
     /// The root directory is the directory that included & excluded paths relate to.
     /// By default, the root directory is the current working directory,
@@ -69,7 +72,8 @@ public struct Configuration {
         warningThreshold: Int?,
         reporter: String,
         cachePath: String?,
-        allowZeroLintableFiles: Bool
+        allowZeroLintableFiles: Bool,
+        strict: Bool
     ) {
         self.rulesWrapper = rulesWrapper
         self.fileGraph = fileGraph
@@ -80,6 +84,7 @@ public struct Configuration {
         self.reporter = reporter
         self.cachePath = cachePath
         self.allowZeroLintableFiles = allowZeroLintableFiles
+        self.strict = strict
     }
 
     /// Creates a Configuration by copying an existing configuration.
@@ -96,6 +101,7 @@ public struct Configuration {
         basedOnCustomConfigurationFiles = configuration.basedOnCustomConfigurationFiles
         cachePath = configuration.cachePath
         allowZeroLintableFiles = configuration.allowZeroLintableFiles
+        strict = configuration.strict
     }
 
     /// Creates a `Configuration` by specifying its properties directly,
@@ -117,6 +123,7 @@ public struct Configuration {
     /// - parameter cachePath:              The location of the persisted cache to use whith this configuration.
     /// - parameter pinnedVersion:          The SwiftLint version defined in this configuration.
     /// - parameter allowZeroLintableFiles: Allow SwiftLint to exit successfully when passed ignored or unlintable files
+    /// - parameter strict:                 Treat warnings as errors
     @_spi(TestHelper)
     public init(
         rulesMode: RulesMode = .default(disabled: [], optIn: []),
@@ -127,10 +134,11 @@ public struct Configuration {
         excludedPaths: [String] = [],
         indentation: IndentationStyle = .default,
         warningThreshold: Int? = nil,
-        reporter: String = XcodeReporter.identifier,
+        reporter: String? = nil,
         cachePath: String? = nil,
         pinnedVersion: String? = nil,
-        allowZeroLintableFiles: Bool = false
+        allowZeroLintableFiles: Bool = false,
+        strict: Bool = false
     ) {
         if let pinnedVersion, pinnedVersion != Version.current.value {
             queuedPrintError(
@@ -153,9 +161,10 @@ public struct Configuration {
             excludedPaths: excludedPaths,
             indentation: indentation,
             warningThreshold: warningThreshold,
-            reporter: reporter,
+            reporter: reporter ?? XcodeReporter.identifier,
             cachePath: cachePath,
-            allowZeroLintableFiles: allowZeroLintableFiles
+            allowZeroLintableFiles: allowZeroLintableFiles,
+            strict: strict
         )
     }
 
@@ -218,26 +227,21 @@ public struct Configuration {
             self.fileGraph = fileGraph
             setCached(forIdentifier: cacheIdentifier)
         } catch {
-            let errorString: String
-            let initializationResult = FileGraphInitializationResult(
-                error: error, hasCustomConfigurationFiles: hasCustomConfigurationFiles
-            )
-            switch initializationResult {
-            case .initialImplicitFileNotFound:
-                // Silently fall back to default
+            if case Issue.initialFileNotFound = error, !hasCustomConfigurationFiles {
+                // The initial configuration file wasn't found, but the user didn't explicitly specify one
+                // Don't handle as error. Instead, silently fall back to default.
                 self.init(rulesMode: rulesMode, cachePath: cachePath)
                 return
-            case .error(let message):
-                errorString = message
             }
-
             if useDefaultConfigOnFailure ?? !hasCustomConfigurationFiles {
                 // No files were explicitly specified, so maybe the user doesn't want a config at all -> warn
-                queuedPrintError("warning: \(errorString) – Falling back to default configuration")
+                queuedPrintError(
+                    "\(Issue.wrap(error: error).errorDescription) – Falling back to default configuration"
+                )
                 self.init(rulesMode: rulesMode, cachePath: cachePath)
             } else {
                 // Files that were explicitly specified could not be loaded -> fail
-                queuedPrintError("error: \(errorString)")
+                queuedPrintError(Issue.wrap(error: error).asError.localizedDescription)
                 queuedFatalError("Could not read configuration")
             }
         }
@@ -255,31 +259,6 @@ public struct Configuration {
     }
 }
 
-// MARK: - FileGraphInitializationResult
-private enum FileGraphInitializationResult {
-    case initialImplicitFileNotFound
-    case error(message: String)
-
-    init(error: Error, hasCustomConfigurationFiles: Bool) {
-        switch error {
-        case let ConfigurationError.initialFileNotFound(path):
-            if hasCustomConfigurationFiles {
-                self = .error(message: "SwiftLint Configuration Error: Could not read file at path: \(path)")
-            } else {
-                // The initial configuration file wasn't found, but the user didn't explicitly specify one
-                // -> don't handle as error
-                self = .initialImplicitFileNotFound
-            }
-        case let ConfigurationError.generic(message):
-            self = .error(message: "SwiftLint Configuration Error: \(message)")
-        case let YamlParserError.yamlParsing(message):
-            self = .error(message: "YML Parsing Error: \(message)")
-        default:
-            self = .error(message: error.localizedDescription)
-        }
-    }
-}
-
 // MARK: - Hashable
 extension Configuration: Hashable {
     public func hash(into hasher: inout Hasher) {
@@ -289,6 +268,7 @@ extension Configuration: Hashable {
         hasher.combine(warningThreshold)
         hasher.combine(reporter)
         hasher.combine(allowZeroLintableFiles)
+        hasher.combine(strict)
         hasher.combine(basedOnCustomConfigurationFiles)
         hasher.combine(cachePath)
         hasher.combine(rules.map { type(of: $0).description.identifier })
@@ -305,7 +285,8 @@ extension Configuration: Hashable {
             lhs.cachePath == rhs.cachePath &&
             lhs.rules == rhs.rules &&
             lhs.fileGraph == rhs.fileGraph &&
-            lhs.allowZeroLintableFiles == rhs.allowZeroLintableFiles
+            lhs.allowZeroLintableFiles == rhs.allowZeroLintableFiles &&
+            lhs.strict == rhs.strict
     }
 }
 

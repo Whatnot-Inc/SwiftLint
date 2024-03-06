@@ -1,40 +1,36 @@
 import SourceKittenFramework
+import SwiftLintCore
 
-struct ModifierOrderConfiguration: RuleConfiguration, Equatable {
-    private(set) var severityConfiguration = SeverityConfiguration(.warning)
-    private(set) var preferredModifierOrder = [SwiftDeclarationAttributeKind.ModifierGroup]()
+@AutoApply
+struct ModifierOrderConfiguration: SeverityBasedRuleConfiguration {
+    typealias Parent = ModifierOrderRule
 
-    var consoleDescription: String {
-        return "severity: \(severityConfiguration.consoleDescription)"
-            + ", preferred_modifier_order: \(preferredModifierOrder)"
-    }
+    @ConfigurationElement(key: "severity")
+    private(set) var severityConfiguration = SeverityConfiguration<Parent>(.warning)
+    @ConfigurationElement(key: "preferred_modifier_order")
+    private(set) var preferredModifierOrder: [SwiftDeclarationAttributeKind.ModifierGroup] = [
+        .override,
+        .acl,
+        .setterACL,
+        .dynamic,
+        .mutators,
+        .lazy,
+        .final,
+        .required,
+        .convenience,
+        .typeMethods,
+        .owned
+    ]
+}
 
-    init() {
-        self.preferredModifierOrder = []
-    }
-
-    init(preferredModifierOrder: [SwiftDeclarationAttributeKind.ModifierGroup] = []) {
-        self.preferredModifierOrder = preferredModifierOrder
-    }
-
-    mutating func apply(configuration: Any) throws {
-        guard let configuration = configuration as? [String: Any] else {
-            throw ConfigurationError.unknownConfiguration
-        }
-
-        if let preferredModifierOrder = configuration["preferred_modifier_order"] as? [String] {
-            self.preferredModifierOrder = try preferredModifierOrder.map {
-                guard let modifierGroup = SwiftDeclarationAttributeKind.ModifierGroup(rawValue: $0),
-                      modifierGroup != .atPrefixed else {
-                    throw ConfigurationError.unknownConfiguration
-                }
-
-                return modifierGroup
-            }
-        }
-
-        if let severityString = configuration["severity"] as? String {
-            try severityConfiguration.apply(configuration: severityString)
+extension SwiftDeclarationAttributeKind.ModifierGroup: AcceptableByConfigurationElement {
+    public init(fromAny value: Any, context ruleID: String) throws {
+        if let value = value as? String, let newSelf = Self(rawValue: value), newSelf != .atPrefixed {
+            self = newSelf
+        } else {
+            throw Issue.unknownConfiguration(ruleID: ruleID)
         }
     }
+
+    public func asOption() -> OptionType { .symbol(rawValue) }
 }

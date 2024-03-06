@@ -1,7 +1,8 @@
 import SwiftSyntax
 
-struct FunctionDefaultParameterAtEndRule: SwiftSyntaxRule, ConfigurationProviderRule, OptInRule {
-    var configuration = SeverityConfiguration(.warning)
+@SwiftSyntaxRule
+struct FunctionDefaultParameterAtEndRule: OptInRule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
     static let description = RuleDescription(
         identifier: "function_default_parameter_at_end",
@@ -48,16 +49,12 @@ struct FunctionDefaultParameterAtEndRule: SwiftSyntaxRule, ConfigurationProvider
             Example("public ↓init?(for date: Date = Date(), coordinate: CLLocationCoordinate2D) {}")
         ]
     )
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(viewMode: .sourceAccurate)
-    }
 }
 
 private extension FunctionDefaultParameterAtEndRule {
-    final class Visitor: ViolationsSyntaxVisitor {
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
         override func visitPost(_ node: FunctionDeclSyntax) {
-            guard !node.modifiers.containsOverride, node.signature.containsViolation else {
+            guard !node.modifiers.contains(keyword: .override), node.signature.containsViolation else {
                 return
             }
 
@@ -65,7 +62,7 @@ private extension FunctionDefaultParameterAtEndRule {
         }
 
         override func visitPost(_ node: InitializerDeclSyntax) {
-            guard !node.modifiers.containsOverride, node.signature.containsViolation else {
+            guard !node.modifiers.contains(keyword: .override), node.signature.containsViolation else {
                 return
             }
 
@@ -76,7 +73,7 @@ private extension FunctionDefaultParameterAtEndRule {
 
 private extension FunctionSignatureSyntax {
     var containsViolation: Bool {
-        let params = input.parameterList.filter { param in
+        let params = parameterClause.parameters.filter { param in
             !param.isClosure
         }
 
@@ -85,7 +82,7 @@ private extension FunctionSignatureSyntax {
         }
 
         let defaultParams = params.filter { param in
-            param.defaultArgument != nil
+            param.defaultValue != nil
         }
         guard defaultParams.isNotEmpty else {
             return false
@@ -93,7 +90,7 @@ private extension FunctionSignatureSyntax {
 
         let lastParameters = params.suffix(defaultParams.count)
         let lastParametersWithDefaultValue = lastParameters.filter { param in
-            param.defaultArgument != nil
+            param.defaultValue != nil
         }
 
         return lastParameters.count != lastParametersWithDefaultValue.count

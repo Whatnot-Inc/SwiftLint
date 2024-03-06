@@ -1,7 +1,8 @@
 import SwiftSyntax
 
-struct ForceTryRule: ConfigurationProviderRule, SwiftSyntaxRule {
-    var configuration = SeverityConfiguration(.error)
+@SwiftSyntaxRule
+struct ForceTryRule: Rule {
+    var configuration = SeverityConfiguration<Self>(.error)
 
     static let description = RuleDescription(
         identifier: "force_try",
@@ -23,14 +24,10 @@ struct ForceTryRule: ConfigurationProviderRule, SwiftSyntaxRule {
             """)
         ]
     )
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(viewMode: .sourceAccurate)
-    }
 }
 
 private extension ForceTryRule {
-    final class Visitor: ViolationsSyntaxVisitor {
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
         override func visitPost(_ node: TryExprSyntax) {
             if node.questionOrExclamationMark?.tokenKind == .exclamationMark {
                 violations.append(node.positionAfterSkippingLeadingTrivia)

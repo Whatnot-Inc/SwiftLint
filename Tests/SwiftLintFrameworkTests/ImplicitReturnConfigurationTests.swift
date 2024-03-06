@@ -9,7 +9,9 @@ class ImplicitReturnConfigurationTests: SwiftLintTestCase {
             "included": [
                 "closure",
                 "function",
-                "getter"
+                "getter",
+                "initializer",
+                "subscript"
             ]
         ]
 
@@ -17,7 +19,9 @@ class ImplicitReturnConfigurationTests: SwiftLintTestCase {
         let expectedKinds: Set<ImplicitReturnConfiguration.ReturnKind> = Set([
             .closure,
             .function,
-            .getter
+            .getter,
+            .initializer,
+            .subscript
         ])
         XCTAssertEqual(configuration.severityConfiguration.severity, .error)
         XCTAssertEqual(configuration.includedKinds, expectedKinds)
@@ -25,9 +29,9 @@ class ImplicitReturnConfigurationTests: SwiftLintTestCase {
 
     func testImplicitReturnConfigurationThrowsOnUnrecognizedModifierGroup() {
         var configuration = ImplicitReturnConfiguration()
-        let config = ["included": ["foreach"]] as [String: Any]
+        let config = ["included": ["foreach"]] as [String: any Sendable]
 
-        checkError(ConfigurationError.unknownConfiguration) {
+        checkError(Issue.unknownConfiguration(ruleID: ImplicitReturnRule.description.identifier)) {
             try configuration.apply(configuration: config)
         }
     }

@@ -1,7 +1,8 @@
 import SwiftSyntax
 
-struct DynamicInlineRule: SwiftSyntaxRule, ConfigurationProviderRule {
-    var configuration = SeverityConfiguration(.error)
+@SwiftSyntaxRule
+struct DynamicInlineRule: Rule {
+    var configuration = SeverityConfiguration<Self>(.error)
 
     static let description = RuleDescription(
         identifier: "dynamic_inline",
@@ -21,24 +22,15 @@ struct DynamicInlineRule: SwiftSyntaxRule, ConfigurationProviderRule {
             Example("class C {\n@inline(__always)\ndynamic\n↓func f() {}\n}")
         ]
     )
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(viewMode: .sourceAccurate)
-    }
 }
 
 private extension DynamicInlineRule {
-    private final class Visitor: ViolationsSyntaxVisitor {
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
         override func visitPost(_ node: FunctionDeclSyntax) {
-            guard let modifiers = node.modifiers,
-                  let attributes = node.attributes,
-                  modifiers.contains(where: { $0.name.text == "dynamic" }),
-                  attributes.contains(where: { $0.as(AttributeSyntax.self)?.isInlineAlways == true })
-            else {
-                return
+            if node.modifiers.contains(where: { $0.name.text == "dynamic" }),
+               node.attributes.contains(where: { $0.as(AttributeSyntax.self)?.isInlineAlways == true }) {
+                violations.append(node.funcKeyword.positionAfterSkippingLeadingTrivia)
             }
-
-            violations.append(node.funcKeyword.positionAfterSkippingLeadingTrivia)
         }
     }
 }
@@ -46,6 +38,6 @@ private extension DynamicInlineRule {
 private extension AttributeSyntax {
     var isInlineAlways: Bool {
         attributeNameText == "inline" &&
-            argument?.firstToken(viewMode: .sourceAccurate)?.tokenKind == .identifier("__always")
+        arguments?.firstToken(viewMode: .sourceAccurate)?.tokenKind == .identifier("__always")
     }
 }

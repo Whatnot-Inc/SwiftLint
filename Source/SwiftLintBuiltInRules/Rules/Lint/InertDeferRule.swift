@@ -1,19 +1,16 @@
 import SwiftSyntax
 
+// TODO: [12/23/2024] Remove deprecation warning after ~2 years.
 private let warnDeprecatedOnceImpl: Void = {
-    queuedPrintError("""
-        warning: The `\(InertDeferRule.description.identifier)` rule is now deprecated and will be \
-        completely removed in a future release due to an equivalent warning issued by the Swift compiler.
-        """
-    )
+    Issue.ruleDeprecated(ruleID: InertDeferRule.description.identifier).print()
 }()
 
 private func warnDeprecatedOnce() {
     _ = warnDeprecatedOnceImpl
 }
 
-struct InertDeferRule: ConfigurationProviderRule, SwiftSyntaxRule, OptInRule {
-    var configuration = SeverityConfiguration(.warning)
+struct InertDeferRule: SwiftSyntaxRule, OptInRule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
     static let description = RuleDescription(
         identifier: "inert_defer",
@@ -86,14 +83,14 @@ struct InertDeferRule: ConfigurationProviderRule, SwiftSyntaxRule, OptInRule {
         ]
     )
 
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
+    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor<ConfigurationType> {
         warnDeprecatedOnce()
-        return Visitor(viewMode: .sourceAccurate)
+        return Visitor(configuration: configuration, file: file)
     }
 }
 
 private extension InertDeferRule {
-    final class Visitor: ViolationsSyntaxVisitor {
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
         override func visitPost(_ node: DeferStmtSyntax) {
             guard node.isLastStatement else {
                 return

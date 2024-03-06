@@ -1,8 +1,8 @@
 import Foundation
 import SourceKittenFramework
 
-struct TypesafeArrayInitRule: AnalyzerRule, ConfigurationProviderRule {
-    var configuration = SeverityConfiguration(.warning)
+struct TypesafeArrayInitRule: AnalyzerRule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
     static let description = RuleDescription(
         identifier: "typesafe_array_init",
@@ -61,10 +61,7 @@ struct TypesafeArrayInitRule: AnalyzerRule, ConfigurationProviderRule {
             return []
         }
         guard compilerArguments.isNotEmpty else {
-            queuedPrintError("""
-                warning: Attempted to lint file at path '\(file.path ?? "...")' with the \
-                \(Self.description.identifier) rule without any compiler arguments.
-                """)
+            Issue.missingCompilerArguments(path: file.path, ruleID: Self.description.identifier).print()
             return []
         }
         return Self.parentRule.validate(file: file)
@@ -82,7 +79,7 @@ struct TypesafeArrayInitRule: AnalyzerRule, ConfigurationProviderRule {
             }
     }
 
-    private func pointsToSystemMapType(pointee: [String: SourceKitRepresentable]) -> Bool {
+    private func pointsToSystemMapType(pointee: [String: any SourceKitRepresentable]) -> Bool {
         if let isSystem = pointee["key.is_system"], isSystem.isEqualTo(true),
            let name = pointee["key.name"], name.isEqualTo("map(_:)"),
            let typeName = pointee["key.typename"] as? String {

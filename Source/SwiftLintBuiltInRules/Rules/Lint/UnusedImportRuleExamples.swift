@@ -16,26 +16,16 @@ struct UnusedImportRuleExamples {
         Example("""
         import UnknownModule
         func foo(error: Swift.Error) {}
-        """)
-    ] + nonTriggeringExamplesVersionAdditions
-
-#if compiler(>=5.8)
-    private static let nonTriggeringExamplesVersionAdditions = [
+        """),
+        Example("""
+        @_exported import UnknownModule
+        """),
         Example("""
         import Foundation
         let 👨‍👩‍👧‍👦 = #selector(NSArray.contains(_:))
         👨‍👩‍👧‍👦 == 👨‍👩‍👧‍👦
         """)
     ]
-#else
-    private static let nonTriggeringExamplesVersionAdditions = [
-        Example("""
-        import Foundation
-        let 👨‍👩‍👧‍👦 = #selector(NSArray.contains(_:))
-        👨‍👩‍👧‍👦 == 👨‍👩‍👧‍👦
-        """)
-    ]
-#endif
 
     static let triggeringExamples = [
         Example("""
@@ -122,7 +112,7 @@ struct UnusedImportRuleExamples {
             dispatchMain()
             """),
         Example("""
-        ↓@_exported import Foundation
+        ↓@_implementationOnly import Foundation
         import Dispatch
         dispatchMain()
         """):
@@ -170,9 +160,9 @@ struct UnusedImportRuleExamples {
                 [
                     "module": "Foundation",
                     "allowed_transitive_imports": ["CoreFoundation"]
-                ] as [String: Any]
+                ] as [String: any Sendable]
             ]
-        ] as [String: Any], testMultiByteOffsets: false, testOnLinux: false):
+        ] as [String: any Sendable], testMultiByteOffsets: false, testOnLinux: false):
             Example("""
             import CoreFoundation
             typealias Foo = CFArray
@@ -198,9 +188,9 @@ struct UnusedImportRuleExamples {
                 [
                     "module": "Foundation",
                     "allowed_transitive_imports": ["CoreFoundation"]
-                ] as [String: Any]
+                ] as [String: any Sendable]
             ]
-        ] as [String: Any]):
+        ] as [String: any Sendable]):
             Example("""
             import Foundation
             typealias Foo = CFData

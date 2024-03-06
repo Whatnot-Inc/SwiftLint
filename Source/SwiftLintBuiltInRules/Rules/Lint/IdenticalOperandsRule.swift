@@ -1,7 +1,8 @@
 import SwiftSyntax
 
-struct IdenticalOperandsRule: ConfigurationProviderRule, SwiftSyntaxRule, OptInRule {
-    var configuration = SeverityConfiguration(.warning)
+@SwiftSyntaxRule(foldExpressions: true)
+struct IdenticalOperandsRule: OptInRule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
     private static let operators = ["==", "!=", "===", "!==", ">", ">=", "<", "<="]
 
@@ -68,21 +69,13 @@ struct IdenticalOperandsRule: ConfigurationProviderRule, SwiftSyntaxRule, OptInR
             """)
         ]
     )
-
-    func preprocess(file: SwiftLintFile) -> SourceFileSyntax? {
-        file.foldedSyntaxTree
-    }
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(viewMode: .sourceAccurate)
-    }
 }
 
 private extension IdenticalOperandsRule {
-    final class Visitor: ViolationsSyntaxVisitor {
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
         override func visitPost(_ node: InfixOperatorExprSyntax) {
-            guard let operatorNode = node.operatorOperand.as(BinaryOperatorExprSyntax.self),
-                  IdenticalOperandsRule.operators.contains(operatorNode.operatorToken.text) else {
+            guard let operatorNode = node.operator.as(BinaryOperatorExprSyntax.self),
+                  IdenticalOperandsRule.operators.contains(operatorNode.operator.text) else {
                 return
             }
 

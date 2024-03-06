@@ -1,7 +1,8 @@
 import SwiftSyntax
 
-struct NoMagicNumbersRule: SwiftSyntaxRule, OptInRule, ConfigurationProviderRule {
-    var configuration = NoMagicNumbersRuleConfiguration()
+@SwiftSyntaxRule(foldExpressions: true)
+struct NoMagicNumbersRule: OptInRule {
+    var configuration = NoMagicNumbersConfiguration()
 
     static let description = RuleDescription(
         identifier: "no_magic_numbers",
@@ -56,7 +57,30 @@ struct NoMagicNumbersRule: SwiftSyntaxRule, OptInRule, ConfigurationProviderRule
                     let bar = array[42]
                 }
             }
-            """)
+            """),
+            Example("""
+            class MyTest: XCTestCase {}
+            extension MyTest {
+                let a = Int(3)
+            }
+            """),
+            Example("""
+            extension MyTest {
+                let a = Int(3)
+            }
+            class MyTest: XCTestCase {}
+            """),
+            Example("let foo = 1 << 2"),
+            Example("let foo = 1 >> 2"),
+            Example("let foo = 2 >> 2"),
+            Example("let foo = 2 << 2"),
+            Example("let a = b / 100.0"),
+            Example("let range = 2 ..< 12"),
+            Example("let range = ...12"),
+            Example("let range = 12..."),
+            Example("let (lowerBound, upperBound) = (400, 599)"),
+            Example("let a = (5, 10)"),
+            Example("let notFound = (statusCode: 404, description: \"Not Found\", isError: true)")
         ],
         triggeringExamples: [
             Example("foo(↓321)"),
@@ -64,34 +88,90 @@ struct NoMagicNumbersRule: SwiftSyntaxRule, OptInRule, ConfigurationProviderRule
             Example("array[↓42]"),
             Example("let box = array[↓12 + ↓14]"),
             Example("let a = b + ↓2.0"),
-            Example("Color.primary.opacity(isAnimate ? ↓0.1 : ↓1.5)")
+            Example("let range = 2 ... ↓12 + 1"),
+            Example("let range = ↓2*↓6..."),
+            Example("let slice = array[↓2...↓4]"),
+            Example("for i in ↓3 ..< ↓8 {}"),
+            Example("let n: Int = Int(r * ↓255) << ↓16 | Int(g * ↓255) << ↓8"),
+            Example("Color.primary.opacity(isAnimate ? ↓0.1 : ↓1.5)"),
+            Example("""
+                    class MyTest: XCTestCase {}
+                    extension NSObject {
+                        let a = Int(↓3)
+                    }
+            """),
+            Example("""
+            if (fileSize > ↓1000000) {
+                return
+            }
+            """),
+            Example("let imageHeight = (width - ↓24)"),
+            Example("return (↓5, ↓10, ↓15)")
         ]
     )
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(viewMode: .sourceAccurate, testParentClasses: configuration.testParentClasses)
-    }
 }
 
 private extension NoMagicNumbersRule {
-    final class Visitor: ViolationsSyntaxVisitor {
-        private let testParentClasses: Set<String>
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
+        private var testClasses: Set<String> = []
+        private var nonTestClasses: Set<String> = []
+        private var possibleViolations: [String: Set<AbsolutePosition>] = [:]
 
-        init(viewMode: SyntaxTreeViewMode, testParentClasses: Set<String>) {
-            self.testParentClasses = testParentClasses
-            super.init(viewMode: viewMode)
+        override func visit(_ node: PatternBindingSyntax) -> SyntaxVisitorContinueKind {
+            node.isSimpleTupleAssignment ? .skipChildren : .visitChildren
+        }
+
+        override func visitPost(_ node: ClassDeclSyntax) {
+            let className = node.name.text
+            if node.isXCTestCase(configuration.testParentClasses) {
+                testClasses.insert(className)
+                removeViolations(forClassName: className)
+            } else {
+                nonTestClasses.insert(className)
+            }
         }
 
         override func visitPost(_ node: FloatLiteralExprSyntax) {
-            if node.isMemberOfATestClass(testParentClasses) == false, node.floatingDigits.isMagicNumber {
-                violations.append(node.floatingDigits.positionAfterSkippingLeadingTrivia)
+            guard node.literal.isMagicNumber else {
+                return
             }
+            collectViolation(forNode: node)
         }
 
         override func visitPost(_ node: IntegerLiteralExprSyntax) {
-            if node.isMemberOfATestClass(testParentClasses) == false, node.digits.isMagicNumber {
-                violations.append(node.digits.positionAfterSkippingLeadingTrivia)
+            guard node.literal.isMagicNumber else {
+                return
             }
+            collectViolation(forNode: node)
+        }
+
+        private func collectViolation(forNode node: some ExprSyntaxProtocol) {
+            if node.isMemberOfATestClass(configuration.testParentClasses) {
+                return
+            }
+            if node.isOperandOfFreestandingShiftOperation() {
+                return
+            }
+            let violation = node.positionAfterSkippingLeadingTrivia
+            if let extendedTypeName = node.extendedTypeName() {
+                if !testClasses.contains(extendedTypeName) {
+                    violations.append(violation)
+                    if !nonTestClasses.contains(extendedTypeName) {
+                        possibleViolations[extendedTypeName, default: []].insert(violation)
+                    }
+                }
+            } else {
+                violations.append(violation)
+            }
+        }
+
+        private func removeViolations(forClassName className: String) {
+            guard let possibleViolationsForClass = possibleViolations[className] else {
+                return
+            }
+            let violationsToRemove = Set(possibleViolationsForClass.map { ReasonedRuleViolation(position: $0) })
+            violations.removeAll { violationsToRemove.contains($0) }
+            possibleViolations.removeValue(forKey: className)
         }
     }
 }
@@ -101,14 +181,30 @@ private extension TokenSyntax {
         guard let number = Double(text.replacingOccurrences(of: "_", with: "")) else {
             return false
         }
-        if [0, 1].contains(number) {
+        if [0, 1, 100].contains(number) {
             return false
         }
         guard let grandparent = parent?.parent else {
             return true
         }
-        return !grandparent.is(InitializerClauseSyntax.self)
-            && grandparent.as(PrefixOperatorExprSyntax.self)?.parent?.is(InitializerClauseSyntax.self) != true
+        if grandparent.is(InitializerClauseSyntax.self) {
+            return false
+        }
+        let operatorParent = grandparent.as(PrefixOperatorExprSyntax.self)?.parent
+                          ?? grandparent.as(PostfixOperatorExprSyntax.self)?.parent
+                          ?? grandparent.asAcceptedInfixOperator?.parent
+        return operatorParent?.is(InitializerClauseSyntax.self) != true
+    }
+}
+
+private extension Syntax {
+    var asAcceptedInfixOperator: InfixOperatorExprSyntax? {
+        if let infixOp = `as`(InfixOperatorExprSyntax.self),
+           let operatorSymbol = infixOp.operator.as(BinaryOperatorExprSyntax.self)?.operator.tokenKind,
+           [.binaryOperator("..."), .binaryOperator("..<")].contains(operatorSymbol) {
+            return infixOp
+        }
+        return nil
     }
 }
 
@@ -118,12 +214,42 @@ private extension ExprSyntaxProtocol {
         while parent != nil {
             if
                 let classDecl = parent?.as(ClassDeclSyntax.self),
-                classDecl.isXCTestCase(testParentClasses)
-            {
+                classDecl.isXCTestCase(testParentClasses) {
                 return true
             }
             parent = parent?.parent
         }
         return false
+    }
+
+    func extendedTypeName() -> String? {
+        var parent = parent
+        while parent != nil {
+            if let extensionDecl = parent?.as(ExtensionDeclSyntax.self) {
+                return extensionDecl.extendedType.trimmedDescription
+            }
+            parent = parent?.parent
+        }
+        return nil
+    }
+
+    func isOperandOfFreestandingShiftOperation() -> Bool {
+        if let operation = parent?.as(InfixOperatorExprSyntax.self),
+           let operatorSymbol = operation.operator.as(BinaryOperatorExprSyntax.self)?.operator.tokenKind,
+           [.binaryOperator("<<"), .binaryOperator(">>")].contains(operatorSymbol) {
+            return operation.parent?.isProtocol((any ExprSyntaxProtocol).self) != true
+        }
+        return false
+    }
+}
+
+private extension PatternBindingSyntax {
+    var isSimpleTupleAssignment: Bool {
+        initializer?.value.as(TupleExprSyntax.self)?.elements.allSatisfy {
+            $0.expression.is(IntegerLiteralExprSyntax.self) ||
+            $0.expression.is(FloatLiteralExprSyntax.self) ||
+            $0.expression.is(StringLiteralExprSyntax.self) ||
+            $0.expression.is(BooleanLiteralExprSyntax.self)
+        } ?? false
     }
 }

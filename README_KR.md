@@ -52,7 +52,7 @@ $ mint install realm/SwiftLint
 
 프로젝트에 SwiftLint를 통합하기 위한 권장 사용 방식의 전반적인 개요를 알고 싶다면, 아래 프레젠테이션 영상을 보거나 스크립트를 읽어보면 좋습니다.
 
-[![Presentation](assets/presentation.svg)](https://academy.realm.io/posts/slug-jp-simard-swiftlint/)
+[![Presentation](assets/presentation.svg)](https://youtu.be/9Z1nTMTejqU)
 
 ### Xcode
 
@@ -75,7 +75,10 @@ fi
 그 이유는, 애플 실리콘 기반 맥에서 Homebrew는 기본적으로 바이너리들을 `/opt/homebrew/bin`에 저장하기 때문입니다. SwiftLint가 어디 있는지 찾는 것을 Xcode에 알려주기 위해, build phase에서 `/opt/homebrew/bin`를 `PATH` 환경 변수에 동시에 추가하여야 합니다.
 
 ```bash
-export PATH="$PATH:/opt/homebrew/bin"
+if [[ "$(uname -m)" == arm64 ]]; then
+    export PATH="/opt/homebrew/bin:$PATH"
+fi
+
 if which swiftlint > /dev/null; then
   swiftlint
 else
@@ -182,7 +185,7 @@ $ TOOLCHAINS=com.apple.dt.toolchain.Swift_2_3 swiftlint autocorrect
 
 SwiftLint에는 200개가 넘는 룰들이 있고, 스위프트 커뮤니티(바로 여러분들!)는 이를 지속적으로 발전시켜 가고 있습니다. [풀 리퀘스트](CONTRIBUTING.md)는 언제나 환영입니다.
 
-현재 구현된 룰 전체를 확인하려면 [Source/SwiftLintFramework/Rules](Source/SwiftLintFramework/Rules)를 살펴보세요.
+현재 구현된 룰 전체를 확인하려면 [Source/SwiftLintBuiltInRules/Rules](Source/SwiftLintBuiltInRules/Rules)를 살펴보세요.
 
 `opt_in_rules`는 기본적으로 비활성화되어 있습니다. (즉, 설정 파일에서 명시적으로 해당 룰을 활성화해야 합니다.)
 
@@ -246,12 +249,12 @@ opt_in_rules: # 일부 룰은 옵트 인 형태로 제공
   - missing_docs
   # 사용 가능한 모든 룰은 swiftlint rules 명령으로 확인 가능
 included: # 린트 과정에 포함할 파일 경로. 이 항목이 존재하면 `--path`는 무시됨
-  - Source
+  - Sources
 excluded: # 린트 과정에서 무시할 파일 경로. `included`보다 우선순위 높음
   - Carthage
   - Pods
-  - Source/ExcludedFolder
-  - Source/ExcludedFile.swift
+  - Sources/ExcludedFolder
+  - Sources/ExcludedFile.swift
 
 # 설정 가능한 룰은 이 설정 파일에서 커스터마이징 가능
 # 경고나 에러 중 하나를 발생시키는 룰은 위반 수준을 설정 가능

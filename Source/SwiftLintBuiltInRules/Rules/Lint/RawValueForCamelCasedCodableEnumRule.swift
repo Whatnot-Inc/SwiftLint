@@ -1,7 +1,8 @@
 import SwiftSyntax
 
-struct RawValueForCamelCasedCodableEnumRule: SwiftSyntaxRule, OptInRule, ConfigurationProviderRule {
-    var configuration = SeverityConfiguration(.warning)
+@SwiftSyntaxRule
+struct RawValueForCamelCasedCodableEnumRule: OptInRule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
     static let description = RuleDescription(
         identifier: "raw_value_for_camel_cased_codable_enum",
@@ -90,18 +91,14 @@ struct RawValueForCamelCasedCodableEnumRule: SwiftSyntaxRule, OptInRule, Configu
             """)
         ]
     )
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(viewMode: .sourceAccurate)
-    }
 }
 
 private extension RawValueForCamelCasedCodableEnumRule {
-    final class Visitor: ViolationsSyntaxVisitor {
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
         private let codableTypes = Set(["Codable", "Decodable", "Encodable"])
 
         override func visit(_ node: EnumDeclSyntax) -> SyntaxVisitorContinueKind {
-            guard let inheritedTypes = node.inheritanceClause?.inheritedTypeCollection.typeNames,
+            guard let inheritedTypes = node.inheritanceClause?.inheritedTypes.typeNames,
                   !inheritedTypes.isDisjoint(with: codableTypes),
                   inheritedTypes.contains("String") else {
                 return .skipChildren
@@ -112,7 +109,7 @@ private extension RawValueForCamelCasedCodableEnumRule {
 
         override func visitPost(_ node: EnumCaseElementSyntax) {
             guard node.rawValue == nil,
-                  case let name = node.identifier.text,
+                  case let name = node.name.text,
                   !name.isUppercase(),
                   !name.isLowercase() else {
                 return
@@ -125,6 +122,6 @@ private extension RawValueForCamelCasedCodableEnumRule {
 
 private extension InheritedTypeListSyntax {
     var typeNames: Set<String> {
-        Set(compactMap { $0.typeName.as(SimpleTypeIdentifierSyntax.self) }.map(\.name.text))
+        Set(compactMap { $0.type.as(IdentifierTypeSyntax.self) }.map(\.name.text))
     }
 }

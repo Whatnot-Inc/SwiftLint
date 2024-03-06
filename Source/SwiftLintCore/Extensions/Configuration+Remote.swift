@@ -65,11 +65,11 @@ internal extension Configuration.FileGraph.FilePath {
 
             // Handle wrong url format
             guard let url = URL(string: urlString) else {
-                throw ConfigurationError.generic("Invalid configuration entry: \"\(urlString)\" isn't a valid url.")
+                throw Issue.genericWarning("Invalid configuration entry: \"\(urlString)\" isn't a valid url.")
             }
 
             // Load from url
-            var taskResult: (Data?, URLResponse?, Error?)
+            var taskResult: (Data?, URLResponse?, (any Error)?)
             var taskDone = false
 
             // `.ephemeral` disables caching (which we don't want to be managed by the system)
@@ -94,7 +94,7 @@ internal extension Configuration.FileGraph.FilePath {
             guard
                 taskResult.2 == nil, // No error
                 (taskResult.1 as? HTTPURLResponse)?.statusCode == 200,
-                let configStr = (taskResult.0.flatMap { String(data: $0, encoding: .utf8) })
+                let configStr = (taskResult.0.flatMap { String(decoding: $0, as: UTF8.self) })
             else {
                 return try handleWrongData(
                     urlString: urlString,
@@ -126,7 +126,7 @@ internal extension Configuration.FileGraph.FilePath {
             self = .existing(path: cachedFilePath)
             return cachedFilePath
         } else {
-            throw ConfigurationError.generic(
+            throw Issue.genericWarning(
                 "No internet connectivity: Unable to load remote config from \"\(urlString)\". "
                     + "Also didn't found cached version to fallback to."
             )
@@ -155,12 +155,12 @@ internal extension Configuration.FileGraph.FilePath {
             return cachedFilePath
         } else {
             if taskDone {
-                throw ConfigurationError.generic(
+                throw Issue.genericWarning(
                     "Unable to load remote config from \"\(urlString)\". "
                         + "Also didn't found cached version to fallback to."
                 )
             } else {
-                throw ConfigurationError.generic(
+                throw Issue.genericWarning(
                     "Timeout (\(timeout) sec): Unable to load remote config from \"\(urlString)\". "
                         + "Also didn't found cached version to fallback to."
                 )
@@ -176,7 +176,7 @@ internal extension Configuration.FileGraph.FilePath {
             self = .existing(path: cachedFilePath)
             return cachedFilePath
         } else {
-            throw ConfigurationError.generic(
+            throw Issue.genericWarning(
                 "Unable to cache remote config from \"\(urlString)\". Also didn't found cached version to fallback to."
             )
         }
@@ -261,7 +261,7 @@ internal extension Configuration.FileGraph.FilePath {
                 contents: Data(newGitignoreAppendix.utf8),
                 attributes: [:]
             ) else {
-                throw ConfigurationError.generic("Issue maintaining remote config cache.")
+                throw Issue.genericWarning("Issue maintaining remote config cache.")
             }
         } else {
             var contents = try String(contentsOfFile: Configuration.FileGraph.FilePath.gitignorePath, encoding: .utf8)

@@ -1,7 +1,8 @@
 import SwiftSyntax
 
-struct RedundantSetAccessControlRule: ConfigurationProviderRule, SwiftSyntaxRule {
-    var configuration = SeverityConfiguration(.warning)
+@SwiftSyntaxRule
+struct RedundantSetAccessControlRule: Rule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
     static let description = RuleDescription(
         identifier: "redundant_set_access_control",
@@ -57,20 +58,17 @@ struct RedundantSetAccessControlRule: ConfigurationProviderRule, SwiftSyntaxRule
             """)
         ]
     )
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(viewMode: .sourceAccurate)
-    }
 }
 
 private extension RedundantSetAccessControlRule {
-    final class Visitor: ViolationsSyntaxVisitor {
-        override var skippableDeclarations: [DeclSyntaxProtocol.Type] {
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
+        override var skippableDeclarations: [any DeclSyntaxProtocol.Type] {
             [FunctionDeclSyntax.self]
         }
 
         override func visitPost(_ node: VariableDeclSyntax) {
-            guard let modifiers = node.modifiers, let setAccessor = modifiers.setAccessor else {
+            let modifiers = node.modifiers
+            guard let setAccessor = modifiers.setAccessor else {
                 return
             }
 
@@ -121,26 +119,12 @@ private extension SyntaxProtocol {
 }
 
 private extension DeclSyntax {
-    var modifiers: ModifierListSyntax? {
-        if let decl = self.as(ClassDeclSyntax.self) {
-            return decl.modifiers ?? ModifierListSyntax([])
-        } else if let decl = self.as(ActorDeclSyntax.self) {
-            return decl.modifiers ?? ModifierListSyntax([])
-        } else if let decl = self.as(StructDeclSyntax.self) {
-            return decl.modifiers ?? ModifierListSyntax([])
-        } else if let decl = self.as(ProtocolDeclSyntax.self) {
-            return decl.modifiers ?? ModifierListSyntax([])
-        } else if let decl = self.as(ExtensionDeclSyntax.self) {
-            return decl.modifiers ?? ModifierListSyntax([])
-        } else if let decl = self.as(EnumDeclSyntax.self) {
-            return decl.modifiers ?? ModifierListSyntax([])
-        }
-
-        return nil
+    var modifiers: DeclModifierListSyntax? {
+        self.asProtocol((any WithModifiersSyntax).self)?.modifiers
     }
 }
 
-private extension ModifierListSyntax {
+private extension DeclModifierListSyntax {
     var setAccessor: DeclModifierSyntax? {
         first { $0.detail?.detail.tokenKind == .identifier("set") }
     }

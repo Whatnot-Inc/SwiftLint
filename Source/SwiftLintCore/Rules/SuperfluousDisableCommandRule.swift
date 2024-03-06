@@ -1,6 +1,6 @@
 @_spi(TestHelper)
-public struct SuperfluousDisableCommandRule: ConfigurationProviderRule, SourceKitFreeRule {
-    public var configuration = SeverityConfiguration(.warning)
+public struct SuperfluousDisableCommandRule: SourceKitFreeRule {
+    public var configuration = SeverityConfiguration<Self>(.warning)
 
     public init() {}
 
@@ -11,7 +11,23 @@ public struct SuperfluousDisableCommandRule: ConfigurationProviderRule, SourceKi
             SwiftLint 'disable' commands are superfluous when the disabled rule would not have triggered a violation \
             in the disabled region. Use " - " if you wish to document a command.
             """,
-        kind: .lint
+        kind: .lint,
+        nonTriggeringExamples: [
+            Example("let abc:Void // swiftlint:disable:this colon"),
+            Example("""
+                // swiftlint:disable colon
+                let abc:Void
+                // swiftlint:enable colon
+                """)
+        ],
+        triggeringExamples: [
+            Example("let abc: Void // swiftlint:disable:this colon"),
+            Example("""
+                // swiftlint:disable colon
+                let abc: Void
+                // swiftlint:enable colon
+                """)
+        ]
     )
 
     public func validate(file: SwiftLintFile) -> [StyleViolation] {
@@ -19,7 +35,7 @@ public struct SuperfluousDisableCommandRule: ConfigurationProviderRule, SourceKi
         return []
     }
 
-    func reason(for rule: Rule.Type) -> String {
+    func reason(for rule: (some Rule).Type) -> String {
         """
         SwiftLint rule '\(rule.description.identifier)' did not trigger a violation in the disabled region; \
         remove the disable command

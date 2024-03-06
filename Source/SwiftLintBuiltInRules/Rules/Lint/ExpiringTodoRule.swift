@@ -1,7 +1,7 @@
 import Foundation
 import SourceKittenFramework
 
-struct ExpiringTodoRule: ConfigurationProviderRule, OptInRule {
+struct ExpiringTodoRule: OptInRule {
     enum ExpiryViolationLevel {
         case approachingExpiry
         case expired
@@ -25,26 +25,26 @@ struct ExpiringTodoRule: ConfigurationProviderRule, OptInRule {
         description: "TODOs and FIXMEs should be resolved prior to their expiry date.",
         kind: .lint,
         nonTriggeringExamples: [
-            Example("// notaTODO:\n"),
-            Example("// notaFIXME:\n"),
-            Example("// TODO: [12/31/9999]\n"),
-            Example("// TODO(note)\n"),
-            Example("// FIXME(note)\n"),
-            Example("/* FIXME: */\n"),
-            Example("/* TODO: */\n"),
-            Example("/** FIXME: */\n"),
-            Example("/** TODO: */\n")
+            Example("// notaTODO:"),
+            Example("// notaFIXME:"),
+            Example("// TODO: [12/31/9999]"),
+            Example("// TODO(note)"),
+            Example("// FIXME(note)"),
+            Example("/* FIXME: */"),
+            Example("/* TODO: */"),
+            Example("/** FIXME: */"),
+            Example("/** TODO: */")
         ],
         triggeringExamples: [
-            Example("// TODO: [↓10/14/2019]\n"),
-            Example("// FIXME: [↓10/14/2019]\n"),
-            Example("// FIXME: [↓1/14/2019]\n"),
-            Example("// FIXME: [↓10/14/2019]\n"),
-            Example("// TODO: [↓9999/14/10]\n")
+            Example("// TODO: [↓10/14/2019]"),
+            Example("// FIXME: [↓10/14/2019]"),
+            Example("// FIXME: [↓1/14/2019]"),
+            Example("// FIXME: [↓10/14/2019]"),
+            Example("// TODO: [↓9999/14/10]")
         ].skipWrappingInCommentTests()
     )
 
-    var configuration: ExpiringTodoConfiguration = .init()
+    var configuration = ExpiringTodoConfiguration()
 
     func validate(file: SwiftLintFile) -> [StyleViolation] {
         let regex = #"""
@@ -119,4 +119,11 @@ private extension Date {
     var isAfterToday: Bool {
         return Calendar.current.compare(.init(), to: self, toGranularity: .day) == .orderedAscending
     }
+}
+
+private extension SyntaxKind {
+   /// Returns if the syntax kind is comment-like.
+   var isCommentLike: Bool {
+       return Self.commentKinds.contains(self)
+   }
 }

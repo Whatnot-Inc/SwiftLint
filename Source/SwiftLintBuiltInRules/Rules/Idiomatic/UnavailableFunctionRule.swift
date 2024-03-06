@@ -1,7 +1,8 @@
 import SwiftSyntax
 
-struct UnavailableFunctionRule: SwiftSyntaxRule, ConfigurationProviderRule, OptInRule {
-    var configuration = SeverityConfiguration(.warning)
+@SwiftSyntaxRule
+struct UnavailableFunctionRule: OptInRule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
     static let description = RuleDescription(
         identifier: "unavailable_function",
@@ -69,14 +70,10 @@ struct UnavailableFunctionRule: SwiftSyntaxRule, ConfigurationProviderRule, OptI
             """)
         ]
     )
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(viewMode: .sourceAccurate)
-    }
 }
 
 private extension UnavailableFunctionRule {
-    final class Visitor: ViolationsSyntaxVisitor {
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
         override func visitPost(_ node: FunctionDeclSyntax) {
             guard !node.returnsNever,
                   !node.attributes.hasUnavailableAttribute,
@@ -102,28 +99,24 @@ private extension UnavailableFunctionRule {
 
 private extension FunctionDeclSyntax {
     var returnsNever: Bool {
-        if let expr = signature.output?.returnType.as(SimpleTypeIdentifierSyntax.self) {
+        if let expr = signature.returnClause?.type.as(IdentifierTypeSyntax.self) {
             return expr.name.text == "Never"
         }
         return false
     }
 }
 
-private extension AttributeListSyntax? {
+private extension AttributeListSyntax {
     var hasUnavailableAttribute: Bool {
-        guard let attrs = self else {
-            return false
-        }
-
-        return attrs.contains { elem in
+        contains { elem in
             guard let attr = elem.as(AttributeSyntax.self),
-                    let arguments = attr.argument?.as(AvailabilitySpecListSyntax.self) else {
+                  let arguments = attr.arguments?.as(AvailabilityArgumentListSyntax.self) else {
                 return false
             }
 
             let attributeName = attr.attributeNameText
             return attributeName == "available" && arguments.contains { arg in
-                arg.entry.as(TokenSyntax.self)?.tokenKind.isUnavailableKeyword == true
+                arg.argument.as(TokenSyntax.self)?.tokenKind.isUnavailableKeyword == true
             }
         }
     }
@@ -143,11 +136,11 @@ private extension CodeBlockSyntax? {
 
         return statements.contains { item in
             guard let function = item.item.as(FunctionCallExprSyntax.self),
-                  let identifierExpr = function.calledExpression.as(IdentifierExprSyntax.self) else {
+                  let identifierExpr = function.calledExpression.as(DeclReferenceExprSyntax.self) else {
                 return false
             }
 
-            return terminatingFunctions.contains(identifierExpr.identifier.text)
+            return terminatingFunctions.contains(identifierExpr.baseName.text)
         }
     }
 

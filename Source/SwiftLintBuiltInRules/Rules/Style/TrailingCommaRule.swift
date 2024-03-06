@@ -1,19 +1,20 @@
 import SwiftSyntax
 
-struct TrailingCommaRule: SwiftSyntaxCorrectableRule, ConfigurationProviderRule {
+@SwiftSyntaxRule
+struct TrailingCommaRule: SwiftSyntaxCorrectableRule {
     var configuration = TrailingCommaConfiguration()
 
     private static let triggeringExamples: [Example] = [
-        Example("let foo = [1, 2, 3↓,]\n"),
-        Example("let foo = [1, 2, 3↓, ]\n"),
-        Example("let foo = [1, 2, 3   ↓,]\n"),
-        Example("let foo = [1: 2, 2: 3↓, ]\n"),
-        Example("struct Bar {\n let foo = [1: 2, 2: 3↓, ]\n}\n"),
-        Example("let foo = [1, 2, 3↓,] + [4, 5, 6↓,]\n"),
+        Example("let foo = [1, 2, 3↓,]"),
+        Example("let foo = [1, 2, 3↓, ]"),
+        Example("let foo = [1, 2, 3   ↓,]"),
+        Example("let foo = [1: 2, 2: 3↓, ]"),
+        Example("struct Bar {\n let foo = [1: 2, 2: 3↓, ]\n}"),
+        Example("let foo = [1, 2, 3↓,] + [4, 5, 6↓,]"),
         Example("let example = [ 1,\n2↓,\n // 3,\n]"),
-        Example("let foo = [\"אבג\", \"αβγ\", \"🇺🇸\"↓,]\n"),
+        Example("let foo = [\"אבג\", \"αβγ\", \"🇺🇸\"↓,]"),
         Example("class C {\n #if true\n func f() {\n let foo = [1, 2, 3↓,]\n }\n #endif\n}"),
-        Example("foo([1: \"\\(error)\"↓,])\n")
+        Example("foo([1: \"\\(error)\"↓,])")
     ]
 
     private static let corrections: [Example: Example] = {
@@ -34,27 +35,20 @@ struct TrailingCommaRule: SwiftSyntaxCorrectableRule, ConfigurationProviderRule 
         description: "Trailing commas in arrays and dictionaries should be avoided/enforced.",
         kind: .style,
         nonTriggeringExamples: [
-            Example("let foo = [1, 2, 3]\n"),
-            Example("let foo = []\n"),
-            Example("let foo = [:]\n"),
-            Example("let foo = [1: 2, 2: 3]\n"),
-            Example("let foo = [Void]()\n"),
+            Example("let foo = [1, 2, 3]"),
+            Example("let foo = []"),
+            Example("let foo = [:]"),
+            Example("let foo = [1: 2, 2: 3]"),
+            Example("let foo = [Void]()"),
             Example("let example = [ 1,\n 2\n // 3,\n]"),
-            Example("foo([1: \"\\(error)\"])\n"),
-            Example("let foo = [Int]()\n")
+            Example("foo([1: \"\\(error)\"])"),
+            Example("let foo = [Int]()")
         ],
         triggeringExamples: Self.triggeringExamples,
         corrections: Self.corrections
     )
 
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(
-            mandatoryComma: configuration.mandatoryComma,
-            locationConverter: file.locationConverter
-        )
-    }
-
-    func makeRewriter(file: SwiftLintFile) -> ViolationsSyntaxRewriter? {
+    func makeRewriter(file: SwiftLintFile) -> (some ViolationsSyntaxRewriter)? {
         Rewriter(
             mandatoryComma: configuration.mandatoryComma,
             locationConverter: file.locationConverter,
@@ -64,22 +58,13 @@ struct TrailingCommaRule: SwiftSyntaxCorrectableRule, ConfigurationProviderRule 
 }
 
 private extension TrailingCommaRule {
-    final class Visitor: ViolationsSyntaxVisitor {
-        private let mandatoryComma: Bool
-        private let locationConverter: SourceLocationConverter
-
-        init(mandatoryComma: Bool, locationConverter: SourceLocationConverter) {
-            self.mandatoryComma = mandatoryComma
-            self.locationConverter = locationConverter
-            super.init(viewMode: .sourceAccurate)
-        }
-
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
         override func visitPost(_ node: DictionaryElementListSyntax) {
             guard let lastElement = node.last else {
                 return
             }
 
-            switch (lastElement.trailingComma, mandatoryComma) {
+            switch (lastElement.trailingComma, configuration.mandatoryComma) {
             case (let commaToken?, false):
                 violations.append(violation(for: commaToken.positionAfterSkippingLeadingTrivia))
             case (nil, true) where !locationConverter.isSingleLine(node: node):
@@ -94,7 +79,7 @@ private extension TrailingCommaRule {
                 return
             }
 
-            switch (lastElement.trailingComma, mandatoryComma) {
+            switch (lastElement.trailingComma, configuration.mandatoryComma) {
             case (let commaToken?, false):
                 violations.append(violation(for: commaToken.positionAfterSkippingLeadingTrivia))
             case (nil, true) where !locationConverter.isSingleLine(node: node):
@@ -105,41 +90,36 @@ private extension TrailingCommaRule {
         }
 
         private func violation(for position: AbsolutePosition) -> ReasonedRuleViolation {
-            let reason = mandatoryComma
+            let reason = configuration.mandatoryComma
                 ? "Multi-line collection literals should have trailing commas"
                 : "Collection literals should not have trailing commas"
             return ReasonedRuleViolation(position: position, reason: reason)
         }
     }
 
-    final class Rewriter: SyntaxRewriter, ViolationsSyntaxRewriter {
-        private(set) var correctionPositions: [AbsolutePosition] = []
+    final class Rewriter: ViolationsSyntaxRewriter {
         private let mandatoryComma: Bool
-        private let locationConverter: SourceLocationConverter
-        private let disabledRegions: [SourceRange]
 
         init(mandatoryComma: Bool, locationConverter: SourceLocationConverter, disabledRegions: [SourceRange]) {
             self.mandatoryComma = mandatoryComma
-            self.locationConverter = locationConverter
-            self.disabledRegions = disabledRegions
+            super.init(locationConverter: locationConverter, disabledRegions: disabledRegions)
         }
 
         override func visit(_ node: DictionaryElementListSyntax) -> DictionaryElementListSyntax {
-            guard let lastElement = node.last,
-                    !lastElement.isContainedIn(regions: disabledRegions, locationConverter: locationConverter) else {
+            guard let lastElement = node.last, let index = node.index(of: lastElement) else {
                 return super.visit(node)
             }
 
             switch (lastElement.trailingComma, mandatoryComma) {
             case (let commaToken?, false):
                 correctionPositions.append(commaToken.positionAfterSkippingLeadingTrivia)
-                let newTrailingTrivia = (lastElement.valueExpression.trailingTrivia)
+                let newTrailingTrivia = (lastElement.value.trailingTrivia)
                     .appending(trivia: commaToken.leadingTrivia)
                     .appending(trivia: commaToken.trailingTrivia)
                 let newNode = node
-                    .replacing(
-                        childAt: node.count - 1,
-                        with: lastElement
+                    .with(
+                        \.[index],
+                        lastElement
                             .with(\.trailingComma, nil)
                             .with(\.trailingTrivia, newTrailingTrivia)
                     )
@@ -147,9 +127,9 @@ private extension TrailingCommaRule {
             case (nil, true) where !locationConverter.isSingleLine(node: node):
                 correctionPositions.append(lastElement.endPositionBeforeTrailingTrivia)
                 let newNode = node
-                    .replacing(
-                        childAt: node.count - 1,
-                        with: lastElement
+                    .with(
+                        \.[index],
+                        lastElement
                             .with(\.trailingTrivia, [])
                             .with(\.trailingComma, .commaToken())
                             .with(\.trailingTrivia, lastElement.trailingTrivia)
@@ -161,8 +141,7 @@ private extension TrailingCommaRule {
         }
 
         override func visit(_ node: ArrayElementListSyntax) -> ArrayElementListSyntax {
-            guard let lastElement = node.last,
-                  !lastElement.isContainedIn(regions: disabledRegions, locationConverter: locationConverter) else {
+            guard let lastElement = node.last, let index = node.index(of: lastElement) else {
                 return super.visit(node)
             }
 
@@ -170,9 +149,9 @@ private extension TrailingCommaRule {
             case (let commaToken?, false):
                 correctionPositions.append(commaToken.positionAfterSkippingLeadingTrivia)
                 let newNode = node
-                    .replacing(
-                        childAt: node.count - 1,
-                        with: lastElement
+                    .with(
+                        \.[index],
+                        lastElement
                             .with(\.trailingComma, nil)
                             .with(\.trailingTrivia,
                                   (lastElement.expression.trailingTrivia)
@@ -183,12 +162,13 @@ private extension TrailingCommaRule {
                 return super.visit(newNode)
             case (nil, true) where !locationConverter.isSingleLine(node: node):
                 correctionPositions.append(lastElement.endPositionBeforeTrailingTrivia)
-                let newNode = node.replacing(
-                    childAt: node.count - 1,
-                    with: lastElement
-                        .with(\.expression, lastElement.expression.with(\.trailingTrivia, []))
-                        .with(\.trailingComma, .commaToken())
-                        .with(\.trailingTrivia, lastElement.expression.trailingTrivia)
+                let newNode = node
+                    .with(
+                        \.[index],
+                        lastElement
+                            .with(\.expression, lastElement.expression.with(\.trailingTrivia, []))
+                            .with(\.trailingComma, .commaToken())
+                            .with(\.trailingTrivia, lastElement.expression.trailingTrivia)
                 )
                 return super.visit(newNode)
             case (_, true), (nil, false):
@@ -199,7 +179,7 @@ private extension TrailingCommaRule {
 }
 
 private extension SourceLocationConverter {
-    func isSingleLine(node: SyntaxProtocol) -> Bool {
+    func isSingleLine(node: some SyntaxProtocol) -> Bool {
         location(for: node.positionAfterSkippingLeadingTrivia).line ==
             location(for: node.endPositionBeforeTrailingTrivia).line
     }

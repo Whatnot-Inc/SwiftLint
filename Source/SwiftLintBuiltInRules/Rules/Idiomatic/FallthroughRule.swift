@@ -1,7 +1,8 @@
 import SwiftSyntax
 
-struct FallthroughRule: SwiftSyntaxRule, ConfigurationProviderRule, OptInRule {
-    var configuration = SeverityConfiguration(.warning)
+@SwiftSyntaxRule
+struct FallthroughRule: OptInRule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
     static let description = RuleDescription(
         identifier: "fallthrough",
@@ -27,15 +28,11 @@ struct FallthroughRule: SwiftSyntaxRule, ConfigurationProviderRule, OptInRule {
             """)
         ]
     )
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(viewMode: .sourceAccurate)
-    }
 }
 
 private extension FallthroughRule {
-    final class Visitor: ViolationsSyntaxVisitor {
-        override func visitPost(_ node: FallthroughStmtSyntax) {
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
+        override func visitPost(_ node: FallThroughStmtSyntax) {
             violations.append(node.positionAfterSkippingLeadingTrivia)
         }
     }

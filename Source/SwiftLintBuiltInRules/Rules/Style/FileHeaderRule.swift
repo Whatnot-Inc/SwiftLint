@@ -1,7 +1,7 @@
 import Foundation
 import SourceKittenFramework
 
-struct FileHeaderRule: ConfigurationProviderRule, OptInRule {
+struct FileHeaderRule: OptInRule {
     var configuration = FileHeaderConfiguration()
 
     static let description = RuleDescription(
@@ -17,7 +17,7 @@ struct FileHeaderRule: ConfigurationProviderRule, OptInRule {
             Example("let foo = 2\n // Copyright")
         ],
         triggeringExamples: [
-            Example("// ↓Copyright\n"),
+            Example("// ↓Copyright"),
             Example("//\n// ↓Copyright"),
             Example("""
             //

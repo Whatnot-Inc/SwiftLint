@@ -4,65 +4,10 @@ import SourceKittenFramework
 import XCTest
 
 class RuleConfigurationTests: SwiftLintTestCase {
-    func testNameConfigurationSetsCorrectly() {
-        let config = [ "min_length": ["warning": 17, "error": 7],
-                       "max_length": ["warning": 170, "error": 700],
-                       "excluded": "id",
-                       "allowed_symbols": ["$"],
-                       "validates_start_with_lowercase": false] as [String: Any]
-        var nameConfig = NameConfiguration(minLengthWarning: 0,
-                                           minLengthError: 0,
-                                           maxLengthWarning: 0,
-                                           maxLengthError: 0)
-        let comp = NameConfiguration(minLengthWarning: 17,
-                                     minLengthError: 7,
-                                     maxLengthWarning: 170,
-                                     maxLengthError: 700,
-                                     excluded: ["id"],
-                                     allowedSymbols: ["$"],
-                                     validatesStartWithLowercase: false)
-        do {
-            try nameConfig.apply(configuration: config)
-            XCTAssertEqual(nameConfig, comp)
-        } catch {
-            XCTFail("Did not configure correctly")
-        }
-    }
-
-    func testNameConfigurationThrowsOnBadConfig() {
-        let config = 17
-        var nameConfig = NameConfiguration(minLengthWarning: 0,
-                                           minLengthError: 0,
-                                           maxLengthWarning: 0,
-                                           maxLengthError: 0)
-        checkError(ConfigurationError.unknownConfiguration) {
-            try nameConfig.apply(configuration: config)
-        }
-    }
-
-    func testNameConfigurationMinLengthThreshold() {
-        var nameConfig = NameConfiguration(minLengthWarning: 7,
-                                           minLengthError: 17,
-                                           maxLengthWarning: 0,
-                                           maxLengthError: 0,
-                                           excluded: [])
-        XCTAssertEqual(nameConfig.minLengthThreshold, 17)
-
-        nameConfig.minLength.error = nil
-        XCTAssertEqual(nameConfig.minLengthThreshold, 7)
-    }
-
-    func testNameConfigurationMaxLengthThreshold() {
-        var nameConfig = NameConfiguration(minLengthWarning: 0,
-                                           minLengthError: 0,
-                                           maxLengthWarning: 17,
-                                           maxLengthError: 7,
-                                           excluded: [])
-        XCTAssertEqual(nameConfig.maxLengthThreshold, 7)
-
-        nameConfig.maxLength.error = nil
-        XCTAssertEqual(nameConfig.maxLengthThreshold, 17)
-    }
+    private let defaultNestingConfiguration = NestingConfiguration(
+        typeLevel: SeverityLevelsConfiguration(warning: 0),
+        functionLevel: SeverityLevelsConfiguration(warning: 0)
+    )
 
     func testNestingConfigurationSetsCorrectly() {
         let config = [
@@ -74,11 +19,8 @@ class RuleConfigurationTests: SwiftLintTestCase {
             ],
             "check_nesting_in_closures_and_statements": false,
             "always_allow_one_type_in_functions": true
-        ] as [String: Any]
-        var nestingConfig = NestingConfiguration(typeLevelWarning: 0,
-                                                 typeLevelError: nil,
-                                                 functionLevelWarning: 0,
-                                                 functionLevelError: nil)
+        ] as [String: any Sendable]
+        var nestingConfig = defaultNestingConfiguration
         do {
             try nestingConfig.apply(configuration: config)
             XCTAssertEqual(nestingConfig.typeLevel.warning, 7)
@@ -94,19 +36,16 @@ class RuleConfigurationTests: SwiftLintTestCase {
 
     func testNestingConfigurationThrowsOnBadConfig() {
         let config = 17
-        var nestingConfig = NestingConfiguration(typeLevelWarning: 0,
-                                                 typeLevelError: nil,
-                                                 functionLevelWarning: 0,
-                                                 functionLevelError: nil)
-        checkError(ConfigurationError.unknownConfiguration) {
+        var nestingConfig = defaultNestingConfiguration
+        checkError(Issue.invalidConfiguration(ruleID: NestingRule.description.identifier)) {
             try nestingConfig.apply(configuration: config)
         }
     }
 
     func testSeverityConfigurationFromString() {
         let config = "Warning"
-        let comp = SeverityConfiguration(.warning)
-        var severityConfig = SeverityConfiguration(.error)
+        let comp = SeverityConfiguration<RuleMock>(.warning)
+        var severityConfig = SeverityConfiguration<RuleMock>(.error)
         do {
             try severityConfig.apply(configuration: config)
             XCTAssertEqual(severityConfig, comp)
@@ -117,8 +56,8 @@ class RuleConfigurationTests: SwiftLintTestCase {
 
     func testSeverityConfigurationFromDictionary() {
         let config = ["severity": "warning"]
-        let comp = SeverityConfiguration(.warning)
-        var severityConfig = SeverityConfiguration(.error)
+        let comp = SeverityConfiguration<RuleMock>(.warning)
+        var severityConfig = SeverityConfiguration<RuleMock>(.error)
         do {
             try severityConfig.apply(configuration: config)
             XCTAssertEqual(severityConfig, comp)
@@ -129,45 +68,45 @@ class RuleConfigurationTests: SwiftLintTestCase {
 
     func testSeverityConfigurationThrowsOnBadConfig() {
         let config = 17
-        var severityConfig = SeverityConfiguration(.warning)
-        checkError(ConfigurationError.unknownConfiguration) {
+        var severityConfig = SeverityConfiguration<RuleMock>(.warning)
+        checkError(Issue.unknownConfiguration(ruleID: RuleMock.description.identifier)) {
             try severityConfig.apply(configuration: config)
         }
     }
 
     func testSeverityLevelConfigParams() {
-        let severityConfig = SeverityLevelsConfiguration(warning: 17, error: 7)
+        let severityConfig = SeverityLevelsConfiguration<RuleMock>(warning: 17, error: 7)
         XCTAssertEqual(severityConfig.params, [RuleParameter(severity: .error, value: 7),
                                                RuleParameter(severity: .warning, value: 17)])
     }
 
     func testSeverityLevelConfigPartialParams() {
-        let severityConfig = SeverityLevelsConfiguration(warning: 17, error: nil)
+        let severityConfig = SeverityLevelsConfiguration<RuleMock>(warning: 17, error: nil)
         XCTAssertEqual(severityConfig.params, [RuleParameter(severity: .warning, value: 17)])
     }
 
     func testSeverityLevelConfigApplyNilErrorValue() throws {
-        var severityConfig = SeverityLevelsConfiguration(warning: 17, error: 20)
+        var severityConfig = SeverityLevelsConfiguration<RuleMock>(warning: 17, error: 20)
         try severityConfig.apply(configuration: ["error": nil, "warning": 18])
         XCTAssertEqual(severityConfig.params, [RuleParameter(severity: .warning, value: 18)])
     }
 
     func testSeverityLevelConfigApplyMissingErrorValue() throws {
-        var severityConfig = SeverityLevelsConfiguration(warning: 17, error: 20)
+        var severityConfig = SeverityLevelsConfiguration<RuleMock>(warning: 17, error: 20)
         try severityConfig.apply(configuration: ["warning": 18])
         XCTAssertEqual(severityConfig.params, [RuleParameter(severity: .warning, value: 18)])
     }
 
     func testRegexConfigurationThrows() {
         let config = 17
-        var regexConfig = RegexConfiguration(identifier: "")
-        checkError(ConfigurationError.unknownConfiguration) {
+        var regexConfig = RegexConfiguration<RuleMock>(identifier: "")
+        checkError(Issue.unknownConfiguration(ruleID: RuleMock.description.identifier)) {
             try regexConfig.apply(configuration: config)
         }
     }
 
     func testRegexRuleDescription() {
-        var regexConfig = RegexConfiguration(identifier: "regex")
+        var regexConfig = RegexConfiguration<RuleMock>(identifier: "regex")
         XCTAssertEqual(regexConfig.description, RuleDescription(identifier: "regex",
                                                                 name: "regex",
                                                                 description: "", kind: .style))
@@ -181,7 +120,7 @@ class RuleConfigurationTests: SwiftLintTestCase {
         let config = "unknown"
         var configuration = TrailingWhitespaceConfiguration(ignoresEmptyLines: false,
                                                             ignoresComments: true)
-        checkError(ConfigurationError.unknownConfiguration) {
+        checkError(Issue.invalidConfiguration(ruleID: TrailingWhitespaceRule.description.identifier)) {
             try configuration.apply(configuration: config)
         }
     }
@@ -261,9 +200,11 @@ class RuleConfigurationTests: SwiftLintTestCase {
     }
 
     func testTrailingWhitespaceConfigurationApplyConfigurationUpdatesSeverityConfiguration() {
-        var configuration = TrailingWhitespaceConfiguration(ignoresEmptyLines: false,
-                                                            ignoresComments: true)
-        configuration.severityConfiguration.severity = .warning
+        var configuration = TrailingWhitespaceConfiguration(
+            severityConfiguration: .warning,
+            ignoresEmptyLines: false,
+            ignoresComments: true
+        )
 
         do {
             try configuration.apply(configuration: ["severity": "error"])
@@ -292,7 +233,7 @@ class RuleConfigurationTests: SwiftLintTestCase {
             "severity": "error",
             "excluded": "viewWillAppear(_:)",
             "included": ["*", "testMethod1()", "testMethod2(_:)"]
-        ] as [String: Any]
+        ] as [String: any Sendable]
         do {
             try configuration.apply(configuration: conf2)
             XCTAssertEqual(configuration.severityConfiguration.severity, .error)
@@ -309,7 +250,7 @@ class RuleConfigurationTests: SwiftLintTestCase {
             "severity": "warning",
             "excluded": "*",
             "included": ["testMethod1()", "testMethod2(_:)"]
-        ] as [String: Any]
+        ] as [String: any Sendable]
         do {
             try configuration.apply(configuration: conf3)
             XCTAssertEqual(configuration.severityConfiguration.severity, .warning)
@@ -361,29 +302,31 @@ class RuleConfigurationTests: SwiftLintTestCase {
 
     func testModifierOrderConfigurationThrowsOnUnrecognizedModifierGroup() {
         var configuration = ModifierOrderConfiguration()
-        let config = ["severity": "warning", "preferred_modifier_order": ["specialize"]]  as [String: Any]
+        let config = ["severity": "warning", "preferred_modifier_order": ["specialize"]]  as [String: any Sendable]
 
-        checkError(ConfigurationError.unknownConfiguration) {
+        checkError(Issue.unknownConfiguration(ruleID: ModifierOrderRule.description.identifier)) {
             try configuration.apply(configuration: config)
         }
     }
 
     func testModifierOrderConfigurationThrowsOnNonModifiableGroup() {
         var configuration = ModifierOrderConfiguration()
-        let config = ["severity": "warning", "preferred_modifier_order": ["atPrefixed"]]  as [String: Any]
-        checkError(ConfigurationError.unknownConfiguration) {
+        let config = ["severity": "warning", "preferred_modifier_order": ["atPrefixed"]]  as [String: any Sendable]
+        checkError(Issue.unknownConfiguration(ruleID: ModifierOrderRule.description.identifier)) {
             try configuration.apply(configuration: config)
         }
     }
 
     func testComputedAccessorsOrderRuleConfiguration() throws {
-        var configuration = ComputedAccessorsOrderRuleConfiguration()
+        var configuration = ComputedAccessorsOrderConfiguration()
         let config = ["severity": "error", "order": "set_get"]
         try configuration.apply(configuration: config)
 
         XCTAssertEqual(configuration.severityConfiguration.severity, .error)
         XCTAssertEqual(configuration.order, .setGet)
 
-        XCTAssertEqual(configuration.consoleDescription, "severity: error, order: set_get")
+        XCTAssertEqual(
+            RuleConfigurationDescription.from(configuration: configuration).oneLiner(),
+            "severity: error; order: set_get")
     }
 }

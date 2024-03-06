@@ -10,19 +10,19 @@ def swiftlint_repos(bzlmod = False):
             url = "https://github.com/jpsim/SourceKitten/releases/download/0.34.1/SourceKitten-0.34.1.tar.gz",
         )
 
+        http_archive(
+            name = "SwiftSyntax",
+            sha256 = "1cddda9f7d249612e3d75d4caa8fd9534c0621b8a890a7d7524a4689bce644f1",
+            strip_prefix = "swift-syntax-509.0.0",
+            url = "https://github.com/apple/swift-syntax/archive/refs/tags/509.0.0.tar.gz",
+        )
+
     http_archive(
         name = "swiftlint_com_github_scottrhoyt_swifty_text_table",
         sha256 = "b77d403db9f33686caeb2a12986997fb02a0819e029e669c6b9554617c4fd6ae",
         build_file = "@SwiftLint//bazel:SwiftyTextTable.BUILD",
         strip_prefix = "SwiftyTextTable-0.9.0",
         url = "https://github.com/scottrhoyt/SwiftyTextTable/archive/refs/tags/0.9.0.tar.gz",
-    )
-
-    http_archive(
-        name = "SwiftSyntax",
-        sha256 = "9eff9d7154f62d5cfaa967f288847bbfbdfad69f2fcaf47fa44d314aa647a77b",
-        strip_prefix = "swift-syntax-509.0.0-swift-DEVELOPMENT-SNAPSHOT-2023-04-25-b",
-        url = "https://github.com/apple/swift-syntax/archive/refs/tags/509.0.0-swift-DEVELOPMENT-SNAPSHOT-2023-04-25-b.tar.gz",
     )
 
     http_archive(
@@ -35,10 +35,10 @@ def swiftlint_repos(bzlmod = False):
 
     http_archive(
         name = "com_github_krzyzanowskim_cryptoswift",
-        sha256 = "ad561c63d1e7954dbadd88cf5588efe43236c382ea7dc964996c09e87b7d4fd1",
+        sha256 = "3d649cccfe9ae0572163cde0201f013d10349a035c15225e7a4bd83c85fb0d1d",
         build_file = "@SwiftLint//bazel:CryptoSwift.BUILD",
-        strip_prefix = "CryptoSwift-1.7.1",
-        url = "https://github.com/krzyzanowskim/CryptoSwift/archive/refs/tags/1.7.1.tar.gz",
+        strip_prefix = "CryptoSwift-1.8.0",
+        url = "https://github.com/krzyzanowskim/CryptoSwift/archive/refs/tags/1.8.0.tar.gz",
     )
 
 def _swiftlint_repos_bzlmod(_):

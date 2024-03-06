@@ -1,7 +1,8 @@
 import SwiftSyntax
 
-struct FatalErrorMessageRule: SwiftSyntaxRule, ConfigurationProviderRule, OptInRule {
-    var configuration = SeverityConfiguration(.warning)
+@SwiftSyntaxRule
+struct FatalErrorMessageRule: OptInRule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
     static let description = RuleDescription(
         identifier: "fatal_error_message",
@@ -33,18 +34,14 @@ struct FatalErrorMessageRule: SwiftSyntaxRule, ConfigurationProviderRule, OptInR
             """)
         ]
     )
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(viewMode: .sourceAccurate)
-    }
 }
 
 private extension FatalErrorMessageRule {
-    final class Visitor: ViolationsSyntaxVisitor {
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
         override func visitPost(_ node: FunctionCallExprSyntax) {
-            guard let expression = node.calledExpression.as(IdentifierExprSyntax.self),
-                  expression.identifier.text == "fatalError",
-                node.argumentList.isEmptyOrEmptyString else {
+            guard let expression = node.calledExpression.as(DeclReferenceExprSyntax.self),
+                  expression.baseName.text == "fatalError",
+                  node.arguments.isEmptyOrEmptyString else {
                 return
             }
 
@@ -53,7 +50,7 @@ private extension FatalErrorMessageRule {
     }
 }
 
-private extension TupleExprElementListSyntax {
+private extension LabeledExprListSyntax {
     var isEmptyOrEmptyString: Bool {
         if isEmpty {
             return true

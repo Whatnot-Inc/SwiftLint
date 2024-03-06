@@ -1,7 +1,8 @@
 import SwiftSyntax
 
-struct PrefixedTopLevelConstantRule: SwiftSyntaxRule, OptInRule, ConfigurationProviderRule {
-    var configuration = PrefixedConstantRuleConfiguration(onlyPrivateMembers: false)
+@SwiftSyntaxRule
+struct PrefixedTopLevelConstantRule: OptInRule {
+    var configuration = PrefixedTopLevelConstantConfiguration()
 
     static let description = RuleDescription(
         identifier: "prefixed_toplevel_constant",
@@ -14,23 +15,31 @@ struct PrefixedTopLevelConstantRule: SwiftSyntaxRule, OptInRule, ConfigurationPr
             Example("internal let kFoo = \"Foo\""),
             Example("let kFoo = true"),
             Example("let Foo = true", configuration: ["only_private": true]),
-            Example("struct Foo {\n" +
-            "   let bar = 20.0\n" +
-            "}"),
+            Example("""
+            struct Foo {
+                let bar = 20.0
+            }
+            """),
             Example("private var foo = 20.0"),
             Example("public var foo = false"),
             Example("internal var foo = \"Foo\""),
             Example("var foo = true"),
             Example("var foo = true, bar = true"),
             Example("var foo = true, let kFoo = true"),
-            Example("let\n" +
-            "   kFoo = true"),
-            Example("var foo: Int {\n" +
-            "   return a + b\n" +
-            "}"),
-            Example("let kFoo = {\n" +
-            "   return a + b\n" +
-            "}()"),
+            Example("""
+            let
+                kFoo = true
+            """),
+            Example("""
+            var foo: Int {
+                return a + b
+            }
+            """),
+            Example("""
+            let kFoo = {
+                return a + b
+            }()
+            """),
             Example("""
             var foo: String {
                 let bar = ""
@@ -59,37 +68,31 @@ struct PrefixedTopLevelConstantRule: SwiftSyntaxRule, OptInRule, ConfigurationPr
             Example("internal let ↓Foo = \"Foo\""),
             Example("let ↓Foo = true"),
             Example("let ↓foo = 2, ↓bar = true"),
-            Example("let\n" +
-            "    ↓foo = true"),
-            Example("let ↓foo = {\n" +
-            "   return a + b\n" +
-            "}()")
+            Example("""
+            let
+                ↓foo = true
+            """),
+            Example("""
+            let ↓foo = {
+                return a + b
+            }()
+            """)
         ]
     )
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(onlyPrivateMembers: configuration.onlyPrivateMembers)
-    }
 }
 
 private extension PrefixedTopLevelConstantRule {
-    final class Visitor: ViolationsSyntaxVisitor {
-        private let onlyPrivateMembers: Bool
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
         private let topLevelPrefix = "k"
 
-        init(onlyPrivateMembers: Bool) {
-            self.onlyPrivateMembers = onlyPrivateMembers
-            super.init(viewMode: .sourceAccurate)
-        }
-
-        override var skippableDeclarations: [DeclSyntaxProtocol.Type] { .all }
+        override var skippableDeclarations: [any DeclSyntaxProtocol.Type] { .all }
 
         override func visitPost(_ node: VariableDeclSyntax) {
-            guard node.bindingKeyword.tokenKind == .keyword(.let) else {
+            guard node.bindingSpecifier.tokenKind == .keyword(.let) else {
                 return
             }
 
-            if onlyPrivateMembers, !node.modifiers.isPrivateOrFileprivate {
+            if configuration.onlyPrivateMembers, !node.modifiers.containsPrivateOrFileprivate() {
                 return
             }
 

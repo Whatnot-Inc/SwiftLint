@@ -13,6 +13,8 @@ extension SwiftLint {
         var useSTDIN = false
         @Flag(help: quietOptionDescription(for: .lint))
         var quiet = false
+        @Flag(help: "Don't print deprecation warnings.")
+        var silenceDeprecationWarnings = false
         @Option(help: "The directory of the cache used when linting.")
         var cachePath: String?
         @Flag(help: "Ignore cache when linting.")
@@ -23,11 +25,14 @@ extension SwiftLint {
         var paths = [String]()
 
         func run() async throws {
+            Issue.printDeprecationWarnings = !silenceDeprecationWarnings
+
             let allPaths: [String]
             if let path {
-                queuedPrintError("""
-                    warning: The --path option is deprecated. Pass the path(s) to lint last to the swiftlint command.
-                    """)
+                // TODO: [06/14/2024] Remove deprecation warning after ~2 years.
+                Issue.genericWarning(
+                    "The --path option is deprecated. Pass the path(s) to lint last to the swiftlint command."
+                ).print()
                 allPaths = [path] + paths
             } else if !paths.isEmpty {
                 allPaths = paths

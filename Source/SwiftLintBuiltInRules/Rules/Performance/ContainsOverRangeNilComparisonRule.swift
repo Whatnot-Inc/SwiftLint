@@ -1,7 +1,8 @@
 import SwiftSyntax
 
-struct ContainsOverRangeNilComparisonRule: SwiftSyntaxRule, OptInRule, ConfigurationProviderRule {
-    var configuration = SeverityConfiguration(.warning)
+@SwiftSyntaxRule(foldExpressions: true)
+struct ContainsOverRangeNilComparisonRule: OptInRule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
     static let description = RuleDescription(
         identifier: "contains_over_range_nil_comparison",
@@ -20,27 +21,19 @@ struct ContainsOverRangeNilComparisonRule: SwiftSyntaxRule, OptInRule, Configura
             ]
         }
     )
-
-    func preprocess(file: SwiftLintFile) -> SourceFileSyntax? {
-        file.foldedSyntaxTree
-    }
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(viewMode: .sourceAccurate)
-    }
 }
 
 private extension ContainsOverRangeNilComparisonRule {
-    final class Visitor: ViolationsSyntaxVisitor {
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
         override func visitPost(_ node: InfixOperatorExprSyntax) {
             guard
-                let operatorNode = node.operatorOperand.as(BinaryOperatorExprSyntax.self),
-                operatorNode.operatorToken.tokenKind.isEqualityComparison,
+                let operatorNode = node.operator.as(BinaryOperatorExprSyntax.self),
+                operatorNode.operator.tokenKind.isEqualityComparison,
                 node.rightOperand.is(NilLiteralExprSyntax.self),
                 let first = node.leftOperand.asFunctionCall,
-                first.argumentList.onlyElement?.label?.text == "of",
+                first.arguments.onlyElement?.label?.text == "of",
                 let calledExpression = first.calledExpression.as(MemberAccessExprSyntax.self),
-                calledExpression.name.text == "range"
+                calledExpression.declName.baseName.text == "range"
             else {
                 return
             }

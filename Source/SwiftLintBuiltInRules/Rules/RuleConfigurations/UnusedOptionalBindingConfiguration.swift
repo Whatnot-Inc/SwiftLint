@@ -1,26 +1,11 @@
-struct UnusedOptionalBindingConfiguration: SeverityBasedRuleConfiguration, Equatable {
-    private(set) var severityConfiguration = SeverityConfiguration(.warning)
-    private(set) var ignoreOptionalTry: Bool
+import SwiftLintCore
 
-    var consoleDescription: String {
-        return "severity: \(severityConfiguration.consoleDescription)" + ", ignore_optional_try: \(ignoreOptionalTry)"
-    }
+@AutoApply
+struct UnusedOptionalBindingConfiguration: SeverityBasedRuleConfiguration {
+    typealias Parent = UnusedOptionalBindingRule
 
-    init(ignoreOptionalTry: Bool) {
-        self.ignoreOptionalTry = ignoreOptionalTry
-    }
-
-    mutating func apply(configuration: Any) throws {
-        guard let configuration = configuration as? [String: Any] else {
-            throw ConfigurationError.unknownConfiguration
-        }
-
-        if let ignoreOptionalTry = configuration["ignore_optional_try"] as? Bool {
-            self.ignoreOptionalTry = ignoreOptionalTry
-        }
-
-        if let severityString = configuration["severity"] as? String {
-            try severityConfiguration.apply(configuration: severityString)
-        }
-    }
+    @ConfigurationElement(key: "severity")
+    private(set) var severityConfiguration = SeverityConfiguration<Parent>(.warning)
+    @ConfigurationElement(key: "ignore_optional_try")
+    private(set) var ignoreOptionalTry = false
 }

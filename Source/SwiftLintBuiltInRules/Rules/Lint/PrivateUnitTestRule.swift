@@ -1,17 +1,9 @@
 import Foundation
 import SwiftSyntax
 
-struct PrivateUnitTestRule: SwiftSyntaxCorrectableRule, ConfigurationProviderRule, CacheDescriptionProvider {
-    var configuration: PrivateUnitTestConfiguration = {
-        var configuration = PrivateUnitTestConfiguration(identifier: "private_unit_test")
-        configuration.message = "Unit test marked `private` will not be run by XCTest."
-        configuration.regex = regex("XCTestCase")
-        return configuration
-    }()
-
-    var cacheDescription: String {
-        return configuration.cacheDescription
-    }
+@SwiftSyntaxRule
+struct PrivateUnitTestRule: SwiftSyntaxCorrectableRule {
+    var configuration = PrivateUnitTestConfiguration()
 
     static let description = RuleDescription(
         identifier: "private_unit_test",
@@ -134,114 +126,91 @@ struct PrivateUnitTestRule: SwiftSyntaxCorrectableRule, ConfigurationProviderRul
         ]
     )
 
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(parentClassRegex: configuration.regex)
-    }
-
-    func makeRewriter(file: SwiftLintFile) -> ViolationsSyntaxRewriter? {
+    func makeRewriter(file: SwiftLintFile) -> (some ViolationsSyntaxRewriter)? {
         Rewriter(
-            parentClassRegex: configuration.regex,
+            configuration: configuration,
             locationConverter: file.locationConverter,
             disabledRegions: disabledRegions(file: file)
         )
     }
 }
 
-private class Visitor: ViolationsSyntaxVisitor {
-    private let parentClassRegex: NSRegularExpression
+private extension PrivateUnitTestRule {
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
+        override var skippableDeclarations: [any DeclSyntaxProtocol.Type] { .all }
 
-    override var skippableDeclarations: [DeclSyntaxProtocol.Type] { .all }
-
-    init(parentClassRegex: NSRegularExpression) {
-        self.parentClassRegex = parentClassRegex
-        super.init(viewMode: .sourceAccurate)
-    }
-
-    override func visit(_ node: ClassDeclSyntax) -> SyntaxVisitorContinueKind {
-        !node.isPrivate && node.hasParent(matching: parentClassRegex) ? .visitChildren : .skipChildren
-    }
-
-    override func visitPost(_ node: ClassDeclSyntax) {
-        if node.isPrivate, node.hasParent(matching: parentClassRegex) {
-            violations.append(node.classKeyword.positionAfterSkippingLeadingTrivia)
-        }
-    }
-
-    override func visitPost(_ node: FunctionDeclSyntax) {
-        if node.isTestMethod, node.isPrivate {
-            violations.append(node.funcKeyword.positionAfterSkippingLeadingTrivia)
-        }
-    }
-}
-
-private class Rewriter: SyntaxRewriter, ViolationsSyntaxRewriter {
-    private(set) var correctionPositions: [AbsolutePosition] = []
-    private let parentClassRegex: NSRegularExpression
-    let locationConverter: SourceLocationConverter
-    let disabledRegions: [SourceRange]
-
-    init(parentClassRegex: NSRegularExpression,
-         locationConverter: SourceLocationConverter,
-         disabledRegions: [SourceRange]) {
-        self.parentClassRegex = parentClassRegex
-        self.locationConverter = locationConverter
-        self.disabledRegions = disabledRegions
-    }
-
-    override func visit(_ node: ClassDeclSyntax) -> DeclSyntax {
-        guard
-            node.isPrivate,
-            node.hasParent(matching: parentClassRegex),
-            !node.isContainedIn(regions: disabledRegions, locationConverter: locationConverter)
-        else {
-            return super.visit(node)
+        override func visit(_ node: ClassDeclSyntax) -> SyntaxVisitorContinueKind {
+            !node.isPrivate && node.hasParent(configuredIn: configuration) ? .visitChildren : .skipChildren
         }
 
-        correctionPositions.append(node.positionAfterSkippingLeadingTrivia)
-        let (modifiers, declKeyword) = withoutPrivate(modifiers: node.modifiers, declKeyword: node.classKeyword)
-        return super.visit(node.with(\.modifiers, modifiers).with(\.classKeyword, declKeyword))
-    }
-
-    override func visit(_ node: FunctionDeclSyntax) -> DeclSyntax {
-        guard
-            node.isTestMethod,
-            node.isPrivate,
-            !node.isContainedIn(regions: disabledRegions, locationConverter: locationConverter)
-        else {
-            return super.visit(node)
-        }
-
-        correctionPositions.append(node.positionAfterSkippingLeadingTrivia)
-        let (modifiers, declKeyword) = withoutPrivate(modifiers: node.modifiers, declKeyword: node.funcKeyword)
-        return super.visit(node.with(\.modifiers, modifiers).with(\.funcKeyword, declKeyword))
-    }
-
-    private func withoutPrivate(modifiers: ModifierListSyntax?,
-                                declKeyword: TokenSyntax) -> (ModifierListSyntax?, TokenSyntax) {
-        guard let modifiers else {
-            return (nil, declKeyword)
-        }
-        var filteredModifiers = [DeclModifierSyntax]()
-        var leadingTrivia = Trivia()
-        for modifier in modifiers {
-            let accumulatedLeadingTrivia = leadingTrivia + (modifier.leadingTrivia)
-            if modifier.name.tokenKind == .keyword(.private) {
-                leadingTrivia = accumulatedLeadingTrivia
-            } else {
-                filteredModifiers.append(modifier.with(\.leadingTrivia, accumulatedLeadingTrivia))
-                leadingTrivia = Trivia()
+        override func visitPost(_ node: ClassDeclSyntax) {
+            if node.isPrivate, node.hasParent(configuredIn: configuration) {
+                violations.append(node.classKeyword.positionAfterSkippingLeadingTrivia)
             }
         }
-        let declKeyword = declKeyword.with(\.leadingTrivia, leadingTrivia + (declKeyword.leadingTrivia))
-        return (ModifierListSyntax(filteredModifiers), declKeyword)
+
+        override func visitPost(_ node: FunctionDeclSyntax) {
+            if node.isTestMethod, node.isPrivate {
+                violations.append(node.funcKeyword.positionAfterSkippingLeadingTrivia)
+            }
+        }
+    }
+
+    final class Rewriter: ViolationsSyntaxRewriter {
+        private let configuration: PrivateUnitTestConfiguration
+
+        init(configuration: PrivateUnitTestConfiguration,
+             locationConverter: SourceLocationConverter,
+             disabledRegions: [SourceRange]) {
+            self.configuration = configuration
+            super.init(locationConverter: locationConverter, disabledRegions: disabledRegions)
+        }
+
+        override func visit(_ node: ClassDeclSyntax) -> DeclSyntax {
+            guard node.isPrivate, node.hasParent(configuredIn: configuration) else {
+                return super.visit(node)
+            }
+
+            correctionPositions.append(node.positionAfterSkippingLeadingTrivia)
+            let (modifiers, declKeyword) = withoutPrivate(modifiers: node.modifiers, declKeyword: node.classKeyword)
+            return super.visit(node.with(\.modifiers, modifiers).with(\.classKeyword, declKeyword))
+        }
+
+        override func visit(_ node: FunctionDeclSyntax) -> DeclSyntax {
+            guard node.isTestMethod, node.isPrivate else {
+                return super.visit(node)
+            }
+
+            correctionPositions.append(node.positionAfterSkippingLeadingTrivia)
+            let (modifiers, declKeyword) = withoutPrivate(modifiers: node.modifiers, declKeyword: node.funcKeyword)
+            return super.visit(node.with(\.modifiers, modifiers).with(\.funcKeyword, declKeyword))
+        }
+
+        private func withoutPrivate(modifiers: DeclModifierListSyntax,
+                                    declKeyword: TokenSyntax) -> (DeclModifierListSyntax, TokenSyntax) {
+            var filteredModifiers = [DeclModifierSyntax]()
+            var leadingTrivia = Trivia()
+            for modifier in modifiers {
+                let accumulatedLeadingTrivia = leadingTrivia + (modifier.leadingTrivia)
+                if modifier.name.tokenKind == .keyword(.private) {
+                    leadingTrivia = accumulatedLeadingTrivia
+                } else {
+                    filteredModifiers.append(modifier.with(\.leadingTrivia, accumulatedLeadingTrivia))
+                    leadingTrivia = Trivia()
+                }
+            }
+            let declKeyword = declKeyword.with(\.leadingTrivia, leadingTrivia + (declKeyword.leadingTrivia))
+            return (DeclModifierListSyntax(filteredModifiers), declKeyword)
+        }
     }
 }
 
 private extension ClassDeclSyntax {
-    func hasParent(matching pattern: NSRegularExpression) -> Bool {
-        inheritanceClause?.inheritedTypeCollection.contains { type in
-            if let name = type.typeName.as(SimpleTypeIdentifierSyntax.self)?.name.text {
-                return pattern.numberOfMatches(in: name, range: name.fullNSRange) > 0
+    func hasParent(configuredIn config: PrivateUnitTestConfiguration) -> Bool {
+        inheritanceClause?.inheritedTypes.contains { type in
+            if let name = type.type.as(IdentifierTypeSyntax.self)?.name.text {
+                return config.regex.regex.numberOfMatches(in: name, range: name.fullNSRange) > 0
+                    || config.testParentClasses.contains(name)
             }
             return false
         } ?? false
@@ -258,27 +227,13 @@ private extension FunctionDeclSyntax {
     }
 
     var isTestMethod: Bool {
-        identifier.text.hasPrefix("test")
-            && signature.input.parameterList.isEmpty
-            && signature.output == nil
-            && !(modifiers?.hasStatic ?? false)
+           name.text.hasPrefix("test")
+        && signature.parameterClause.parameters.isEmpty
+        && signature.returnClause == nil
+        && (modifiers.isEmpty || !modifiers.contains(keyword: .static))
     }
 }
 
-private extension ModifierListSyntax {
-    var hasPrivate: Bool {
-        contains { $0.name.tokenKind == .keyword(.private) }
-    }
-
-    var hasStatic: Bool {
-        contains { $0.name.tokenKind == .keyword(.static) }
-    }
-}
-
-private func resultInPrivateProperty(modifiers: ModifierListSyntax?, attributes: AttributeListSyntax?) -> Bool {
-    guard let modifiers, modifiers.hasPrivate else {
-        return false
-    }
-
-    return !attributes.contains(attributeNamed: "objc")
+private func resultInPrivateProperty(modifiers: DeclModifierListSyntax, attributes: AttributeListSyntax) -> Bool {
+    modifiers.contains(keyword: .private) && !attributes.contains(attributeNamed: "objc")
 }

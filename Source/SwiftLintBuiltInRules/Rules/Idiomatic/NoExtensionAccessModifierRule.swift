@@ -1,7 +1,8 @@
 import SwiftSyntax
 
-struct NoExtensionAccessModifierRule: SwiftSyntaxRule, OptInRule, ConfigurationProviderRule {
-    var configuration = SeverityConfiguration(.error)
+@SwiftSyntaxRule
+struct NoExtensionAccessModifierRule: OptInRule {
+    var configuration = SeverityConfiguration<Self>(.error)
 
     static let description = RuleDescription(
         identifier: "no_extension_access_modifier",
@@ -20,18 +21,15 @@ struct NoExtensionAccessModifierRule: SwiftSyntaxRule, OptInRule, ConfigurationP
             Example("↓fileprivate extension String {}")
         ]
     )
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(viewMode: .sourceAccurate)
-    }
 }
 
 private extension NoExtensionAccessModifierRule {
-    final class Visitor: ViolationsSyntaxVisitor {
-        override var skippableDeclarations: [DeclSyntaxProtocol.Type] { .all }
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
+        override var skippableDeclarations: [any DeclSyntaxProtocol.Type] { .all }
 
         override func visitPost(_ node: ExtensionDeclSyntax) {
-            if let modifiers = node.modifiers, modifiers.isNotEmpty {
+            let modifiers = node.modifiers
+            if modifiers.isNotEmpty {
                 violations.append(modifiers.positionAfterSkippingLeadingTrivia)
             }
         }

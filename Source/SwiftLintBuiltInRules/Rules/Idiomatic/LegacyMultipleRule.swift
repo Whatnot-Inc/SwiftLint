@@ -1,7 +1,8 @@
 import SwiftSyntax
 
-struct LegacyMultipleRule: OptInRule, ConfigurationProviderRule, SwiftSyntaxRule {
-    var configuration = SeverityConfiguration(.warning)
+@SwiftSyntaxRule(foldExpressions: true)
+struct LegacyMultipleRule: OptInRule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
     static let description = RuleDescription(
         identifier: "legacy_multiple",
@@ -36,23 +37,15 @@ struct LegacyMultipleRule: OptInRule, ConfigurationProviderRule, SwiftSyntaxRule
             """)
         ]
     )
-
-    func preprocess(file: SwiftLintFile) -> SourceFileSyntax? {
-        file.foldedSyntaxTree
-    }
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(viewMode: .sourceAccurate)
-    }
 }
 
 private extension LegacyMultipleRule {
-    final class Visitor: ViolationsSyntaxVisitor {
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
         override func visitPost(_ node: InfixOperatorExprSyntax) {
-            guard let operatorNode = node.operatorOperand.as(BinaryOperatorExprSyntax.self),
-                  operatorNode.operatorToken.tokenKind == .binaryOperator("%"),
+            guard let operatorNode = node.operator.as(BinaryOperatorExprSyntax.self),
+                  operatorNode.operator.tokenKind == .binaryOperator("%"),
                   let parent = node.parent?.as(InfixOperatorExprSyntax.self),
-                  let parentOperatorNode = parent.operatorOperand.as(BinaryOperatorExprSyntax.self),
+                  let parentOperatorNode = parent.operator.as(BinaryOperatorExprSyntax.self),
                   parentOperatorNode.isEqualityOrInequalityOperator else {
                 return
             }
@@ -71,14 +64,14 @@ private extension LegacyMultipleRule {
                 return
             }
 
-            violations.append(node.operatorOperand.positionAfterSkippingLeadingTrivia)
+            violations.append(node.operator.positionAfterSkippingLeadingTrivia)
         }
     }
 }
 
 private extension BinaryOperatorExprSyntax {
     var isEqualityOrInequalityOperator: Bool {
-        operatorToken.tokenKind == .binaryOperator("==") ||
-            operatorToken.tokenKind == .binaryOperator("!=")
+        `operator`.tokenKind == .binaryOperator("==") ||
+        `operator`.tokenKind == .binaryOperator("!=")
     }
 }

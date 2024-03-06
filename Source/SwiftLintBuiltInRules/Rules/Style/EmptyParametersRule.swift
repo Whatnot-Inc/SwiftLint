@@ -1,7 +1,8 @@
 import SwiftSyntax
 
-struct EmptyParametersRule: SwiftSyntaxCorrectableRule, ConfigurationProviderRule {
-    var configuration = SeverityConfiguration(.warning)
+@SwiftSyntaxRule(explicitRewriter: true)
+struct EmptyParametersRule: Rule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
     static let description = RuleDescription(
         identifier: "empty_parameters",
@@ -9,42 +10,31 @@ struct EmptyParametersRule: SwiftSyntaxCorrectableRule, ConfigurationProviderRul
         description: "Prefer `() -> ` over `Void -> `",
         kind: .style,
         nonTriggeringExamples: [
-            Example("let abc: () -> Void = {}\n"),
-            Example("func foo(completion: () -> Void)\n"),
-            Example("func foo(completion: () throws -> Void)\n"),
-            Example("let foo: (ConfigurationTests) -> Void throws -> Void)\n"),
-            Example("let foo: (ConfigurationTests) ->   Void throws -> Void)\n"),
-            Example("let foo: (ConfigurationTests) ->Void throws -> Void)\n")
+            Example("let abc: () -> Void = {}"),
+            Example("func foo(completion: () -> Void)"),
+            Example("func foo(completion: () throws -> Void)"),
+            Example("let foo: (ConfigurationTests) -> Void throws -> Void)"),
+            Example("let foo: (ConfigurationTests) ->   Void throws -> Void)"),
+            Example("let foo: (ConfigurationTests) ->Void throws -> Void)")
         ],
         triggeringExamples: [
-            Example("let abc: ↓(Void) -> Void = {}\n"),
-            Example("func foo(completion: ↓(Void) -> Void)\n"),
-            Example("func foo(completion: ↓(Void) throws -> Void)\n"),
-            Example("let foo: ↓(Void) -> () throws -> Void)\n")
+            Example("let abc: ↓(Void) -> Void = {}"),
+            Example("func foo(completion: ↓(Void) -> Void)"),
+            Example("func foo(completion: ↓(Void) throws -> Void)"),
+            Example("let foo: ↓(Void) -> () throws -> Void)")
         ],
         corrections: [
-            Example("let abc: ↓(Void) -> Void = {}\n"): Example("let abc: () -> Void = {}\n"),
-            Example("func foo(completion: ↓(Void) -> Void)\n"): Example("func foo(completion: () -> Void)\n"),
-            Example("func foo(completion: ↓(Void) throws -> Void)\n"):
-                Example("func foo(completion: () throws -> Void)\n"),
-            Example("let foo: ↓(Void) -> () throws -> Void)\n"): Example("let foo: () -> () throws -> Void)\n")
+            Example("let abc: ↓(Void) -> Void = {}"): Example("let abc: () -> Void = {}"),
+            Example("func foo(completion: ↓(Void) -> Void)"): Example("func foo(completion: () -> Void)"),
+            Example("func foo(completion: ↓(Void) throws -> Void)"):
+                Example("func foo(completion: () throws -> Void)"),
+            Example("let foo: ↓(Void) -> () throws -> Void)"): Example("let foo: () -> () throws -> Void)")
         ]
     )
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(viewMode: .sourceAccurate)
-    }
-
-    func makeRewriter(file: SwiftLintFile) -> ViolationsSyntaxRewriter? {
-        Rewriter(
-            locationConverter: file.locationConverter,
-            disabledRegions: disabledRegions(file: file)
-        )
-    }
 }
 
 private extension EmptyParametersRule {
-    final class Visitor: ViolationsSyntaxVisitor {
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
         override func visitPost(_ node: FunctionTypeSyntax) {
             guard let violationPosition = node.emptyParametersViolationPosition else {
                 return
@@ -54,26 +44,13 @@ private extension EmptyParametersRule {
         }
     }
 
-    final class Rewriter: SyntaxRewriter, ViolationsSyntaxRewriter {
-        private(set) var correctionPositions: [AbsolutePosition] = []
-        let locationConverter: SourceLocationConverter
-        let disabledRegions: [SourceRange]
-
-        init(locationConverter: SourceLocationConverter, disabledRegions: [SourceRange]) {
-            self.locationConverter = locationConverter
-            self.disabledRegions = disabledRegions
-        }
-
+    final class Rewriter: ViolationsSyntaxRewriter {
         override func visit(_ node: FunctionTypeSyntax) -> TypeSyntax {
-            guard
-                let violationPosition = node.emptyParametersViolationPosition,
-                !node.isContainedIn(regions: disabledRegions, locationConverter: locationConverter)
-            else {
+            guard let violationPosition = node.emptyParametersViolationPosition else {
                 return super.visit(node)
             }
-
             correctionPositions.append(violationPosition)
-            return super.visit(node.with(\.arguments, TupleTypeElementListSyntax([])))
+            return super.visit(node.with(\.parameters, TupleTypeElementListSyntax([])))
         }
     }
 }
@@ -81,10 +58,10 @@ private extension EmptyParametersRule {
 private extension FunctionTypeSyntax {
     var emptyParametersViolationPosition: AbsolutePosition? {
         guard
-            let argument = arguments.onlyElement,
+            let argument = parameters.onlyElement,
             leftParen.presence == .present,
             rightParen.presence == .present,
-            let simpleType = argument.type.as(SimpleTypeIdentifierSyntax.self),
+            let simpleType = argument.type.as(IdentifierTypeSyntax.self),
             simpleType.typeName == "Void"
         else {
             return nil

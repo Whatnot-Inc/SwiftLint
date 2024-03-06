@@ -21,6 +21,7 @@ disabled_rules:
   - explicit_top_level_acl
   - explicit_type_interface
   - file_types_order
+  - final_test_case
   - force_unwrapping
   - function_default_parameter_at_end
   - implicit_return
@@ -35,18 +36,22 @@ disabled_rules:
   - multiline_parameters
   - multiline_parameters_brackets
   - no_extension_access_modifier
+  - no_fallthrough_only
   - no_grouping_extension
   - no_magic_numbers
+  - one_declaration_per_file
   - prefer_nimble
   - prefer_self_in_static_references
   - prefixed_toplevel_constant
   - redundant_self_in_closure
   - required_deinit
   - self_binding
+  - shorthand_argument
   - sorted_enum_cases
   - strict_fileprivate
   - superfluous_else
   - switch_case_on_newline
+  - todo
   - trailing_closure
   - type_contents_order
   - unused_capture_list
@@ -54,7 +59,9 @@ disabled_rules:
 
 attributes:
   always_on_line_above:
+    - "@ConfigurationElement"
     - "@OptionGroup"
+    - "@RuleConfigurationDescriptionBuilder"
 identifier_name:
   excluded:
     - id
@@ -65,8 +72,11 @@ file_name:
   excluded:
     - Exports.swift
     - GeneratedTests.swift
+    - RuleConfigurationMacros.swift
     - SwiftSyntax+SwiftLint.swift
     - TestHelpers.swift
+unneeded_override:
+  affect_initializers: true
 
 balanced_xctest_lifecycle: &unit_test_configuration
   test_parent_classes:
@@ -80,7 +90,7 @@ type_body_length: 400
 
 custom_rules:
   rule_id:
-    included: Source/SwiftLintFramework/Rules/.+/\w+\.swift
+    included: Source/SwiftLintBuiltInRules/Rules/.+/\w+\.swift
     name: Rule ID
     message: Rule IDs must be all lowercase, snake case and not end with `rule`
     regex: ^\s+identifier:\s*("\w+_rule"|"\S*[^a-z_]\S*")

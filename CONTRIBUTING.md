@@ -57,14 +57,14 @@ with Swift Package Manager on Linux. When contributing code changes, please
 ensure that all three supported build methods continue to work and pass tests.
 
 ```shell
-$ xcodebuild -scheme swiftlint test
+$ xcodebuild -scheme swiftlint test -destination 'platform=macOS'
 $ swift test
 $ make docker_test
 ```
 
 ## Rules
 
-New rules should be added in the `Source/SwiftLintFramework/Rules` directory.
+New rules should be added in the `Source/SwiftLintBuiltInRules/Rules` directory.
 
 Rules should conform to either the `Rule` or `ASTRule` protocols.
 
@@ -104,11 +104,11 @@ configuration object via the `configuration` property:
 * If none of the provided `RuleConfiguration`s are applicable, you can create one
   specifically for your rule.
 
-See [`ForceCastRule`](https://github.com/realm/SwiftLint/blob/main/Source/SwiftLintFramework/Rules/Idiomatic/ForceCastRule.swift)
+See [`ForceCastRule`](https://github.com/realm/SwiftLint/blob/main/Source/SwiftLintBuiltInRules/Rules/Idiomatic/ForceCastRule.swift)
 for a rule that allows severity configuration,
-[`FileLengthRule`](https://github.com/realm/SwiftLint/blob/main/Source/SwiftLintFramework/Rules/Metrics/FileLengthRule.swift)
+[`FileLengthRule`](https://github.com/realm/SwiftLint/blob/main/Source/SwiftLintBuiltInRules/Rules/Metrics/FileLengthRule.swift)
 for a rule that has multiple severity levels,
-[`IdentifierNameRule`](https://github.com/realm/SwiftLint/blob/main/Source/SwiftLintFramework/Rules/Style/IdentifierNameRule.swift)
+[`IdentifierNameRule`](https://github.com/realm/SwiftLint/blob/main/Source/SwiftLintBuiltInRules/Rules/Style/IdentifierNameRule.swift)
 for a rule that allows name evaluation configuration:
 
 ``` yaml
@@ -137,7 +137,7 @@ If your rule is configurable, but does not fit the pattern of
 * This initializer must throw if it does not understand the configuration, or
   it cannot be fully initialized with the configuration and default values.
 * By convention, a failing initializer throws
-  `ConfigurationError.UnknownConfiguration`.
+  `Issue.unknownConfiguration(ruleID: Parent.identifier)`.
 * If this initializer fails, your rule will be initialized with its default
   values by calling `init()`.
 

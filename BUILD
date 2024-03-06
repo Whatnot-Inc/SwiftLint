@@ -1,21 +1,79 @@
+load("@bazel_skylib//rules:common_settings.bzl", "bool_flag")
 load("@build_bazel_rules_apple//apple:apple.bzl", "apple_universal_binary")
 load(
     "@build_bazel_rules_swift//swift:swift.bzl",
     "swift_binary",
+    "swift_compiler_plugin",
     "swift_library",
+    "universal_swift_compiler_plugin",
 )
-load(
-    "@rules_xcodeproj//xcodeproj:defs.bzl",
-    "xcode_schemes",
-    "xcodeproj",
+
+config_setting(
+    name = "strict_concurrency_builtin_rules",
+    values = {"define": "strict_concurrency_builtin_rules=true"},
 )
+
+bool_flag(
+    name = "universal_tools",
+    build_setting_default = False,
+)
+
+config_setting(
+    name = "universal_tools_config",
+    flag_values = {
+        "@SwiftLint//:universal_tools": "true",
+    },
+)
+
+copts = [
+    "-enable-upcoming-feature",
+    "ExistentialAny",
+]
+
+strict_concurrency_copts = [
+    "-Xfrontend",
+    "-strict-concurrency=complete",
+]
 
 # Targets
 
 swift_library(
+    name = "SwiftLintCoreMacrosLib",
+    srcs = glob(["Source/SwiftLintCoreMacros/*.swift"]),
+    copts = copts + strict_concurrency_copts,
+    module_name = "SwiftLintCoreMacros",
+    visibility = ["//visibility:public"],
+    deps = [
+        "@SwiftSyntax//:SwiftCompilerPlugin_opt",
+        "@SwiftSyntax//:SwiftSyntaxMacros_opt",
+    ],
+)
+
+swift_compiler_plugin(
+    name = "SwiftLintCoreMacros.underlying",
+    srcs = glob(["Source/SwiftLintCoreMacros/*.swift"]),
+    copts = copts + strict_concurrency_copts,
+    module_name = "SwiftLintCoreMacros",
+    deps = [
+        "@SwiftSyntax//:SwiftCompilerPlugin_opt",
+        "@SwiftSyntax//:SwiftSyntaxMacros_opt",
+    ],
+)
+
+universal_swift_compiler_plugin(
+    name = "SwiftLintCoreMacros",
+    plugin = "SwiftLintCoreMacros.underlying",
+)
+
+swift_library(
     name = "SwiftLintCore",
     srcs = glob(["Source/SwiftLintCore/**/*.swift"]),
+    copts = copts,  # TODO: strict_concurrency_copts
     module_name = "SwiftLintCore",
+    plugins = select({
+        ":universal_tools_config": [":SwiftLintCoreMacros"],
+        "//conditions:default": [":SwiftLintCoreMacros.underlying"],
+    }),
     visibility = ["//visibility:public"],
     deps = [
         "@SwiftSyntax//:SwiftIDEUtils_opt",
@@ -35,6 +93,10 @@ swift_library(
 swift_library(
     name = "SwiftLintBuiltInRules",
     srcs = glob(["Source/SwiftLintBuiltInRules/**/*.swift"]),
+    copts = copts + select({
+        ":strict_concurrency_builtin_rules": strict_concurrency_copts,
+        "//conditions:default": [],
+    }),
     module_name = "SwiftLintBuiltInRules",
     visibility = ["//visibility:public"],
     deps = [
@@ -48,6 +110,7 @@ swift_library(
         "Source/SwiftLintExtraRules/Exports.swift",
         "@swiftlint_extra_rules//:extra_rules",
     ],
+    copts = copts + strict_concurrency_copts,
     module_name = "SwiftLintExtraRules",
     visibility = ["//visibility:public"],
     deps = [
@@ -60,6 +123,7 @@ swift_library(
     srcs = glob(
         ["Source/SwiftLintFramework/**/*.swift"],
     ),
+    copts = copts + strict_concurrency_copts,
     module_name = "SwiftLintFramework",
     visibility = ["//visibility:public"],
     deps = [
@@ -72,6 +136,7 @@ swift_library(
 swift_library(
     name = "swiftlint.library",
     srcs = glob(["Source/swiftlint/**/*.swift"]),
+    copts = copts,  # TODO: strict_concurrency_copts
     module_name = "swiftlint",
     visibility = ["//visibility:public"],
     deps = [
@@ -84,6 +149,7 @@ swift_library(
 
 swift_binary(
     name = "swiftlint",
+    copts = copts + strict_concurrency_copts,
     visibility = ["//visibility:public"],
     deps = [
         ":swiftlint.library",
@@ -102,12 +168,17 @@ apple_universal_binary(
     visibility = ["//visibility:public"],
 )
 
-cc_library(
-    name = "DyldWarningWorkaround",
+filegroup(
+    name = "DyldWarningWorkaroundSources",
     srcs = [
         "Source/DyldWarningWorkaround/DyldWarningWorkaround.c",
         "Source/DyldWarningWorkaround/include/objc_dupclass.h",
     ],
+)
+
+cc_library(
+    name = "DyldWarningWorkaround",
+    srcs = ["//:DyldWarningWorkaroundSources"],
     includes = ["Source/DyldWarningWorkaround/include"],
     alwayslink = True,
 )
@@ -131,6 +202,7 @@ filegroup(
         "BUILD",
         "LICENSE",
         "MODULE.bazel",
+        "//:DyldWarningWorkaroundSources",
         "//:LintInputs",
         "//Tests:BUILD",
         "//bazel:release_files",
@@ -156,39 +228,6 @@ COPYFILE_DISABLE=1 tar czvfh "$${outs[0]}" \
   *
 shasum -a 256 "$${outs[0]}" > "$${outs[1]}"
     """,
-)
-
-# Xcode Integration
-
-xcodeproj(
-    name = "xcodeproj",
-    project_name = "SwiftLint",
-    schemes = [
-        xcode_schemes.scheme(
-            name = "SwiftLint",
-            launch_action = xcode_schemes.launch_action(
-                "swiftlint",
-                args = [
-                    "--progress",
-                ],
-            ),
-            test_action = xcode_schemes.test_action([
-                "//Tests:CLITests",
-                "//Tests:SwiftLintFrameworkTests",
-                "//Tests:GeneratedTests",
-                "//Tests:IntegrationTests",
-                "//Tests:ExtraRulesTests",
-            ]),
-        ),
-    ],
-    top_level_targets = [
-        "//:swiftlint",
-        "//Tests:CLITests",
-        "//Tests:SwiftLintFrameworkTests",
-        "//Tests:GeneratedTests",
-        "//Tests:IntegrationTests",
-        "//Tests:ExtraRulesTests",
-    ],
 )
 
 # Analyze

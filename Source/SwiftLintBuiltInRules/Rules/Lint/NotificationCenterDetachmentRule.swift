@@ -1,7 +1,8 @@
 import SwiftSyntax
 
-struct NotificationCenterDetachmentRule: SwiftSyntaxRule, ConfigurationProviderRule {
-    var configuration = SeverityConfiguration(.warning)
+@SwiftSyntaxRule
+struct NotificationCenterDetachmentRule: Rule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
     static let description = RuleDescription(
         identifier: "notification_center_detachment",
@@ -11,20 +12,16 @@ struct NotificationCenterDetachmentRule: SwiftSyntaxRule, ConfigurationProviderR
         nonTriggeringExamples: NotificationCenterDetachmentRuleExamples.nonTriggeringExamples,
         triggeringExamples: NotificationCenterDetachmentRuleExamples.triggeringExamples
     )
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(viewMode: .sourceAccurate)
-    }
 }
 
 private extension NotificationCenterDetachmentRule {
-    final class Visitor: ViolationsSyntaxVisitor {
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
         override func visitPost(_ node: FunctionCallExprSyntax) {
             guard node.isNotificationCenterDettachmentCall,
-                  let arg = node.argumentList.first,
+                  let arg = node.arguments.first,
                   arg.label == nil,
-                  let expr = arg.expression.as(IdentifierExprSyntax.self),
-                  expr.identifier.tokenKind == .keyword(.self) else {
+                  let expr = arg.expression.as(DeclReferenceExprSyntax.self),
+                  expr.baseName.tokenKind == .keyword(.self) else {
                 return
             }
 
@@ -40,12 +37,12 @@ private extension NotificationCenterDetachmentRule {
 private extension FunctionCallExprSyntax {
     var isNotificationCenterDettachmentCall: Bool {
         guard trailingClosure == nil,
-              argumentList.count == 1,
+              arguments.count == 1,
               let expr = calledExpression.as(MemberAccessExprSyntax.self),
-              expr.name.text == "removeObserver",
+              expr.declName.baseName.text == "removeObserver",
               let baseExpr = expr.base?.as(MemberAccessExprSyntax.self),
-              baseExpr.name.text == "default",
-              baseExpr.base?.as(IdentifierExprSyntax.self)?.identifier.text == "NotificationCenter" else {
+              baseExpr.declName.baseName.text == "default",
+              baseExpr.base?.as(DeclReferenceExprSyntax.self)?.baseName.text == "NotificationCenter" else {
             return false
         }
 

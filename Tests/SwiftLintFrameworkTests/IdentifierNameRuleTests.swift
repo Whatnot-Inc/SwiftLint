@@ -1,4 +1,5 @@
 @testable import SwiftLintBuiltInRules
+import XCTest
 
 class IdentifierNameRuleTests: SwiftLintTestCase {
     func testIdentifierNameWithExcluded() {
@@ -34,7 +35,7 @@ class IdentifierNameRuleTests: SwiftLintTestCase {
     func testIdentifierNameWithAllowedSymbolsAndViolation() {
         let baseDescription = IdentifierNameRule.description
         let triggeringExamples = [
-            Example("↓let my_Let$ = 0")
+            Example("let ↓my_Let$ = 0")
         ]
 
         let description = baseDescription.with(triggeringExamples: triggeringExamples)
@@ -44,9 +45,13 @@ class IdentifierNameRuleTests: SwiftLintTestCase {
     func testIdentifierNameWithIgnoreStartWithLowercase() {
         let baseDescription = IdentifierNameRule.description
         let triggeringExamplesToRemove = [
-            Example("↓let MyLet = 0"),
+            Example("let ↓MyLet = 0"),
             Example("enum Foo { case ↓MyEnum }"),
-            Example("↓func IsOperator(name: String) -> Bool")
+            Example("func ↓IsOperator(name: String) -> Bool"),
+            Example("class C { class let ↓MyLet = 0 }"),
+            Example("class C { static func ↓MyFunc() {} }"),
+            Example("class C { class func ↓MyFunc() {} }"),
+            Example("func ↓√ (arg: Double) -> Double { arg }")
         ]
         let nonTriggeringExamples = baseDescription.nonTriggeringExamples +
             triggeringExamplesToRemove.removingViolationMarkers()
@@ -59,6 +64,50 @@ class IdentifierNameRuleTests: SwiftLintTestCase {
         verifyRule(description, ruleConfiguration: ["validates_start_with_lowercase": false])
     }
 
+    func testStartsWithLowercaseCheck() {
+        let triggeringExamples = [
+            Example("let ↓MyLet = 0"),
+            Example("enum Foo { case ↓MyCase }"),
+            Example("func ↓IsOperator(name: String) -> Bool { true }")
+        ]
+        let nonTriggeringExamples = [
+            Example("let myLet = 0"),
+            Example("enum Foo { case myCase }"),
+            Example("func isOperator(name: String) -> Bool { true }")
+        ]
+
+        verifyRule(
+            IdentifierNameRule.description
+                .with(triggeringExamples: triggeringExamples)
+                .with(nonTriggeringExamples: nonTriggeringExamples),
+            ruleConfiguration: ["validates_start_with_lowercase": true]
+        )
+
+        verifyRule(
+            IdentifierNameRule.description
+                .with(triggeringExamples: [])
+                .with(nonTriggeringExamples: nonTriggeringExamples + triggeringExamples.removingViolationMarkers()),
+            ruleConfiguration: ["validates_start_with_lowercase": false]
+        )
+    }
+
+    func testStartsWithLowercaseCheckInCombinationWithAllowedSymbols() {
+        verifyRule(
+            IdentifierNameRule.description
+                .with(triggeringExamples: [
+                    Example("let ↓OneLet = 0")
+                ])
+                .with(nonTriggeringExamples: [
+                    Example("let MyLet = 0"),
+                    Example("enum Foo { case myCase }")
+                ]),
+            ruleConfiguration: [
+                "validates_start_with_lowercase": true,
+                "allowed_symbols": ["M"]
+            ] as [String: any Sendable]
+        )
+    }
+
     func testLinuxCrashOnEmojiNames() {
         let baseDescription = IdentifierNameRule.description
         let triggeringExamples = [
@@ -67,5 +116,14 @@ class IdentifierNameRuleTests: SwiftLintTestCase {
 
         let description = baseDescription.with(triggeringExamples: triggeringExamples)
         verifyRule(description, ruleConfiguration: ["allowed_symbols": ["$", "%"]])
+    }
+
+    func testFunctionNameInViolationMessage() {
+        let example = SwiftLintFile(contents: "func _abc(arg: String) {}")
+        let violations = IdentifierNameRule().validate(file: example)
+        XCTAssertEqual(
+            violations.map(\.reason),
+            ["Function name \'_abc(arg:)\' should start with a lowercase character"]
+        )
     }
 }

@@ -25,7 +25,8 @@ extension Configuration {
             warningThreshold: mergedWarningTreshold(with: childConfiguration),
             reporter: reporter,
             cachePath: cachePath,
-            allowZeroLintableFiles: childConfiguration.allowZeroLintableFiles
+            allowZeroLintableFiles: childConfiguration.allowZeroLintableFiles,
+            strict: childConfiguration.strict
         )
     }
 
@@ -106,8 +107,7 @@ extension Configuration {
                 config = self
             } else if
                 FileManager.default.fileExists(atPath: configurationSearchPath),
-                !fileGraph.includesFile(atPath: configurationSearchPath)
-            {
+                !fileGraph.includesFile(atPath: configurationSearchPath) {
                 // Use self merged with the nested config that was found
                 // iff that nested config has not already been used to build the main config
 

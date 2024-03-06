@@ -1,8 +1,8 @@
 import Foundation
 import SourceKittenFramework
 
-struct LeadingWhitespaceRule: CorrectableRule, ConfigurationProviderRule, SourceKitFreeRule {
-    var configuration = SeverityConfiguration(.warning)
+struct LeadingWhitespaceRule: CorrectableRule, SourceKitFreeRule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
     static let description = RuleDescription(
         identifier: "leading_whitespace",
@@ -10,11 +10,11 @@ struct LeadingWhitespaceRule: CorrectableRule, ConfigurationProviderRule, Source
         description: "Files should not contain leading whitespace",
         kind: .style,
         nonTriggeringExamples: [
-            Example("//\n")
+            Example("//")
         ],
         triggeringExamples: [
-            Example("\n//\n"),
-            Example(" //\n")
+            Example("\n//"),
+            Example(" //")
         ].skipMultiByteOffsetTests().skipDisableCommandTests(),
         corrections: [
             Example("\n //", testMultiByteOffsets: false): Example("//")

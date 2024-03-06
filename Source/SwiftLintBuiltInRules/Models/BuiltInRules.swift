@@ -1,8 +1,8 @@
-// Generated using Sourcery 2.0.2 — https://github.com/krzysztofzablocki/Sourcery
+// Generated using Sourcery 2.1.2 — https://github.com/krzysztofzablocki/Sourcery
 // DO NOT EDIT
 
 /// The rule list containing all available rules built into SwiftLint.
-public let builtInRules: [Rule.Type] = [
+public let builtInRules: [any Rule.Type] = [
     AccessibilityLabelForImageRule.self,
     AccessibilityTraitForButtonRule.self,
     AnonymousArgumentInMultilineClosureRule.self,
@@ -71,6 +71,7 @@ public let builtInRules: [Rule.Type] = [
     FileNameNoSpaceRule.self,
     FileNameRule.self,
     FileTypesOrderRule.self,
+    FinalTestCaseRule.self,
     FirstWhereRule.self,
     FlatMapOverMapReduceRule.self,
     ForWhereRule.self,
@@ -106,7 +107,7 @@ public let builtInRules: [Rule.Type] = [
     LegacyRandomRule.self,
     LetVarWhitespaceRule.self,
     LineLengthRule.self,
-    LiteralExpressionEndIdentationRule.self,
+    LiteralExpressionEndIndentationRule.self,
     LocalDocCommentRule.self,
     LowerACLThanParentRule.self,
     MarkRule.self,
@@ -130,9 +131,12 @@ public let builtInRules: [Rule.Type] = [
     NoGroupingExtensionRule.self,
     NoMagicNumbersRule.self,
     NoSpaceInMethodCallRule.self,
+    NonOptionalStringDataConversionRule.self,
+    NonOverridableClassDeclarationRule.self,
     NotificationCenterDetachmentRule.self,
     NumberSeparatorRule.self,
     ObjectLiteralRule.self,
+    OneDelarationPerFileRule.self,
     OpeningBraceRule.self,
     OperatorFunctionWhitespaceRule.self,
     OperatorUsageWhitespaceRule.self,
@@ -151,6 +155,7 @@ public let builtInRules: [Rule.Type] = [
     PrivateOutletRule.self,
     PrivateOverFilePrivateRule.self,
     PrivateSubjectRule.self,
+    PrivateSwiftUIStatePropertyRule.self,
     PrivateUnitTestRule.self,
     ProhibitedInterfaceBuilderRule.self,
     ProhibitedSuperRule.self,
@@ -176,6 +181,7 @@ public let builtInRules: [Rule.Type] = [
     ReturnValueFromVoidFunctionRule.self,
     SelfBindingRule.self,
     SelfInPropertyInitializationRule.self,
+    ShorthandArgumentRule.self,
     ShorthandOperatorRule.self,
     ShorthandOptionalBindingRule.self,
     SingleTestClassRule.self,
@@ -204,8 +210,11 @@ public let builtInRules: [Rule.Type] = [
     TypesafeArrayInitRule.self,
     UnavailableConditionRule.self,
     UnavailableFunctionRule.self,
+    UnhandledThrowingTaskRule.self,
     UnneededBreakInSwitchRule.self,
+    UnneededOverrideRule.self,
     UnneededParenthesesInClosureArgumentRule.self,
+    UnneededSynthesizedInitializerRule.self,
     UnownedVariableCaptureRule.self,
     UntypedErrorInCatchRule.self,
     UnusedCaptureListRule.self,

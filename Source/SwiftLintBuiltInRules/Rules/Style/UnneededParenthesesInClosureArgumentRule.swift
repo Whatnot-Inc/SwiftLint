@@ -1,8 +1,8 @@
 import SwiftSyntax
 
-struct UnneededParenthesesInClosureArgumentRule: ConfigurationProviderRule,
-                                                        SwiftSyntaxCorrectableRule, OptInRule {
-    var configuration = SeverityConfiguration(.warning)
+@SwiftSyntaxRule(explicitRewriter: true)
+struct UnneededParenthesesInClosureArgumentRule: OptInRule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
     static let description = RuleDescription(
         identifier: "unneeded_parentheses_in_closure_argument",
@@ -10,10 +10,10 @@ struct UnneededParenthesesInClosureArgumentRule: ConfigurationProviderRule,
         description: "Parentheses are not needed when declaring closure arguments",
         kind: .style,
         nonTriggeringExamples: [
-            Example("let foo = { (bar: Int) in }\n"),
-            Example("let foo = { bar, _  in }\n"),
-            Example("let foo = { bar in }\n"),
-            Example("let foo = { bar -> Bool in return true }\n"),
+            Example("let foo = { (bar: Int) in }"),
+            Example("let foo = { bar, _  in }"),
+            Example("let foo = { bar in }"),
+            Example("let foo = { bar -> Bool in return true }"),
             Example("""
             DispatchQueue.main.async { () -> Void in
                 doSomething()
@@ -26,9 +26,9 @@ struct UnneededParenthesesInClosureArgumentRule: ConfigurationProviderRule,
             """, excludeFromDocumentation: true)
         ],
         triggeringExamples: [
-            Example("call(arg: { ↓(bar) in })\n"),
-            Example("call(arg: { ↓(bar, _) in })\n"),
-            Example("let foo = { ↓(bar) -> Bool in return true }\n"),
+            Example("call(arg: { ↓(bar) in })"),
+            Example("call(arg: { ↓(bar, _) in })"),
+            Example("let foo = { ↓(bar) -> Bool in return true }"),
             Example("foo.map { ($0, $0) }.forEach { ↓(x, y) in }"),
             Example("foo.bar { [weak self] ↓(x, y) in }"),
             Example("""
@@ -62,73 +62,52 @@ struct UnneededParenthesesInClosureArgumentRule: ConfigurationProviderRule,
             """, excludeFromDocumentation: true)
         ],
         corrections: [
-            Example("call(arg: { ↓(bar) in })\n"): Example("call(arg: { bar in })\n"),
-            Example("call(arg: { ↓(bar, _) in })\n"): Example("call(arg: { bar, _ in })\n"),
-            Example("call(arg: { ↓(bar, _)in })\n"): Example("call(arg: { bar, _ in })\n"),
-            Example("let foo = { ↓(bar) -> Bool in return true }\n"):
-                Example("let foo = { bar -> Bool in return true }\n"),
-            Example("method { ↓(foo, bar) in }\n"): Example("method { foo, bar in }\n"),
+            Example("call(arg: { ↓(bar) in })"): Example("call(arg: { bar in })"),
+            Example("call(arg: { ↓(bar, _) in })"): Example("call(arg: { bar, _ in })"),
+            Example("call(arg: { ↓(bar, _)in })"): Example("call(arg: { bar, _ in })"),
+            Example("let foo = { ↓(bar) -> Bool in return true }"):
+                Example("let foo = { bar -> Bool in return true }"),
+            Example("method { ↓(foo, bar) in }"): Example("method { foo, bar in }"),
             Example("foo.map { ($0, $0) }.forEach { ↓(x, y) in }"): Example("foo.map { ($0, $0) }.forEach { x, y in }"),
             Example("foo.bar { [weak self] ↓(x, y) in }"): Example("foo.bar { [weak self] x, y in }")
         ]
     )
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(viewMode: .sourceAccurate)
-    }
-
-    func makeRewriter(file: SwiftLintFile) -> ViolationsSyntaxRewriter? {
-        Rewriter(
-            locationConverter: file.locationConverter,
-            disabledRegions: disabledRegions(file: file)
-        )
-    }
 }
 
-private final class Visitor: ViolationsSyntaxVisitor {
-    override func visitPost(_ node: ClosureSignatureSyntax) {
-        guard let clause = node.input?.as(ClosureParameterClauseSyntax.self),
-              clause.parameterList.isNotEmpty,
-              clause.parameterList.allSatisfy({ $0.type == nil }) else {
-            return
+private extension UnneededParenthesesInClosureArgumentRule {
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
+        override func visitPost(_ node: ClosureSignatureSyntax) {
+            guard let clause = node.parameterClause?.as(ClosureParameterClauseSyntax.self),
+                  clause.parameters.isNotEmpty,
+                  clause.parameters.allSatisfy({ $0.type == nil }) else {
+                return
+            }
+
+            violations.append(clause.positionAfterSkippingLeadingTrivia)
         }
-
-        violations.append(clause.positionAfterSkippingLeadingTrivia)
-    }
-}
-
-private final class Rewriter: SyntaxRewriter, ViolationsSyntaxRewriter {
-    private(set) var correctionPositions: [AbsolutePosition] = []
-    let locationConverter: SourceLocationConverter
-    let disabledRegions: [SourceRange]
-
-    init(locationConverter: SourceLocationConverter, disabledRegions: [SourceRange]) {
-        self.locationConverter = locationConverter
-        self.disabledRegions = disabledRegions
     }
 
-    override func visit(_ node: ClosureSignatureSyntax) -> ClosureSignatureSyntax {
-        guard
-            let clause = node.input?.as(ClosureParameterClauseSyntax.self),
-            clause.parameterList.isNotEmpty,
-            clause.parameterList.allSatisfy({ $0.type == nil }),
-            !node.isContainedIn(regions: disabledRegions, locationConverter: locationConverter)
-        else {
-            return super.visit(node)
+    final class Rewriter: ViolationsSyntaxRewriter {
+        override func visit(_ node: ClosureSignatureSyntax) -> ClosureSignatureSyntax {
+            guard let clause = node.parameterClause?.as(ClosureParameterClauseSyntax.self),
+                  clause.parameters.isNotEmpty,
+                  clause.parameters.allSatisfy({ $0.type == nil }) else {
+                return super.visit(node)
+            }
+
+            let items = clause.parameters.enumerated().compactMap { idx, param -> ClosureShorthandParameterSyntax? in
+                let name = param.firstName
+                let isLast = idx == clause.parameters.count - 1
+                return ClosureShorthandParameterSyntax(
+                    name: name,
+                    trailingComma: isLast ? nil : .commaToken(trailingTrivia: Trivia(pieces: [.spaces(1)]))
+                )
+            }
+
+            correctionPositions.append(clause.positionAfterSkippingLeadingTrivia)
+
+            let paramList = ClosureShorthandParameterListSyntax(items).with(\.trailingTrivia, .spaces(1))
+            return super.visit(node.with(\.parameterClause, .init(paramList)))
         }
-
-        let items = clause.parameterList.enumerated().compactMap { idx, param -> ClosureParamSyntax? in
-            let name = param.firstName
-            let isLast = idx == clause.parameterList.count - 1
-            return ClosureParamSyntax(
-                name: name,
-                trailingComma: isLast ? nil : .commaToken(trailingTrivia: Trivia(pieces: [.spaces(1)]))
-            )
-        }
-
-        correctionPositions.append(clause.positionAfterSkippingLeadingTrivia)
-
-        let paramList = ClosureParamListSyntax(items).with(\.trailingTrivia, .spaces(1))
-        return super.visit(node.with(\.input, .init(paramList)))
     }
 }

@@ -1,7 +1,8 @@
 import SwiftSyntax
 
-struct ProhibitedInterfaceBuilderRule: ConfigurationProviderRule, SwiftSyntaxRule, OptInRule {
-    var configuration = SeverityConfiguration(.warning)
+@SwiftSyntaxRule
+struct ProhibitedInterfaceBuilderRule: OptInRule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
     static let description = RuleDescription(
         identifier: "prohibited_interface_builder",
@@ -17,17 +18,13 @@ struct ProhibitedInterfaceBuilderRule: ConfigurationProviderRule, SwiftSyntaxRul
             wrapExample("@IBAction ↓func buttonTapped(_ sender: UIButton) {}")
         ]
     )
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(viewMode: .sourceAccurate)
-    }
 }
 
 private extension ProhibitedInterfaceBuilderRule {
-    final class Visitor: ViolationsSyntaxVisitor {
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
         override func visitPost(_ node: VariableDeclSyntax) {
             if node.isIBOutlet {
-                violations.append(node.bindingKeyword.positionAfterSkippingLeadingTrivia)
+                violations.append(node.bindingSpecifier.positionAfterSkippingLeadingTrivia)
             }
         }
 

@@ -28,8 +28,9 @@ private let legacyObjcTypes = [
     "NSUUID"
 ]
 
-struct LegacyObjcTypeRule: SwiftSyntaxRule, OptInRule, ConfigurationProviderRule {
-    var configuration = SeverityConfiguration(.warning)
+@SwiftSyntaxRule
+struct LegacyObjcTypeRule: OptInRule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
     static let description = RuleDescription(
         identifier: "legacy_objc_type",
@@ -37,7 +38,7 @@ struct LegacyObjcTypeRule: SwiftSyntaxRule, OptInRule, ConfigurationProviderRule
         description: "Prefer Swift value types to bridged Objective-C reference types",
         kind: .idiomatic,
         nonTriggeringExamples: [
-            Example("var array = Array<Int>()\n"),
+            Example("var array = Array<Int>()"),
             Example("var calendar: Calendar? = nil"),
             Example("var formatter: NSDataDetector"),
             Example("var className: String = NSStringFromClass(MyClass.self)"),
@@ -65,28 +66,24 @@ struct LegacyObjcTypeRule: SwiftSyntaxRule, OptInRule, ConfigurationProviderRule
             """)
         ]
     )
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(viewMode: .sourceAccurate)
-    }
 }
 
 private extension LegacyObjcTypeRule {
-    final class Visitor: ViolationsSyntaxVisitor {
-        override func visitPost(_ node: SimpleTypeIdentifierSyntax) {
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
+        override func visitPost(_ node: IdentifierTypeSyntax) {
             if let typeName = node.typeName, legacyObjcTypes.contains(typeName) {
                 violations.append(node.positionAfterSkippingLeadingTrivia)
             }
         }
 
-        override func visitPost(_ node: IdentifierExprSyntax) {
-            if legacyObjcTypes.contains(node.identifier.text) {
-                violations.append(node.identifier.positionAfterSkippingLeadingTrivia)
+        override func visitPost(_ node: DeclReferenceExprSyntax) {
+            if legacyObjcTypes.contains(node.baseName.text) {
+                violations.append(node.baseName.positionAfterSkippingLeadingTrivia)
             }
         }
 
-        override func visitPost(_ node: MemberTypeIdentifierSyntax) {
-            guard node.baseType.as(SimpleTypeIdentifierSyntax.self)?.typeName == "Foundation",
+        override func visitPost(_ node: MemberTypeSyntax) {
+            guard node.baseType.as(IdentifierTypeSyntax.self)?.typeName == "Foundation",
                legacyObjcTypes.contains(node.name.text)
             else {
                 return

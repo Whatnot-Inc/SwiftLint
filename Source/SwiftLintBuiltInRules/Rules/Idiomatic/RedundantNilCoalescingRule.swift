@@ -1,7 +1,8 @@
 import SwiftSyntax
 
-struct RedundantNilCoalescingRule: OptInRule, SwiftSyntaxCorrectableRule, ConfigurationProviderRule {
-    var configuration = SeverityConfiguration(.warning)
+@SwiftSyntaxRule(explicitRewriter: true)
+struct RedundantNilCoalescingRule: OptInRule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
     static let description = RuleDescription(
         identifier: "redundant_nil_coalescing",
@@ -10,31 +11,20 @@ struct RedundantNilCoalescingRule: OptInRule, SwiftSyntaxCorrectableRule, Config
             ", coalescing operator with nil as rhs is redundant",
         kind: .idiomatic,
         nonTriggeringExamples: [
-            Example("var myVar: Int?; myVar ?? 0\n")
+            Example("var myVar: Int?; myVar ?? 0")
         ],
         triggeringExamples: [
-            Example("var myVar: Int? = nil; myVar ↓?? nil\n")
+            Example("var myVar: Int? = nil; myVar ↓?? nil")
         ],
         corrections: [
-            Example("var myVar: Int? = nil; let foo = myVar↓ ?? nil\n"):
-                Example("var myVar: Int? = nil; let foo = myVar\n")
+            Example("var myVar: Int? = nil; let foo = myVar ↓?? nil"):
+                Example("var myVar: Int? = nil; let foo = myVar")
         ]
     )
-
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(viewMode: .sourceAccurate)
-    }
-
-    func makeRewriter(file: SwiftLintFile) -> ViolationsSyntaxRewriter? {
-        Rewriter(
-            locationConverter: file.locationConverter,
-            disabledRegions: disabledRegions(file: file)
-        )
-    }
 }
 
 private extension RedundantNilCoalescingRule {
-    final class Visitor: ViolationsSyntaxVisitor {
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
         override func visitPost(_ node: TokenSyntax) {
             if node.tokenKind.isNilCoalescingOperator,
                node.nextToken(viewMode: .sourceAccurate)?.tokenKind == .keyword(.nil) {
@@ -43,30 +33,20 @@ private extension RedundantNilCoalescingRule {
         }
     }
 
-    private final class Rewriter: SyntaxRewriter, ViolationsSyntaxRewriter {
-        private(set) var correctionPositions: [AbsolutePosition] = []
-        let locationConverter: SourceLocationConverter
-        let disabledRegions: [SourceRange]
-
-        init(locationConverter: SourceLocationConverter, disabledRegions: [SourceRange]) {
-            self.locationConverter = locationConverter
-            self.disabledRegions = disabledRegions
-        }
-
+    final class Rewriter: ViolationsSyntaxRewriter {
         override func visit(_ node: ExprListSyntax) -> ExprListSyntax {
             guard
                 node.count > 2,
                 let lastExpression = node.last,
                 lastExpression.is(NilLiteralExprSyntax.self),
                 let secondToLastExpression = node.dropLast().last?.as(BinaryOperatorExprSyntax.self),
-                secondToLastExpression.operatorToken.tokenKind.isNilCoalescingOperator,
-                !node.isContainedIn(regions: disabledRegions, locationConverter: locationConverter)
+                secondToLastExpression.operator.tokenKind.isNilCoalescingOperator
             else {
                 return super.visit(node)
             }
 
-            let newNode = node.removingLast().removingLast().with(\.trailingTrivia, [])
-            correctionPositions.append(newNode.endPosition)
+            let newNode = ExprListSyntax(node.dropLast(2)).with(\.trailingTrivia, [])
+            correctionPositions.append(secondToLastExpression.operator.positionAfterSkippingLeadingTrivia)
             return super.visit(newNode)
         }
     }
