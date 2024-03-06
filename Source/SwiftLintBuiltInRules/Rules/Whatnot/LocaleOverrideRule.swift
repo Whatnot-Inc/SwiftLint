@@ -1,10 +1,8 @@
-import SwiftSyntax
 import SwiftLintCore
+import SwiftSyntax
 
-struct LocaleOverrideRule: ConfigurationProviderRule, SwiftSyntaxRule {
-    var configuration = SeverityConfiguration(.error)
-
-    init() {}
+struct LocaleOverrideRule: SwiftSyntaxRule {
+    var configuration = SeverityConfiguration<Self>(.warning)
 
     static let description = RuleDescription(
         identifier: "locale_override",
@@ -14,7 +12,7 @@ struct LocaleOverrideRule: ConfigurationProviderRule, SwiftSyntaxRule {
         nonTriggeringExamples: [
             Example("let df = Locale.overriddenOrCurrent"),
             Example("Locale.overriddenOrCurrent"),
-            Example("locale: .overriddenOrCurrent"),
+            Example("locale: .overriddenOrCurrent")
         ],
         triggeringExamples: [
             Example("let locale = ↓Locale.init()"),
@@ -28,19 +26,21 @@ struct LocaleOverrideRule: ConfigurationProviderRule, SwiftSyntaxRule {
             Example("↓Locale.current"),
             Example("""
                 Decimal(string: "123", ↓locale: .current)
-            """),
+            """)
         ]
     )
 
-    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor {
-        Visitor(viewMode: .sourceAccurate)
+    func makeVisitor(file: SwiftLintFile) -> ViolationsSyntaxVisitor<ConfigurationType> {
+        Visitor(configuration: configuration, file: file)
     }
 }
 
 private extension LocaleOverrideRule {
-    final class Visitor: ViolationsSyntaxVisitor {
+    final class Visitor: ViolationsSyntaxVisitor<ConfigurationType> {
         override func visitPost(_ node: MemberAccessExprSyntax) {
             if isReferencingCurrentLocale(node) {
+                violations.append(reason(position: node.positionAfterSkippingLeadingTrivia))
+            } else if isReferencingLocaleInit(node) {
                 violations.append(reason(position: node.positionAfterSkippingLeadingTrivia))
             }
         }
@@ -57,27 +57,32 @@ private extension LocaleOverrideRule {
 
 private extension LocaleOverrideRule.Visitor {
     func isReferencingCurrentLocale(_ node: MemberAccessExprSyntax) -> Bool {
-        if let identifierExp = node.base?.as(IdentifierExprSyntax.self),
-           identifierExp.identifier.text == "Locale",
-           node.name.text == "current" {
+        if let identifierExp = node.base?.as(DeclReferenceExprSyntax.self),
+           identifierExp.baseName.text == "Locale",
+           node.declName.baseName.text == "current" {
             return true
         }
 
         return false
+    }
+
+    func isReferencingLocaleInit(_ node: MemberAccessExprSyntax) -> Bool {
+        node.base?.as(DeclReferenceExprSyntax.self)?.baseName.text == "Locale"
+            && node.declName.baseName.text == "init"
     }
 
     func isLocaleInitializer(_ node: FunctionCallExprSyntax) -> Bool {
-        if let identifierExp = node.calledExpression.as(IdentifierExprSyntax.self),
-           identifierExp.identifier.text == "Locale" {
+        if node.calledExpression.as(DeclReferenceExprSyntax.self)?.baseName.text == "Locale" {
             return true
         }
 
         return false
     }
 
-    func currentLocaleAsFunctionArgument(_ node: FunctionCallExprSyntax) -> TupleExprElementListSyntax.Element? {
-        node.argumentList.first(where: { element in
-            element.label?.text == "locale" && element.expression.as(MemberAccessExprSyntax.self)?.name.text == "current"
+    func currentLocaleAsFunctionArgument(_ node: FunctionCallExprSyntax) -> LabeledExprListSyntax.Element? {
+        node.arguments.first(where: { element in
+            element.label?.text == "locale"
+                && element.expression.as(MemberAccessExprSyntax.self)?.declName.baseName.text == "current"
         })
     }
 }
@@ -86,7 +91,10 @@ private extension LocaleOverrideRule.Visitor {
     func reason(position: AbsolutePosition) -> ReasonedRuleViolation {
         .init(
             position: position,
-            reason: "Locale.overriddenOrCurrent allows us to override the locale for testing purposes; prefer it over other instances of Locale",
+            reason: """
+            Locale.overriddenOrCurrent allows us to override the locale \
+            for testing purposes; prefer it over other instances of Locale
+            """,
             severity: .warning
         )
     }

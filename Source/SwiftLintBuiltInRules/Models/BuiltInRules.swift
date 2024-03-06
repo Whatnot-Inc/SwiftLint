@@ -240,5 +240,5 @@ public let builtInRules: [any Rule.Type] = [
     YodaConditionRule.self,
 
     // Whatnot Rules
-    LocaleOverrideRule.self,
+    LocaleOverrideRule.self
 ]
