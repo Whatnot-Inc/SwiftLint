@@ -1147,6 +1147,12 @@ class StaticOperatorRuleGeneratedTests: SwiftLintTestCase {
     }
 }
 
+class StaticOverFinalClassRuleGeneratedTests: SwiftLintTestCase {
+    func testWithDefaultConfiguration() {
+        verifyRule(StaticOverFinalClassRule.description)
+    }
+}
+
 class StrictFilePrivateRuleGeneratedTests: SwiftLintTestCase {
     func testWithDefaultConfiguration() {
         verifyRule(StrictFilePrivateRule.description)
