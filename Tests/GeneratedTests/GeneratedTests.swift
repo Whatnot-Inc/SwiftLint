@@ -1141,6 +1141,12 @@ class StrictFilePrivateRuleGeneratedTests: SwiftLintTestCase {
     }
 }
 
+class StringLocalizationCorrectArgumentsRuleGeneratedTests: SwiftLintTestCase {
+    func testWithDefaultConfiguration() {
+        verifyRule(StringLocalizationCorrectArgumentsRule.description)
+    }
+}
+
 class StrongIBOutletRuleGeneratedTests: SwiftLintTestCase {
     func testWithDefaultConfiguration() {
         verifyRule(StrongIBOutletRule.description)
