@@ -1183,6 +1183,12 @@ class TestCaseAccessibilityRuleGeneratedTests: SwiftLintTestCase {
     }
 }
 
+class TextLocalizationRuleGeneratedTests: SwiftLintTestCase {
+    func testWithDefaultConfiguration() {
+        verifyRule(TextLocalizationRule.description)
+    }
+}
+
 class TodoRuleGeneratedTests: SwiftLintTestCase {
     func testWithDefaultConfiguration() {
         verifyRule(TodoRule.description)

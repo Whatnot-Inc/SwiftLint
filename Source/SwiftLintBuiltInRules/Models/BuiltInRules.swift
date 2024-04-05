@@ -199,6 +199,7 @@ public let builtInRules: [any Rule.Type] = [
     SwitchCaseOnNewlineRule.self,
     SyntacticSugarRule.self,
     TestCaseAccessibilityRule.self,
+    TextLocalizationRule.self,
     TodoRule.self,
     ToggleBoolRule.self,
     TrailingClosureRule.self,
