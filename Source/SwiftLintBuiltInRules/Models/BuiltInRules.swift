@@ -125,6 +125,7 @@ public let builtInRules: [any Rule.Type] = [
     NSLocalizedStringRequireBundleRule.self,
     NSNumberInitAsFunctionReferenceRule.self,
     NSObjectPreferIsEqualRule.self,
+    NavigationTitleRule.self,
     NestingRule.self,
     NimbleOperatorRule.self,
     NoExtensionAccessModifierRule.self,

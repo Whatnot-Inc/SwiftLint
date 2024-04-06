@@ -7,7 +7,7 @@ struct TextLocalizationRule: SwiftSyntaxRule {
     static let description = RuleDescription(
         identifier: "text_localization",
         name: "SwiftUI.Text Localization",
-        description: "Please use String.init(localized:defaultValue:bundle:comment:) instead of Text.init",
+        description: "Avoid using SwiftUI.Text.init with string literals",
         kind: .lint,
         nonTriggeringExamples: [
             Example("""
@@ -80,5 +80,4 @@ private extension TextLocalizationRule.Visitor {
     }
 }
 
-// TODO: .navigationTitle("asd")
 // TODO: Picker

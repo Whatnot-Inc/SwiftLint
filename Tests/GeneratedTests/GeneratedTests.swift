@@ -739,6 +739,12 @@ class NSObjectPreferIsEqualRuleGeneratedTests: SwiftLintTestCase {
     }
 }
 
+class NavigationTitleRuleGeneratedTests: SwiftLintTestCase {
+    func testWithDefaultConfiguration() {
+        verifyRule(NavigationTitleRule.description)
+    }
+}
+
 class NestingRuleGeneratedTests: SwiftLintTestCase {
     func testWithDefaultConfiguration() {
         verifyRule(NestingRule.description)
