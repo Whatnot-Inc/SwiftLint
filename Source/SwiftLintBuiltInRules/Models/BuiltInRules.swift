@@ -129,6 +129,7 @@ public let builtInRules: [any Rule.Type] = [
     NavigationTitleRule.self,
     NestingRule.self,
     NimbleOperatorRule.self,
+    NoEmptyBlockRule.self,
     NoExtensionAccessModifierRule.self,
     NoFallthroughOnlyRule.self,
     NoGroupingExtensionRule.self,
