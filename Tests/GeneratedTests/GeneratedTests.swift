@@ -853,6 +853,12 @@ final class OperatorUsageWhitespaceRuleGeneratedTests: SwiftLintTestCase {
     }
 }
 
+final class OptionalDataStringConversionRuleGeneratedTests: SwiftLintTestCase {
+    func testWithDefaultConfiguration() {
+        verifyRule(OptionalDataStringConversionRule.description)
+    }
+}
+
 final class OptionalEnumCaseMatchingRuleGeneratedTests: SwiftLintTestCase {
     func testWithDefaultConfiguration() {
         verifyRule(OptionalEnumCaseMatchingRule.description)
