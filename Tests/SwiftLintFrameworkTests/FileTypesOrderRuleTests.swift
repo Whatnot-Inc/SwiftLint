@@ -1,6 +1,6 @@
 @testable import SwiftLintBuiltInRules
 
-class FileTypesOrderRuleTests: SwiftLintTestCase {
+final class FileTypesOrderRuleTests: SwiftLintTestCase {
     // swiftlint:disable:next function_body_length
     func testFileTypesOrderReversedOrder() {
         // Test with reversed `order` entries
@@ -66,7 +66,7 @@ class FileTypesOrderRuleTests: SwiftLintTestCase {
                     LibraryItem(ContentView())
                 }
             }
-            """)
+            """),
         ]
 
         let reversedOrderDescription = FileTypesOrderRule.description
@@ -108,7 +108,7 @@ class FileTypesOrderRuleTests: SwiftLintTestCase {
             extension TestViewController: UITableViewDelegate {
                 func someMethod() {}
             }
-            """)
+            """),
         ]
         let triggeringExamples = [
             Example("""
@@ -132,7 +132,7 @@ class FileTypesOrderRuleTests: SwiftLintTestCase {
             }
 
             class TestViewController: UIViewController {}
-            """)
+            """),
         ]
 
         let groupedOrderDescription = FileTypesOrderRule.description

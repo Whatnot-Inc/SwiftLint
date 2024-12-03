@@ -1,7 +1,7 @@
 @testable import SwiftLintBuiltInRules
 import XCTest
 
-class DeploymentTargetRuleTests: SwiftLintTestCase {
+final class DeploymentTargetRuleTests: SwiftLintTestCase {
     func testMacOSAttributeReason() {
         let example = Example("@available(macOS 10.11, *)\nclass A {}")
         let violations = self.violations(example, config: ["macOS_deployment_target": "10.14.0"])
@@ -35,7 +35,7 @@ class DeploymentTargetRuleTests: SwiftLintTestCase {
     }
 
     private func violations(_ example: Example, config: Any?) -> [StyleViolation] {
-        guard let config = makeConfig(config, DeploymentTargetRule.description.identifier) else {
+        guard let config = makeConfig(config, DeploymentTargetRule.identifier) else {
             return []
         }
 

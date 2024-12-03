@@ -5,8 +5,8 @@ import XCTest
 // swiftlint:disable file_length
 
 // swiftlint:disable:next type_body_length
-class RuleConfigurationDescriptionTests: XCTestCase {
-    @AutoApply
+final class RuleConfigurationDescriptionTests: XCTestCase {
+    @AutoConfigParser
     private struct TestConfiguration: RuleConfiguration {
         typealias Parent = RuleMock // swiftlint:disable:this nesting
 
@@ -20,8 +20,8 @@ class RuleConfigurationDescriptionTests: XCTestCase {
         var integer = 2
         @ConfigurationElement(key: "null")
         var null: Int?
-        @ConfigurationElement(key: "double")
-        var double = 2.1
+        @ConfigurationElement(key: "my_double")
+        var myDouble = 2.1
         @ConfigurationElement(key: "severity")
         var severity = ViolationSeverity.warning
         @ConfigurationElement(
@@ -29,38 +29,39 @@ class RuleConfigurationDescriptionTests: XCTestCase {
             postprocessor: { list in list = list.map { $0.uppercased() } }
         )
         var list = ["string1", "string2"]
-        @ConfigurationElement(key: "set")
+        @ConfigurationElement(key: "set", deprecationNotice: .suggestAlternative(ruleID: "my_rule", name: "other_opt"))
         var set: Set<Int> = [1, 2, 3]
-        @ConfigurationElement
+        @ConfigurationElement(inline: true)
         var severityConfig = SeverityConfiguration<Parent>(.error)
         @ConfigurationElement(key: "SEVERITY")
         var renamedSeverityConfig = SeverityConfiguration<Parent>(.warning)
-        @ConfigurationElement
-        var inlinedSeverityLevels = SeverityLevelsConfiguration<Parent>(warning: 1, error: 2)
+        @ConfigurationElement(inline: true)
+        var inlinedSeverityLevels = SeverityLevelsConfiguration<Parent>(warning: 1, error: nil)
         @ConfigurationElement(key: "levels")
-        var nestedSeverityLevels = SeverityLevelsConfiguration<Parent>(warning: 3, error: nil)
+        var nestedSeverityLevels = SeverityLevelsConfiguration<Parent>(warning: 3, error: 2)
 
-        func isEqualTo(_ ruleConfiguration: some RuleConfiguration) -> Bool { false }
+        func isEqualTo(_: some RuleConfiguration) -> Bool { false }
     }
 
     // swiftlint:disable:next function_body_length
-    func testDescriptionFromConfiguration() {
-        let description = RuleConfigurationDescription.from(configuration: TestConfiguration())
+    func testDescriptionFromConfiguration() throws {
+        var configuration = TestConfiguration()
+        try configuration.apply(configuration: Void()) // Configure to set keys.
+        let description = RuleConfigurationDescription.from(configuration: configuration)
 
         XCTAssertEqual(description.oneLiner(), """
             flag: true; \
             string: "value"; \
             symbol: value; \
             integer: 2; \
-            double: 2.1; \
+            my_double: 2.1; \
             severity: warning; \
             list: ["STRING1", "STRING2"]; \
             set: [1, 2, 3]; \
             severity: error; \
             SEVERITY: warning; \
             warning: 1; \
-            error: 2; \
-            levels: warning: 3
+            levels: warning: 3, error: 2
             """)
 
         XCTAssertEqual(description.markdown(), """
@@ -103,7 +104,7 @@ class RuleConfigurationDescriptionTests: XCTestCase {
             </tr>
             <tr>
             <td>
-            double
+            my_double
             </td>
             <td>
             2.1
@@ -159,14 +160,6 @@ class RuleConfigurationDescriptionTests: XCTestCase {
             </tr>
             <tr>
             <td>
-            error
-            </td>
-            <td>
-            2
-            </td>
-            </tr>
-            <tr>
-            <td>
             levels
             </td>
             <td>
@@ -183,6 +176,14 @@ class RuleConfigurationDescriptionTests: XCTestCase {
             3
             </td>
             </tr>
+            <tr>
+            <td>
+            error
+            </td>
+            <td>
+            2
+            </td>
+            </tr>
             </tbody>
             </table>
             </td>
@@ -196,16 +197,16 @@ class RuleConfigurationDescriptionTests: XCTestCase {
             string: "value"
             symbol: value
             integer: 2
-            double: 2.1
+            my_double: 2.1
             severity: warning
             list: ["STRING1", "STRING2"]
             set: [1, 2, 3]
             severity: error
             SEVERITY: warning
             warning: 1
-            error: 2
             levels:
               warning: 3
+              error: 2
             """)
     }
 
@@ -220,9 +221,9 @@ class RuleConfigurationDescriptionTests: XCTestCase {
             @ConfigurationElement(key: "invisible")
             var invisible = true
 
-            mutating func apply(configuration: Any) throws {}
+            mutating func apply(configuration _: Any) throws { /* conformance for test */ }
 
-            func isEqualTo(_ ruleConfiguration: some RuleConfiguration) -> Bool { false }
+            func isEqualTo(_: some RuleConfiguration) -> Bool { false }
         }
 
         let description = RuleConfigurationDescription.from(configuration: Config())
@@ -465,13 +466,13 @@ class RuleConfigurationDescriptionTests: XCTestCase {
             "symbol": "new symbol",
             "integer": 5,
             "null": 0,
-            "double": 5.1,
+            "my_double": 5.1,
             "severity": "error",
             "list": ["string3", "string4"],
             "set": [4, 5, 6],
             "SEVERITY": "error",
             "warning": 12,
-            "levels": ["warning": 6, "error": 7]
+            "levels": ["warning": 6, "error": 7],
         ])
 
         XCTAssertFalse(configuration.flag)
@@ -479,7 +480,7 @@ class RuleConfigurationDescriptionTests: XCTestCase {
         XCTAssertEqual(configuration.symbol, try Symbol(fromAny: "new symbol", context: "rule"))
         XCTAssertEqual(configuration.integer, 5)
         XCTAssertEqual(configuration.null, 0)
-        XCTAssertEqual(configuration.double, 5.1)
+        XCTAssertEqual(configuration.myDouble, 5.1)
         XCTAssertEqual(configuration.severity, .error)
         XCTAssertEqual(configuration.list, ["STRING3", "STRING4"])
         XCTAssertEqual(configuration.set, [4, 5, 6])
@@ -489,17 +490,35 @@ class RuleConfigurationDescriptionTests: XCTestCase {
         XCTAssertEqual(configuration.nestedSeverityLevels, SeverityLevelsConfiguration(warning: 6, error: 7))
     }
 
+    func testDeprecationWarning() throws {
+        var configuration = TestConfiguration()
+
+        XCTAssertEqual(
+            try Issue.captureConsole { try configuration.apply(configuration: ["set": [6, 7]]) },
+            "warning: Configuration option 'set' in 'my_rule' rule is deprecated. Use the option 'other_opt' instead."
+        )
+    }
+
+    func testNoDeprecationWarningIfNoDeprecatedPropertySet() throws {
+        var configuration = TestConfiguration()
+
+        XCTAssert(try Issue.captureConsole { try configuration.apply(configuration: ["flag": false]) }.isEmpty)
+    }
+
     func testInvalidKeys() throws {
         var configuration = TestConfiguration()
 
-        checkError(Issue.invalidConfigurationKeys(ruleID: "RuleMock", keys: ["unknown", "unsupported"])) {
-            try configuration.apply(configuration: [
-                "severity": "error",
-                "warning": 3,
-                "unknown": 1,
-                "unsupported": true
-            ])
-        }
+        XCTAssertEqual(
+            try Issue.captureConsole {
+                try configuration.apply(configuration: [
+                    "severity": "error",
+                    "warning": 3,
+                    "unknown": 1,
+                    "unsupported": true,
+                ])
+            },
+            "warning: Configuration for 'RuleMock' rule contains the invalid key(s) 'unknown', 'unsupported'."
+        )
     }
 
     private func description(@RuleConfigurationDescriptionBuilder _ content: () -> RuleConfigurationDescription)

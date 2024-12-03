@@ -1,7 +1,7 @@
 @testable import SwiftLintBuiltInRules
 import XCTest
 
-class CyclomaticComplexityConfigurationTests: SwiftLintTestCase {
+final class CyclomaticComplexityConfigurationTests: SwiftLintTestCase {
     func testCyclomaticComplexityConfigurationInitializerSetsLevels() {
         let warning = 10
         let error = 30
@@ -35,9 +35,11 @@ class CyclomaticComplexityConfigurationTests: SwiftLintTestCase {
         let warning1 = 10
         let error1 = 30
         let length1 = SeverityLevelsConfiguration<CyclomaticComplexityRule>(warning: warning1, error: error1)
-        let config1: [String: Any] = ["warning": warning1,
-                                      "error": error1,
-                                      "ignores_case_statements": true]
+        let config1: [String: Any] = [
+            "warning": warning1,
+            "error": error1,
+            "ignores_case_statements": true,
+        ]
 
         let warning2 = 20
         let error2 = 40
@@ -62,14 +64,14 @@ class CyclomaticComplexityConfigurationTests: SwiftLintTestCase {
     func testCyclomaticComplexityConfigurationThrowsOnBadConfigValues() {
         let badConfigs: [[String: Any]] = [
             ["warning": true],
-            ["ignores_case_statements": 300]
+            ["ignores_case_statements": 300],
         ]
 
         for badConfig in badConfigs {
             var configuration = CyclomaticComplexityConfiguration(
                 length: SeverityLevelsConfiguration<CyclomaticComplexityRule>(warning: 100, error: 150)
             )
-            checkError(Issue.invalidConfiguration(ruleID: CyclomaticComplexityRule.description.identifier)) {
+            checkError(Issue.invalidConfiguration(ruleID: CyclomaticComplexityRule.identifier)) {
                 try configuration.apply(configuration: badConfig)
             }
         }

@@ -1,6 +1,6 @@
 @testable import SwiftLintBuiltInRules
 
-class TrailingWhitespaceRuleTests: SwiftLintTestCase {
+final class TrailingWhitespaceRuleTests: SwiftLintTestCase {
     func testWithIgnoresEmptyLinesEnabled() {
         // Perform additional tests with the ignores_empty_lines setting enabled.
         // The set of non-triggering examples is extended by a whitespace-indented empty line
@@ -17,7 +17,7 @@ class TrailingWhitespaceRuleTests: SwiftLintTestCase {
         let baseDescription = TrailingWhitespaceRule.description
         let triggeringComments = [
             Example("// \n"),
-            Example("let name: String // \n")
+            Example("let name: String // \n"),
         ]
         let nonTriggeringExamples = baseDescription.nonTriggeringExamples
             .filter { !triggeringComments.contains($0) }

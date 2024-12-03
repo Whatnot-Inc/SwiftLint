@@ -1,6 +1,6 @@
 @testable import SwiftLintBuiltInRules
 
-class DiscouragedDirectInitRuleTests: SwiftLintTestCase {
+final class DiscouragedDirectInitRuleTests: SwiftLintTestCase {
     private let baseDescription = DiscouragedDirectInitRule.description
 
     func testDiscouragedDirectInitWithConfiguredSeverity() {
@@ -10,12 +10,12 @@ class DiscouragedDirectInitRuleTests: SwiftLintTestCase {
     func testDiscouragedDirectInitWithNewIncludedTypes() {
         let triggeringExamples = [
             Example("let foo = ↓Foo()"),
-            Example("let bar = ↓Bar()")
+            Example("let bar = ↓Bar()"),
         ]
 
         let nonTriggeringExamples = [
             Example("let foo = Foo(arg: toto)"),
-            Example("let bar = Bar(arg: \"toto\")")
+            Example("let bar = Bar(arg: \"toto\")"),
         ]
 
         let description = baseDescription

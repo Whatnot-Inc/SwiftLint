@@ -5,7 +5,7 @@ import SourceKittenFramework
 public struct Configuration {
     // MARK: - Properties: Static
     /// The default Configuration resulting from an empty configuration file.
-    public static var `default`: Configuration {
+    public static var `default`: Self {
         // This is realized via a getter to account for differences of the current working directory
         Self()
     }
@@ -27,7 +27,7 @@ public struct Configuration {
     public let warningThreshold: Int?
 
     /// The identifier for the `Reporter` to use to report style violations.
-    public let reporter: String
+    public let reporter: String?
 
     /// The location of the persisted cache to use with this configuration.
     public let cachePath: String?
@@ -35,8 +35,20 @@ public struct Configuration {
     /// Allow or disallow SwiftLint to exit successfully when passed only ignored or unlintable files.
     public let allowZeroLintableFiles: Bool
 
-    /// Treat warnings as errors
+    /// Treat warnings as errors.
     public let strict: Bool
+
+    /// Treat errors as warnings.
+    public let lenient: Bool
+
+    /// The path to read a baseline from.
+    public let baseline: String?
+
+    /// The path to write a baseline to.
+    public let writeBaseline: String?
+
+    /// Check for updates.
+    public let checkForUpdates: Bool
 
     /// This value is `true` iff the `--config` parameter was used to specify (a) configuration file(s)
     /// In particular, this means that the value is also `true` if the `--config` parameter
@@ -70,10 +82,14 @@ public struct Configuration {
         excludedPaths: [String],
         indentation: IndentationStyle,
         warningThreshold: Int?,
-        reporter: String,
+        reporter: String?,
         cachePath: String?,
         allowZeroLintableFiles: Bool,
-        strict: Bool
+        strict: Bool,
+        lenient: Bool,
+        baseline: String?,
+        writeBaseline: String?,
+        checkForUpdates: Bool
     ) {
         self.rulesWrapper = rulesWrapper
         self.fileGraph = fileGraph
@@ -85,12 +101,16 @@ public struct Configuration {
         self.cachePath = cachePath
         self.allowZeroLintableFiles = allowZeroLintableFiles
         self.strict = strict
+        self.lenient = lenient
+        self.baseline = baseline
+        self.writeBaseline = writeBaseline
+        self.checkForUpdates = checkForUpdates
     }
 
     /// Creates a Configuration by copying an existing configuration.
     ///
     /// - parameter copying:    The existing configuration to copy.
-    internal init(copying configuration: Configuration) {
+    internal init(copying configuration: Self) {
         rulesWrapper = configuration.rulesWrapper
         fileGraph = configuration.fileGraph
         includedPaths = configuration.includedPaths
@@ -102,6 +122,10 @@ public struct Configuration {
         cachePath = configuration.cachePath
         allowZeroLintableFiles = configuration.allowZeroLintableFiles
         strict = configuration.strict
+        lenient = configuration.lenient
+        baseline = configuration.baseline
+        writeBaseline = configuration.writeBaseline
+        checkForUpdates = configuration.checkForUpdates
     }
 
     /// Creates a `Configuration` by specifying its properties directly,
@@ -112,20 +136,25 @@ public struct Configuration {
     /// - parameter allRulesWrapped:        The rules with their own configurations already applied.
     /// - parameter ruleList:               The list of all rules. Used for alias resolving and as a fallback
     ///                                     if `allRulesWrapped` is nil.
-    /// - parameter filePath                The underlaying file graph. If `nil` is specified, a empty file graph
-    ///                                     with the current working directory as the `rootDirectory` will be used
+    /// - parameter filePath                The underlying file graph. If `nil` is specified, a empty file graph
+    ///                                     with the current working directory as the `rootDirectory` will be used.
     /// - parameter includedPaths:          Included paths to lint.
     /// - parameter excludedPaths:          Excluded paths to not lint.
     /// - parameter indentation:            The style to use when indenting Swift source code.
     /// - parameter warningThreshold:       The threshold for the number of warnings to tolerate before treating the
     ///                                     lint as having failed.
     /// - parameter reporter:               The identifier for the `Reporter` to use to report style violations.
-    /// - parameter cachePath:              The location of the persisted cache to use whith this configuration.
+    /// - parameter cachePath:              The location of the persisted cache to use with this configuration.
     /// - parameter pinnedVersion:          The SwiftLint version defined in this configuration.
-    /// - parameter allowZeroLintableFiles: Allow SwiftLint to exit successfully when passed ignored or unlintable files
-    /// - parameter strict:                 Treat warnings as errors
+    /// - parameter allowZeroLintableFiles: Allow SwiftLint to exit successfully when passed ignored or unlintable
+    ///                                     files.
+    /// - parameter strict:                 Treat warnings as errors.
+    /// - parameter lenient:                Treat errors as warnings.
+    /// - parameter baseline:               The path to read a baseline from.
+    /// - parameter writeBaseline:          The path to write a baseline to.
+    /// - parameter checkForUpdates:        Check for updates to SwiftLint.
     package init(
-        rulesMode: RulesMode = .default(disabled: [], optIn: []),
+        rulesMode: RulesMode = .defaultConfiguration(disabled: [], optIn: []),
         allRulesWrapped: [ConfigurationRuleWrapper]? = nil,
         ruleList: RuleList = RuleRegistry.shared.list,
         fileGraph: FileGraph? = nil,
@@ -137,7 +166,11 @@ public struct Configuration {
         cachePath: String? = nil,
         pinnedVersion: String? = nil,
         allowZeroLintableFiles: Bool = false,
-        strict: Bool = false
+        strict: Bool = false,
+        lenient: Bool = false,
+        baseline: String? = nil,
+        writeBaseline: String? = nil,
+        checkForUpdates: Bool = false
     ) {
         if let pinnedVersion, pinnedVersion != Version.current.value {
             queuedPrintError(
@@ -160,10 +193,14 @@ public struct Configuration {
             excludedPaths: excludedPaths,
             indentation: indentation,
             warningThreshold: warningThreshold,
-            reporter: reporter ?? XcodeReporter.identifier,
+            reporter: reporter,
             cachePath: cachePath,
             allowZeroLintableFiles: allowZeroLintableFiles,
-            strict: strict
+            strict: strict,
+            lenient: lenient,
+            baseline: baseline,
+            writeBaseline: writeBaseline,
+            checkForUpdates: checkForUpdates
         )
     }
 
@@ -182,6 +219,7 @@ public struct Configuration {
     public init(
         configurationFiles: [String], // No default value here to avoid ambiguous Configuration() initializer
         enableAllRules: Bool = false,
+        onlyRule: [String] = [],
         cachePath: String? = nil,
         ignoreParentAndChildConfigs: Bool = false,
         mockedNetworkResults: [String: String] = [:],
@@ -201,7 +239,13 @@ public struct Configuration {
         defer { basedOnCustomConfigurationFiles = hasCustomConfigurationFiles }
 
         let currentWorkingDirectory = FileManager.default.currentDirectoryPath.bridge().absolutePathStandardized()
-        let rulesMode: RulesMode = enableAllRules ? .allEnabled : .default(disabled: [], optIn: [])
+        let rulesMode: RulesMode = if enableAllRules {
+            .allCommandLine
+        } else if onlyRule.isNotEmpty {
+            .onlyCommandLine(Set(onlyRule))
+        } else {
+            .defaultConfiguration(disabled: [], optIn: [])
+        }
 
         // Try obtaining cached config
         let cacheIdentifier = "\(currentWorkingDirectory) - \(configurationFiles)"
@@ -219,6 +263,7 @@ public struct Configuration {
             )
             let resultingConfiguration = try fileGraph.resultingConfiguration(
                 enableAllRules: enableAllRules,
+                onlyRule: onlyRule,
                 cachePath: cachePath
             )
 
@@ -268,14 +313,18 @@ extension Configuration: Hashable {
         hasher.combine(reporter)
         hasher.combine(allowZeroLintableFiles)
         hasher.combine(strict)
+        hasher.combine(lenient)
+        hasher.combine(baseline)
+        hasher.combine(writeBaseline)
+        hasher.combine(checkForUpdates)
         hasher.combine(basedOnCustomConfigurationFiles)
         hasher.combine(cachePath)
-        hasher.combine(rules.map { type(of: $0).description.identifier })
+        hasher.combine(rules.map { type(of: $0).identifier })
         hasher.combine(fileGraph)
     }
 
     public static func == (lhs: Configuration, rhs: Configuration) -> Bool {
-        return lhs.includedPaths == rhs.includedPaths &&
+        lhs.includedPaths == rhs.includedPaths &&
             lhs.excludedPaths == rhs.excludedPaths &&
             lhs.indentation == rhs.indentation &&
             lhs.warningThreshold == rhs.warningThreshold &&
@@ -285,22 +334,27 @@ extension Configuration: Hashable {
             lhs.rules == rhs.rules &&
             lhs.fileGraph == rhs.fileGraph &&
             lhs.allowZeroLintableFiles == rhs.allowZeroLintableFiles &&
-            lhs.strict == rhs.strict
+            lhs.strict == rhs.strict &&
+            lhs.lenient == rhs.lenient &&
+            lhs.baseline == rhs.baseline &&
+            lhs.writeBaseline == rhs.writeBaseline &&
+            lhs.checkForUpdates == rhs.checkForUpdates &&
+            lhs.rulesMode == rhs.rulesMode
     }
 }
 
 // MARK: - CustomStringConvertible
 extension Configuration: CustomStringConvertible {
     public var description: String {
-        return "Configuration: \n"
+        "Configuration: \n"
             + "- Indentation Style: \(indentation)\n"
             + "- Included Paths: \(includedPaths)\n"
             + "- Excluded Paths: \(excludedPaths)\n"
             + "- Warning Threshold: \(warningThreshold as Optional)\n"
             + "- Root Directory: \(rootDirectory as Optional)\n"
-            + "- Reporter: \(reporter)\n"
+            + "- Reporter: \(reporter ?? "default")\n"
             + "- Cache Path: \(cachePath as Optional)\n"
             + "- Computed Cache Description: \(computedCacheDescription as Optional)\n"
-            + "- Rules: \(rules.map { type(of: $0).description.identifier })"
+            + "- Rules: \(rules.map { type(of: $0).identifier })"
     }
 }

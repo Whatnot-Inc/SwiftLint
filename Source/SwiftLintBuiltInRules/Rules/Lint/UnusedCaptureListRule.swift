@@ -2,7 +2,7 @@ import SwiftSyntax
 
 // TODO: [12/22/2024] Remove deprecation warning after ~2 years.
 private let warnDeprecatedOnceImpl: Void = {
-    Issue.ruleDeprecated(ruleID: UnusedCaptureListRule.description.identifier).print()
+    Issue.ruleDeprecated(ruleID: UnusedCaptureListRule.identifier).print()
 }()
 
 private func warnDeprecatedOnce() {
@@ -94,7 +94,7 @@ struct UnusedCaptureListRule: SwiftSyntaxRule, OptInRule {
                 }
                 someInstanceFunction()
             }
-            """)
+            """),
         ],
         triggeringExamples: [
             Example("""
@@ -134,13 +134,13 @@ struct UnusedCaptureListRule: SwiftSyntaxRule, OptInRule {
             Example("{ [↓foo] in _ }()"),
             Example("""
             let closure = { [↓weak a] in
-                // The new `a` immediatly shadows the captured `a` which thus isn't needed.
+                // The new `a` immediately shadows the captured `a` which thus isn't needed.
                 guard let a = getOptionalValue() else {
                     return
                 }
                 someInstanceFunction()
             }
-            """)
+            """),
         ]
     )
 

@@ -1,6 +1,7 @@
 // swiftlint:disable file_length
 import Foundation
 import SourceKittenFramework
+@testable import SwiftLintBuiltInRules
 @testable import SwiftLintCore
 import XCTest
 
@@ -14,7 +15,7 @@ private extension Command {
 }
 
 // swiftlint:disable:next type_body_length
-class CommandTests: SwiftLintTestCase {
+final class CommandTests: SwiftLintTestCase {
     // MARK: Command Creation
 
     func testNoCommandsInEmptyFile() {
@@ -149,7 +150,7 @@ class CommandTests: SwiftLintTestCase {
                                   modifier: .previous)
             let expanded = [
                 Command(action: .disable, ruleIdentifiers: ["rule_id"], line: 0, character: nil),
-                Command(action: .enable, ruleIdentifiers: ["rule_id"], line: 0, character: .max)
+                Command(action: .enable, ruleIdentifiers: ["rule_id"], line: 0, character: .max),
             ]
             XCTAssertEqual(command.expand(), expanded)
         }
@@ -158,7 +159,7 @@ class CommandTests: SwiftLintTestCase {
                                   modifier: .previous)
             let expanded = [
                 Command(action: .enable, ruleIdentifiers: ["rule_id"], line: 0, character: nil),
-                Command(action: .disable, ruleIdentifiers: ["rule_id"], line: 0, character: .max)
+                Command(action: .disable, ruleIdentifiers: ["rule_id"], line: 0, character: .max),
             ]
             XCTAssertEqual(command.expand(), expanded)
         }
@@ -167,7 +168,7 @@ class CommandTests: SwiftLintTestCase {
                                   modifier: .previous)
             let expanded = [
                 Command(action: .enable, ruleIdentifiers: ["1", "2"], line: 0, character: nil),
-                Command(action: .disable, ruleIdentifiers: ["1", "2"], line: 0, character: .max)
+                Command(action: .disable, ruleIdentifiers: ["1", "2"], line: 0, character: .max),
             ]
             XCTAssertEqual(command.expand(), expanded)
         }
@@ -179,7 +180,7 @@ class CommandTests: SwiftLintTestCase {
                                   modifier: .this)
             let expanded = [
                 Command(action: .disable, ruleIdentifiers: ["rule_id"], line: 1, character: nil),
-                Command(action: .enable, ruleIdentifiers: ["rule_id"], line: 1, character: .max)
+                Command(action: .enable, ruleIdentifiers: ["rule_id"], line: 1, character: .max),
             ]
             XCTAssertEqual(command.expand(), expanded)
         }
@@ -188,7 +189,7 @@ class CommandTests: SwiftLintTestCase {
                                   modifier: .this)
             let expanded = [
                 Command(action: .enable, ruleIdentifiers: ["rule_id"], line: 1, character: nil),
-                Command(action: .disable, ruleIdentifiers: ["rule_id"], line: 1, character: .max)
+                Command(action: .disable, ruleIdentifiers: ["rule_id"], line: 1, character: .max),
             ]
             XCTAssertEqual(command.expand(), expanded)
         }
@@ -197,7 +198,7 @@ class CommandTests: SwiftLintTestCase {
                                   modifier: .this)
             let expanded = [
                 Command(action: .enable, ruleIdentifiers: ["1", "2"], line: 1, character: nil),
-                Command(action: .disable, ruleIdentifiers: ["1", "2"], line: 1, character: .max)
+                Command(action: .disable, ruleIdentifiers: ["1", "2"], line: 1, character: .max),
             ]
             XCTAssertEqual(command.expand(), expanded)
         }
@@ -209,7 +210,7 @@ class CommandTests: SwiftLintTestCase {
                                   modifier: .next)
             let expanded = [
                 Command(action: .disable, ruleIdentifiers: ["rule_id"], line: 2, character: nil),
-                Command(action: .enable, ruleIdentifiers: ["rule_id"], line: 2, character: .max)
+                Command(action: .enable, ruleIdentifiers: ["rule_id"], line: 2, character: .max),
             ]
             XCTAssertEqual(command.expand(), expanded)
         }
@@ -218,7 +219,7 @@ class CommandTests: SwiftLintTestCase {
                                   modifier: .next)
             let expanded = [
                 Command(action: .enable, ruleIdentifiers: ["rule_id"], line: 2, character: nil),
-                Command(action: .disable, ruleIdentifiers: ["rule_id"], line: 2, character: .max)
+                Command(action: .disable, ruleIdentifiers: ["rule_id"], line: 2, character: .max),
             ]
             XCTAssertEqual(command.expand(), expanded)
         }
@@ -227,7 +228,7 @@ class CommandTests: SwiftLintTestCase {
                                   modifier: .next)
             let expanded = [
                 Command(action: .enable, ruleIdentifiers: ["1", "2"], line: 2, character: nil),
-                Command(action: .disable, ruleIdentifiers: ["1", "2"], line: 2, character: .max)
+                Command(action: .disable, ruleIdentifiers: ["1", "2"], line: 2, character: .max),
             ]
             XCTAssertEqual(command.expand(), expanded)
         }
@@ -237,7 +238,7 @@ class CommandTests: SwiftLintTestCase {
 
     func testSuperfluousDisableCommands() {
         XCTAssertEqual(
-            violations(Example("// swiftlint:disable nesting\nprint(123)\n")).map { $0.ruleIdentifier },
+            violations(Example("// swiftlint:disable nesting\nprint(123)\n")).map(\.ruleIdentifier),
             ["blanket_disable_command", "superfluous_disable_command"]
         )
         XCTAssertEqual(
@@ -296,9 +297,7 @@ class CommandTests: SwiftLintTestCase {
     func testSuperfluousDisableCommandsIgnoreDelimiter() {
         let longComment = "Comment with a large number of words that shouldn't register as superfluous"
         XCTAssertEqual(
-            violations(Example("// swiftlint:disable nesting - \(longComment)\nprint(123)\n")).map {
-                $0.ruleIdentifier
-            },
+            violations(Example("// swiftlint:disable nesting - \(longComment)\nprint(123)\n")).map(\.ruleIdentifier),
             ["blanket_disable_command", "superfluous_disable_command"]
         )
         XCTAssertEqual(
@@ -394,7 +393,9 @@ class CommandTests: SwiftLintTestCase {
     }
 
     func testSuperfluousDisableCommandsDisabledOnConfiguration() {
-        let rulesMode = Configuration.RulesMode.default(disabled: ["superfluous_disable_command"], optIn: [])
+        let rulesMode = Configuration.RulesMode.defaultConfiguration(
+            disabled: ["superfluous_disable_command"], optIn: []
+        )
         let configuration = Configuration(rulesMode: rulesMode)
 
         XCTAssertEqual(
@@ -453,5 +454,30 @@ class CommandTests: SwiftLintTestCase {
             )),
             []
         )
+    }
+
+    func testSuperfluousDisableCommandsEnabledForAnalyzer() {
+        let configuration = Configuration(
+            rulesMode: .defaultConfiguration(disabled: [], optIn: [UnusedDeclarationRule.identifier])
+        )
+        let violations = violations(
+            Example("""
+            public class Foo {
+                // swiftlint:disable:next unused_declaration
+                func foo() -> Int {
+                    1
+                }
+                // swiftlint:disable:next unused_declaration
+                func bar() {
+                   foo()
+                }
+            }
+            """),
+            config: configuration,
+            requiresFileOnDisk: true
+        )
+        XCTAssertEqual(violations.count, 1)
+        XCTAssertEqual(violations.first?.ruleIdentifier, "superfluous_disable_command")
+        XCTAssertEqual(violations.first?.location.line, 3)
     }
 }

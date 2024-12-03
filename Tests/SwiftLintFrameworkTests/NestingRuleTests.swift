@@ -5,7 +5,7 @@
 private let detectingTypes = ["actor", "class", "struct", "enum"]
 
 // swiftlint:disable:next type_body_length
-class NestingRuleTests: SwiftLintTestCase {
+final class NestingRuleTests: SwiftLintTestCase {
     // swiftlint:disable:next function_body_length
     func testNestingWithAlwaysAllowOneTypeInFunctions() {
         var nonTriggeringExamples = NestingRule.description.nonTriggeringExamples
@@ -41,7 +41,7 @@ class NestingRuleTests: SwiftLintTestCase {
                             \(type) Example_1 {}
                         }
                     }
-                """)
+                """),
             ]
         })
         nonTriggeringExamples.append(contentsOf: detectingTypes.flatMap { type -> [Example] in
@@ -92,7 +92,7 @@ class NestingRuleTests: SwiftLintTestCase {
                            }
                        }
                     }
-                """)
+                """),
             ]
         })
 
@@ -134,10 +134,11 @@ class NestingRuleTests: SwiftLintTestCase {
                            }
                        }
                     }
-                """)
+                """),
             ]
         }
 
+        // swiftlint:disable:next closure_body_length
         triggeringExamples.append(contentsOf: detectingTypes.flatMap { type -> [Example] in
             [
                 .init("""
@@ -194,12 +195,12 @@ class NestingRuleTests: SwiftLintTestCase {
                            }
                        }
                     }
-                """)
+                """),
             ]
         })
 
         let description = RuleDescription(
-            identifier: NestingRule.description.identifier,
+            identifier: NestingRule.identifier,
             name: NestingRule.description.name,
             description: NestingRule.description.description,
             kind: .metrics,
@@ -213,6 +214,7 @@ class NestingRuleTests: SwiftLintTestCase {
     // swiftlint:disable:next function_body_length
     func testNestingWithoutCheckNestingInClosuresAndStatements() {
         var nonTriggeringExamples = NestingRule.description.nonTriggeringExamples
+        // swiftlint:disable:next closure_body_length
         nonTriggeringExamples.append(contentsOf: detectingTypes.flatMap { type -> [Example] in
             [
                 .init("""
@@ -382,10 +384,11 @@ class NestingRuleTests: SwiftLintTestCase {
                            }
                        }
                     }
-                """)
+                """),
             ]
         })
 
+        // swiftlint:disable:next closure_body_length
         var triggeringExamples = detectingTypes.flatMap { type -> [Example] in
             [
                 .init("""
@@ -440,7 +443,7 @@ class NestingRuleTests: SwiftLintTestCase {
                            }
                        }
                     }
-                """)
+                """),
             ]
         }
 
@@ -492,11 +495,11 @@ class NestingRuleTests: SwiftLintTestCase {
                        }
                    }
                 }
-            """)
+            """),
         ])
 
         let description = RuleDescription(
-            identifier: NestingRule.description.identifier,
+            identifier: NestingRule.identifier,
             name: NestingRule.description.name,
             description: NestingRule.description.description,
             kind: .metrics,
@@ -543,7 +546,7 @@ class NestingRuleTests: SwiftLintTestCase {
                             typealias AssociatedType = Int
                         }
                     }
-                """)
+                """),
             ]
         })
 

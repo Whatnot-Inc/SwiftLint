@@ -1,15 +1,17 @@
 @testable import SwiftLintBuiltInRules
 import XCTest
 
-class NameConfigurationTests: SwiftLintTestCase {
+final class NameConfigurationTests: SwiftLintTestCase {
     typealias TesteeType = NameConfiguration<RuleMock>
 
     func testNameConfigurationSetsCorrectly() {
-        let config = [ "min_length": ["warning": 17, "error": 7],
-                       "max_length": ["warning": 170, "error": 700],
-                       "excluded": "id",
-                       "allowed_symbols": ["$"],
-                       "validates_start_with_lowercase": "warning"] as [String: any Sendable]
+        let config: [String: any Sendable] = [
+            "min_length": ["warning": 17, "error": 7],
+            "max_length": ["warning": 170, "error": 700],
+            "excluded": "id",
+            "allowed_symbols": ["$"],
+            "validates_start_with_lowercase": "warning",
+        ]
         var nameConfig = TesteeType(minLengthWarning: 0,
                                     minLengthError: 0,
                                     maxLengthWarning: 0,
@@ -65,7 +67,7 @@ class NameConfigurationTests: SwiftLintTestCase {
                                     minLengthError: 0,
                                     maxLengthWarning: 0,
                                     maxLengthError: 0)
-        checkError(Issue.unknownConfiguration(ruleID: RuleMock.description.identifier)) {
+        checkError(Issue.invalidConfiguration(ruleID: RuleMock.identifier)) {
             try nameConfig.apply(configuration: config)
         }
     }

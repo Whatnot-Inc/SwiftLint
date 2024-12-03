@@ -14,7 +14,8 @@ public let reportersList: [any Reporter.Type] = [
     JUnitReporter.self,
     MarkdownReporter.self,
     RelativePathReporter.self,
+    SARIFReporter.self,
     SonarQubeReporter.self,
     SummaryReporter.self,
-    XcodeReporter.self
+    XcodeReporter.self,
 ]

@@ -7,19 +7,19 @@ import FoundationNetworking
 internal extension Configuration.FileGraph.FilePath {
     // MARK: - Properties: Remote Cache
     /// This should never be touched.
-    private static let swiftlintPath: String = ".swiftlint"
+    private static let swiftlintPath = ".swiftlint"
 
     /// This should never be touched. Change the version number for changes to the cache format
-    private static let remoteCachePath: String = "\(swiftlintPath)/RemoteConfigCache"
+    private static let remoteCachePath = "\(swiftlintPath)/RemoteConfigCache"
 
     /// If the format of the caching is changed in the future, change this version number
-    private static let remoteCacheVersionNumber: String = "v1"
+    private static let remoteCacheVersionNumber = "v1"
 
     /// Use this to get the path to the cache directory for the current cache format
-    private static let versionedRemoteCachePath: String = "\(remoteCachePath)/\(remoteCacheVersionNumber)"
+    private static let versionedRemoteCachePath = "\(remoteCachePath)/\(remoteCacheVersionNumber)"
 
     /// The path to the gitignore file.
-    private static let gitignorePath: String = ".gitignore"
+    private static let gitignorePath = ".gitignore"
 
     /// This dictionary has URLs as its keys and contents of those URLs as its values
     /// In production mode, this should be empty. For tests, it may be filled.
@@ -94,7 +94,7 @@ internal extension Configuration.FileGraph.FilePath {
             guard
                 taskResult.2 == nil, // No error
                 (taskResult.1 as? HTTPURLResponse)?.statusCode == 200,
-                let configStr = (taskResult.0.flatMap { String(decoding: $0, as: UTF8.self) })
+                let configStr = (taskResult.0.flatMap { String(data: $0, encoding: .utf8) })
             else {
                 return try handleWrongData(
                     urlString: urlString,

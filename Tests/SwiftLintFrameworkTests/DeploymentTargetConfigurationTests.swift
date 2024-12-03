@@ -1,7 +1,7 @@
 @testable import SwiftLintBuiltInRules
 import XCTest
 
-class DeploymentTargetConfigurationTests: SwiftLintTestCase {
+final class DeploymentTargetConfigurationTests: SwiftLintTestCase {
     private typealias Version = DeploymentTargetConfiguration.Version
 
     // swiftlint:disable:next function_body_length
@@ -87,10 +87,12 @@ class DeploymentTargetConfigurationTests: SwiftLintTestCase {
         )
         XCTAssertEqual(configuration.severityConfiguration.severity, .warning)
 
-        try configuration.apply(configuration: ["tvOS_deployment_target": 10.2,
-                                                "tvOSApplicationExtension_deployment_target": 9.1,
-                                                "watchOS_deployment_target": 5,
-                                                "watchOSApplicationExtension_deployment_target": 2.2])
+        try configuration.apply(configuration: [
+            "tvOS_deployment_target": 10.2,
+            "tvOSApplicationExtension_deployment_target": 9.1,
+            "watchOS_deployment_target": 5,
+            "watchOSApplicationExtension_deployment_target": 2.2,
+        ])
         XCTAssertEqual(
             configuration.iOSDeploymentTarget,
             Version(platform: .iOS, major: 10, minor: 1)
@@ -132,12 +134,12 @@ class DeploymentTargetConfigurationTests: SwiftLintTestCase {
             ["iOS_deployment_target": ""],
             ["iOS_deployment_target": "5.x"],
             ["iOS_deployment_target": true],
-            ["invalid": true]
+            ["invalid": true],
         ]
 
         for badConfig in badConfigs {
             var configuration = DeploymentTargetConfiguration()
-            checkError(Issue.unknownConfiguration(ruleID: DeploymentTargetRule.description.identifier)) {
+            checkError(Issue.invalidConfiguration(ruleID: DeploymentTargetRule.identifier)) {
                 try configuration.apply(configuration: badConfig)
             }
         }

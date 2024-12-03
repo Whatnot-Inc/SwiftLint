@@ -2,7 +2,7 @@ import Foundation
 import XCTest
 import Yams
 
-class YamlSwiftLintTests: SwiftLintTestCase {
+final class YamlSwiftLintTests: SwiftLintTestCase {
     func testFlattenYaml() throws {
         do {
             guard let yamlDict = try Yams.load(yaml: try getTestYaml()) as? [String: Any] else {
@@ -39,6 +39,6 @@ class YamlSwiftLintTests: SwiftLintTestCase {
     }
 
     private func getTestYaml() throws -> String {
-        return try String(contentsOfFile: "\(testResourcesPath)/test.yml", encoding: .utf8)
+        try String(contentsOfFile: "\(testResourcesPath)/test.yml", encoding: .utf8)
     }
 }

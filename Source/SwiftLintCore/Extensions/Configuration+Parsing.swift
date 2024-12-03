@@ -15,6 +15,10 @@ extension Configuration {
         case analyzerRules = "analyzer_rules"
         case allowZeroLintableFiles = "allow_zero_lintable_files"
         case strict = "strict"
+        case lenient = "lenient"
+        case baseline = "baseline"
+        case writeBaseline = "write_baseline"
+        case checkForUpdates = "check_for_updates"
         case childConfig = "child_config"
         case parentConfig = "parent_config"
         case remoteConfigTimeout = "remote_timeout"
@@ -22,11 +26,12 @@ extension Configuration {
     }
 
     // MARK: - Properties
-    private static let validGlobalKeys: Set<String> = Set(Key.allCases.map { $0.rawValue })
+    private static let validGlobalKeys: Set<String> = Set(Key.allCases.map(\.rawValue))
 
     // MARK: - Initializers
     /// Creates a Configuration value based on the specified parameters.
     ///
+    /// - parameter parentConfiguration:    The parent configuration, if any.
     /// - parameter dict:                   The untyped dictionary to serve as the input for this typed configuration.
     ///                                     Typically generated from a YAML-formatted file.
     /// - parameter ruleList:               The list of rules to be available to this configuration.
@@ -34,12 +39,14 @@ extension Configuration {
     ///                                     settings in `dict`.
     /// - parameter cachePath:              The location of the persisted cache on disk.
     public init(
+        parentConfiguration: Configuration? = nil,
         dict: [String: Any],
         ruleList: RuleList = RuleRegistry.shared.list,
         enableAllRules: Bool = false,
+        onlyRule: [String] = [],
         cachePath: String? = nil
     ) throws {
-        func defaultStringArray(_ object: Any?) -> [String] { return [String].array(of: object) ?? [] }
+        func defaultStringArray(_ object: Any?) -> [String] { [String].array(of: object) ?? [] }
 
         // Use either the new 'opt_in_rules' or fallback to the deprecated 'enabled_rules'
         let optInRules = defaultStringArray(dict[Key.optInRules.rawValue] ?? dict[Key.enabledRules.rawValue])
@@ -60,7 +67,7 @@ extension Configuration {
             allRulesWrapped = try ruleList.allRulesWrapped(configurationDict: dict)
         } catch let RuleListError.duplicatedConfigurations(ruleType) {
             let aliases = ruleType.description.deprecatedAliases.map { "'\($0)'" }.joined(separator: ", ")
-            let identifier = ruleType.description.identifier
+            let identifier = ruleType.identifier
             throw Issue.genericWarning(
                 "Multiple configurations found for '\(identifier)'. Check for any aliases: \(aliases)."
             )
@@ -68,15 +75,21 @@ extension Configuration {
 
         let rulesMode = try RulesMode(
             enableAllRules: enableAllRules,
+            onlyRule: onlyRule,
             onlyRules: onlyRules,
             optInRules: optInRules,
             disabledRules: disabledRules,
             analyzerRules: analyzerRules
         )
 
-        Self.validateConfiguredRulesAreEnabled(
-            configurationDictionary: dict, ruleList: ruleList, rulesMode: rulesMode
-        )
+        if onlyRule.isEmpty {
+            Self.validateConfiguredRulesAreEnabled(
+                parentConfiguration: parentConfiguration,
+                configurationDictionary: dict,
+                ruleList: ruleList,
+                rulesMode: rulesMode
+            )
+        }
 
         self.init(
             rulesMode: rulesMode,
@@ -90,13 +103,17 @@ extension Configuration {
             cachePath: cachePath ?? dict[Key.cachePath.rawValue] as? String,
             pinnedVersion: dict[Key.swiftlintVersion.rawValue].map { ($0 as? String) ?? String(describing: $0) },
             allowZeroLintableFiles: dict[Key.allowZeroLintableFiles.rawValue] as? Bool ?? false,
-            strict: dict[Key.strict.rawValue] as? Bool ?? false
+            strict: dict[Key.strict.rawValue] as? Bool ?? false,
+            lenient: dict[Key.lenient.rawValue] as? Bool ?? false,
+            baseline: dict[Key.baseline.rawValue] as? String,
+            writeBaseline: dict[Key.writeBaseline.rawValue] as? String,
+            checkForUpdates: dict[Key.checkForUpdates.rawValue] as? Bool ?? false
         )
     }
 
     // MARK: - Methods: Validations
     private static func validKeys(ruleList: RuleList) -> Set<String> {
-        return validGlobalKeys.union(ruleList.allValidIdentifiers())
+        validGlobalKeys.union(ruleList.allValidIdentifiers())
     }
 
     private static func getIndentationLogIfInvalid(from dict: [String: Any]) -> IndentationStyle {
@@ -125,12 +142,12 @@ extension Configuration {
 
         // Deprecation warning for rules
         let deprecatedRulesIdentifiers = ruleList.list.flatMap { identifier, rule -> [(String, String)] in
-            return rule.description.deprecatedAliases.map { ($0, identifier) }
+            rule.description.deprecatedAliases.map { ($0, identifier) }
         }
 
         let userProvidedRuleIDs = Set(disabledRules + optInRules + onlyRules)
         let deprecatedUsages = deprecatedRulesIdentifiers.filter { deprecatedIdentifier, _ in
-            return dict[deprecatedIdentifier] != nil || userProvidedRuleIDs.contains(deprecatedIdentifier)
+            dict[deprecatedIdentifier] != nil || userProvidedRuleIDs.contains(deprecatedIdentifier)
         }
 
         for (deprecatedIdentifier, identifier) in deprecatedUsages {
@@ -147,35 +164,117 @@ extension Configuration {
     }
 
     private static func validateConfiguredRulesAreEnabled(
+        parentConfiguration: Configuration?,
         configurationDictionary dict: [String: Any],
         ruleList: RuleList,
         rulesMode: RulesMode
     ) {
         for key in dict.keys where !validGlobalKeys.contains(key) {
             guard let identifier = ruleList.identifier(for: key),
-                let rule = ruleList.list[identifier] else {
+                let ruleType = ruleList.list[identifier] else {
                     continue
             }
 
-            let message = "Found a configuration for '\(identifier)' rule"
-
             switch rulesMode {
-            case .allEnabled:
+            case .allCommandLine, .onlyCommandLine:
                 return
-
-            case .only(let onlyRules):
-                if Set(onlyRules).isDisjoint(with: rule.description.allIdentifiers) {
-                    Issue.genericWarning("\(message), but it is not present on '\(Key.onlyRules.rawValue)'.").print()
-                }
-
-            case let .default(disabled: disabledRules, optIn: optInRules):
-                if rule is any OptInRule.Type, Set(optInRules).isDisjoint(with: rule.description.allIdentifiers) {
-                    Issue.genericWarning("\(message), but it is not enabled on '\(Key.optInRules.rawValue)'.").print()
-                } else if Set(disabledRules).isSuperset(of: rule.description.allIdentifiers) {
-                    Issue.genericWarning("\(message), but it is disabled on '\(Key.disabledRules.rawValue)'.").print()
-                }
+            case .onlyConfiguration(let onlyRules):
+                let issue = validateConfiguredRuleIsEnabled(onlyRules: onlyRules, ruleType: ruleType)
+                issue?.print()
+            case let .defaultConfiguration(disabled: disabledRules, optIn: optInRules):
+                let issue = validateConfiguredRuleIsEnabled(
+                    parentConfiguration: parentConfiguration,
+                    disabledRules: disabledRules,
+                    optInRules: optInRules,
+                    ruleType: ruleType
+                )
+                issue?.print()
             }
         }
+    }
+
+    static func validateConfiguredRuleIsEnabled(
+        parentConfiguration: Configuration?,
+        disabledRules: Set<String>,
+        optInRules: Set<String>,
+        ruleType: any Rule.Type
+    ) -> Issue? {
+        var enabledInParentRules: Set<String> = []
+        var disabledInParentRules: Set<String> = []
+        var allEnabledRules: Set<String> = []
+
+        if case .onlyConfiguration(let onlyRules) = parentConfiguration?.rulesMode {
+            enabledInParentRules = onlyRules
+        } else if case .defaultConfiguration(
+            let parentDisabledRules, let parentOptInRules
+        ) = parentConfiguration?.rulesMode {
+            enabledInParentRules = parentOptInRules
+            disabledInParentRules = parentDisabledRules
+        }
+        allEnabledRules = enabledInParentRules
+            .subtracting(disabledInParentRules)
+            .union(optInRules)
+            .subtracting(disabledRules)
+
+        return validateConfiguredRuleIsEnabled(
+            parentConfiguration: parentConfiguration,
+            enabledInParentRules: enabledInParentRules,
+            disabledInParentRules: disabledInParentRules,
+            disabledRules: disabledRules,
+            optInRules: optInRules,
+            allEnabledRules: allEnabledRules,
+            ruleType: ruleType
+        )
+    }
+
+    static func validateConfiguredRuleIsEnabled(
+        onlyRules: Set<String>,
+        ruleType: any Rule.Type
+    ) -> Issue? {
+        if onlyRules.isDisjoint(with: ruleType.description.allIdentifiers) {
+            return Issue.ruleNotPresentInOnlyRules(ruleID: ruleType.identifier)
+        }
+        return nil
+    }
+
+    // swiftlint:disable:next function_parameter_count
+    static func validateConfiguredRuleIsEnabled(
+        parentConfiguration: Configuration?,
+        enabledInParentRules: Set<String>,
+        disabledInParentRules: Set<String>,
+        disabledRules: Set<String>,
+        optInRules: Set<String>,
+        allEnabledRules: Set<String>,
+        ruleType: any Rule.Type
+    ) -> Issue? {
+        if case .allCommandLine = parentConfiguration?.rulesMode {
+            if disabledRules.contains(ruleType.identifier) {
+                return Issue.ruleDisabledInDisabledRules(ruleID: ruleType.identifier)
+            }
+            return nil
+        }
+
+        let allIdentifiers = ruleType.description.allIdentifiers
+
+        if allEnabledRules.isDisjoint(with: allIdentifiers) {
+            if !disabledRules.isDisjoint(with: allIdentifiers) {
+                return Issue.ruleDisabledInDisabledRules(ruleID: ruleType.identifier)
+            }
+            if !disabledInParentRules.isDisjoint(with: allIdentifiers) {
+                return Issue.ruleDisabledInParentConfiguration(ruleID: ruleType.identifier)
+            }
+
+            if ruleType is any OptInRule.Type {
+                if enabledInParentRules.union(optInRules).isDisjoint(with: allIdentifiers) {
+                    return Issue.ruleNotEnabledInOptInRules(ruleID: ruleType.identifier)
+                }
+            } else if case .onlyConfiguration(let enabledInParentRules) = parentConfiguration?.rulesMode,
+                      enabledInParentRules.isDisjoint(with: allIdentifiers) {
+                return Issue.ruleNotEnabledInParentOnlyRules(ruleID: ruleType.identifier)
+            }
+        }
+
+        return nil
     }
 
     private static func warnAboutMisplacedAnalyzerRules(optInRules: [String], ruleList: RuleList) {

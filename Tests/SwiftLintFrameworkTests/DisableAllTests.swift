@@ -1,12 +1,12 @@
 import SwiftLintFramework
 import XCTest
 
-class DisableAllTests: SwiftLintTestCase {
+final class DisableAllTests: SwiftLintTestCase {
     /// Example violations. Could be replaced with other single violations.
     private let violatingPhrases = [
         Example("let r = 0"), // Violates identifier_name
         Example(#"let myString:String = """#), // Violates colon_whitespace
-        Example("// TODO: Some todo") // Violates todo
+        Example("// TODO: Some todo"), // Violates todo
     ]
 
     // MARK: Violating Phrase

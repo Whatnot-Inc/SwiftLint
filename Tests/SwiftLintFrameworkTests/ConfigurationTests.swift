@@ -5,22 +5,22 @@ import XCTest
 
 // swiftlint:disable file_length
 
-private let optInRules = RuleRegistry.shared.list.list.filter({ $0.1.init() is any OptInRule }).map({ $0.0 })
+private let optInRules = RuleRegistry.shared.list.list.filter({ $0.1.init() is any OptInRule }).map(\.0)
 
-class ConfigurationTests: SwiftLintTestCase {
+final class ConfigurationTests: SwiftLintTestCase {
     // MARK: Setup & Teardown
-    private var previousWorkingDir: String!
+    private var previousWorkingDir: String! // swiftlint:disable:this implicitly_unwrapped_optional
 
     override func setUp() {
         super.setUp()
         Configuration.resetCache()
         previousWorkingDir = FileManager.default.currentDirectoryPath
-        FileManager.default.changeCurrentDirectoryPath(Mock.Dir.level0)
+        XCTAssert(FileManager.default.changeCurrentDirectoryPath(Mock.Dir.level0))
     }
 
     override func tearDown() {
         super.tearDown()
-        FileManager.default.changeCurrentDirectoryPath(previousWorkingDir)
+        XCTAssert(FileManager.default.changeCurrentDirectoryPath(previousWorkingDir))
     }
 
     // MARK: Tests
@@ -37,7 +37,7 @@ class ConfigurationTests: SwiftLintTestCase {
 
     func testNoConfiguration() {
         // Change to a folder where there is no `.swiftlint.yml`
-        FileManager.default.changeCurrentDirectoryPath(Mock.Dir.emptyFolder)
+        XCTAssert(FileManager.default.changeCurrentDirectoryPath(Mock.Dir.emptyFolder))
 
         // Test whether the default configuration is used if there is no `.swiftlint.yml` or other config file
         XCTAssertEqual(Configuration(configurationFiles: []), Configuration.default)
@@ -56,6 +56,10 @@ class ConfigurationTests: SwiftLintTestCase {
         XCTAssertEqual(reporterFrom(identifier: config.reporter).identifier, "xcode")
         XCTAssertFalse(config.allowZeroLintableFiles)
         XCTAssertFalse(config.strict)
+        XCTAssertFalse(config.lenient)
+        XCTAssertNil(config.baseline)
+        XCTAssertNil(config.writeBaseline)
+        XCTAssertFalse(config.checkForUpdates)
     }
 
     func testInitWithRelativePathAndRootPath() {
@@ -70,6 +74,8 @@ class ConfigurationTests: SwiftLintTestCase {
         XCTAssertEqual(config.reporter, expectedConfig.reporter)
         XCTAssertTrue(config.allowZeroLintableFiles)
         XCTAssertTrue(config.strict)
+        XCTAssertNotNil(config.baseline)
+        XCTAssertNotNil(config.writeBaseline)
     }
 
     func testEnableAllRulesConfiguration() throws {
@@ -82,12 +88,36 @@ class ConfigurationTests: SwiftLintTestCase {
         XCTAssertEqual(configuration.rules.count, RuleRegistry.shared.list.list.count)
     }
 
+    func testOnlyRule() throws {
+        let configuration = try Configuration(
+            dict: [:],
+            onlyRule: ["nesting"],
+            cachePath: nil
+        )
+
+        XCTAssertEqual(configuration.rules.count, 1)
+    }
+
+    func testOnlyRuleMultiple() throws {
+        let onlyRuleIdentifiers = ["nesting", "todo"].sorted()
+        let configuration = try Configuration(
+            dict: ["only_rules": "line_length"],
+            onlyRule: onlyRuleIdentifiers,
+            cachePath: nil
+        )
+        XCTAssertEqual(onlyRuleIdentifiers, configuration.enabledRuleIdentifiers)
+
+        let childConfiguration = try Configuration(dict: ["disabled_rules": onlyRuleIdentifiers.last ?? ""])
+        let mergedConfiguration = configuration.merged(withChild: childConfiguration)
+        XCTAssertEqual(onlyRuleIdentifiers.dropLast(), mergedConfiguration.enabledRuleIdentifiers)
+    }
+
     func testOnlyRules() throws {
         let only = ["nesting", "todo"]
 
         let config = try Configuration(dict: ["only_rules": only])
         let configuredIdentifiers = config.rules.map {
-            type(of: $0).description.identifier
+            type(of: $0).identifier
         }.sorted()
         XCTAssertEqual(only, configuredIdentifiers)
     }
@@ -126,11 +156,11 @@ class ConfigurationTests: SwiftLintTestCase {
         let only = ["nesting", "todo"]
         let enabledRulesConfigDict = [
             "opt_in_rules": ["line_length"],
-            "only_rules": only
+            "only_rules": only,
         ]
         let disabledRulesConfigDict = [
             "disabled_rules": ["identifier_name"],
-            "only_rules": only
+            "only_rules": only,
         ]
         let combinedRulesConfigDict = enabledRulesConfigDict.reduce(into: disabledRulesConfigDict) { $0[$1.0] = $1.1 }
         var configuration = try? Configuration(dict: enabledRulesConfigDict)
@@ -149,7 +179,7 @@ class ConfigurationTests: SwiftLintTestCase {
         let expectedIdentifiers = Set(RuleRegistry.shared.list.list.keys
             .filter({ !(["nesting", "todo"] + optInRules).contains($0) }))
         let configuredIdentifiers = Set(disabledConfig.rules.map {
-            type(of: $0).description.identifier
+            type(of: $0).identifier
         })
         XCTAssertEqual(expectedIdentifiers, configuredIdentifiers)
     }
@@ -165,10 +195,7 @@ class ConfigurationTests: SwiftLintTestCase {
                        "initializing Configuration with valid rules in YAML string should succeed")
         let expectedIdentifiers = Set(RuleRegistry.shared.list.list.keys
             .filter({ !([validRule] + optInRules).contains($0) }))
-        let configuredIdentifiers = Set(configuration.rules.map {
-            type(of: $0).description.identifier
-        })
-        XCTAssertEqual(expectedIdentifiers, configuredIdentifiers)
+        XCTAssertEqual(expectedIdentifiers, Set(configuration.enabledRuleIdentifiers))
     }
 
     func testDuplicatedRules() {
@@ -179,7 +206,7 @@ class ConfigurationTests: SwiftLintTestCase {
 
         let duplicateConfig2 = try? Configuration(dict: ["opt_in_rules": [optInRules.first!, optInRules.first!]])
         XCTAssertEqual(
-            duplicateConfig2?.rules.filter { type(of: $0).description.identifier == optInRules.first! }.count, 1,
+            duplicateConfig2?.rules.filter { type(of: $0).identifier == optInRules.first! }.count, 1,
             "duplicate rules should be removed when initializing Configuration"
         )
 
@@ -195,7 +222,7 @@ class ConfigurationTests: SwiftLintTestCase {
             return
         }
 
-        FileManager.default.changeCurrentDirectoryPath(Mock.Dir.level1)
+        XCTAssert(FileManager.default.changeCurrentDirectoryPath(Mock.Dir.level1))
 
         // The included path "File.swift" should be put relative to the configuration file
         // (~> Resources/ProjectMock/File.swift) and not relative to the path where
@@ -215,7 +242,7 @@ class ConfigurationTests: SwiftLintTestCase {
     func testIncludedExcludedRelativeLocationLevel0() {
         // Same as testIncludedPathRelatedToConfigurationFileLocationLevel1(),
         // but run from the directory the config file resides in
-        FileManager.default.changeCurrentDirectoryPath(Mock.Dir.level0)
+        XCTAssert(FileManager.default.changeCurrentDirectoryPath(Mock.Dir.level0))
         let configuration = Configuration(configurationFiles: ["custom_included_excluded.yml"])
         let actualIncludedPath = configuration.includedPaths.first!.bridge()
             .absolutePathRepresentation(rootDirectory: configuration.rootDirectory)
@@ -229,12 +256,15 @@ class ConfigurationTests: SwiftLintTestCase {
     }
 
     private class TestFileManager: LintableFileManager {
-        func filesToLint(inPath path: String, rootDirectory: String? = nil) -> [String] {
+        func filesToLint(inPath path: String, rootDirectory _: String? = nil) -> [String] {
             var filesToLint: [String] = []
             switch path {
-            case "directory": filesToLint = ["directory/File1.swift", "directory/File2.swift",
-                                             "directory/excluded/Excluded.swift",
-                                             "directory/ExcludedFile.swift"]
+            case "directory": filesToLint = [
+                "directory/File1.swift",
+                "directory/File2.swift",
+                "directory/excluded/Excluded.swift",
+                "directory/ExcludedFile.swift",
+            ]
             case "directory/excluded": filesToLint = ["directory/excluded/Excluded.swift"]
             case "directory/ExcludedFile.swift": filesToLint = ["directory/ExcludedFile.swift"]
             default: XCTFail("Should not be called with path \(path)")
@@ -242,8 +272,8 @@ class ConfigurationTests: SwiftLintTestCase {
             return filesToLint.absolutePathsStandardized()
         }
 
-        func modificationDate(forFileAtPath path: String) -> Date? {
-            return nil
+        func modificationDate(forFileAtPath _: String) -> Date? {
+            nil
         }
 
         func isFile(atPath path: String) -> Bool {
@@ -253,9 +283,10 @@ class ConfigurationTests: SwiftLintTestCase {
 
     func testExcludedPaths() {
         let fileManager = TestFileManager()
-        let configuration = Configuration(includedPaths: ["directory"],
-                                          excludedPaths: ["directory/excluded",
-                                                          "directory/ExcludedFile.swift"])
+        let configuration = Configuration(
+            includedPaths: ["directory"],
+            excludedPaths: ["directory/excluded", "directory/ExcludedFile.swift"]
+        )
 
         let excludedPaths = configuration.excludedPaths(fileManager: fileManager)
         let paths = configuration.lintablePaths(inPath: "",
@@ -319,14 +350,14 @@ class ConfigurationTests: SwiftLintTestCase {
         let expectedFilenames = [
             "DirectoryLevel1.swift",
             "Level0.swift", "Level1.swift", "Level2.swift", "Level3.swift",
-            "Main.swift", "Sub.swift"
+            "Main.swift", "Sub.swift",
         ]
 
         XCTAssertEqual(Set(expectedFilenames), Set(filenames))
     }
 
     func testGlobIncludePaths() {
-        FileManager.default.changeCurrentDirectoryPath(Mock.Dir.level0)
+        XCTAssert(FileManager.default.changeCurrentDirectoryPath(Mock.Dir.level0))
         let configuration = Configuration(includedPaths: ["**/Level2"])
         let paths = configuration.lintablePaths(inPath: Mock.Dir.level0,
                                                 forceExclude: true,
@@ -405,15 +436,15 @@ class ConfigurationTests: SwiftLintTestCase {
 
     func testConfiguresCorrectlyFromDict() throws {
         let ruleConfiguration = [1, 2]
-        let config = [RuleWithLevelsMock.description.identifier: ruleConfiguration]
-        let rules = try testRuleList.allRulesWrapped(configurationDict: config).map { $0.rule }
+        let config = [RuleWithLevelsMock.identifier: ruleConfiguration]
+        let rules = try testRuleList.allRulesWrapped(configurationDict: config).map(\.rule)
         // swiftlint:disable:next xct_specific_matcher
         XCTAssertTrue(rules == [try RuleWithLevelsMock(configuration: ruleConfiguration)])
     }
 
     func testConfigureFallsBackCorrectly() throws {
-        let config = [RuleWithLevelsMock.description.identifier: ["a", "b"]]
-        let rules = try testRuleList.allRulesWrapped(configurationDict: config).map { $0.rule }
+        let config = [RuleWithLevelsMock.identifier: ["a", "b"]]
+        let rules = try testRuleList.allRulesWrapped(configurationDict: config).map(\.rule)
         // swiftlint:disable:next xct_specific_matcher
         XCTAssertTrue(rules == [RuleWithLevelsMock()])
     }
@@ -427,15 +458,38 @@ class ConfigurationTests: SwiftLintTestCase {
         let configuration = try Configuration(dict: ["strict": true])
         XCTAssertTrue(configuration.strict)
     }
+
+    func testLenient() throws {
+        let configuration = try Configuration(dict: ["lenient": true])
+        XCTAssertTrue(configuration.lenient)
+    }
+
+    func testBaseline() throws {
+        let baselinePath = "Baseline.json"
+        let configuration = try Configuration(dict: ["baseline": baselinePath])
+        XCTAssertEqual(configuration.baseline, baselinePath)
+    }
+
+    func testWriteBaseline() throws {
+        let baselinePath = "Baseline.json"
+        let configuration = try Configuration(dict: ["write_baseline": baselinePath])
+        XCTAssertEqual(configuration.writeBaseline, baselinePath)
+    }
+
+    func testCheckForUpdates() throws {
+        let configuration = try Configuration(dict: ["check_for_updates": true])
+        XCTAssertTrue(configuration.checkForUpdates)
+    }
 }
 
 // MARK: - ExcludeByPrefix option tests
 extension ConfigurationTests {
     func testExcludeByPrefixExcludedPaths() {
-        FileManager.default.changeCurrentDirectoryPath(Mock.Dir.level0)
-        let configuration = Configuration(includedPaths: ["Level1"],
-                                          excludedPaths: ["Level1/Level1.swift",
-                                                          "Level1/Level2/Level3"])
+        XCTAssert(FileManager.default.changeCurrentDirectoryPath(Mock.Dir.level0))
+        let configuration = Configuration(
+            includedPaths: ["Level1"],
+            excludedPaths: ["Level1/Level1.swift", "Level1/Level2/Level3"]
+        )
         let paths = configuration.lintablePaths(inPath: Mock.Dir.level0,
                                                 forceExclude: false,
                                                 excludeBy: .prefix)
@@ -444,7 +498,7 @@ extension ConfigurationTests {
     }
 
     func testExcludeByPrefixForceExcludesFile() {
-        FileManager.default.changeCurrentDirectoryPath(Mock.Dir.level0)
+        XCTAssert(FileManager.default.changeCurrentDirectoryPath(Mock.Dir.level0))
         let configuration = Configuration(excludedPaths: ["Level1/Level2/Level3/Level3.swift"])
         let paths = configuration.lintablePaths(inPath: "Level1/Level2/Level3/Level3.swift",
                                                 forceExclude: true,
@@ -453,7 +507,7 @@ extension ConfigurationTests {
     }
 
     func testExcludeByPrefixForceExcludesFileNotPresentInExcluded() {
-        FileManager.default.changeCurrentDirectoryPath(Mock.Dir.level0)
+        XCTAssert(FileManager.default.changeCurrentDirectoryPath(Mock.Dir.level0))
         let configuration = Configuration(includedPaths: ["Level1"],
                                           excludedPaths: ["Level1/Level1.swift"])
         let paths = configuration.lintablePaths(inPath: "Level1",
@@ -464,7 +518,7 @@ extension ConfigurationTests {
     }
 
     func testExcludeByPrefixForceExcludesDirectory() {
-        FileManager.default.changeCurrentDirectoryPath(Mock.Dir.level0)
+        XCTAssert(FileManager.default.changeCurrentDirectoryPath(Mock.Dir.level0))
         let configuration = Configuration(
             excludedPaths: [
                 "Level1/Level2", "Directory.swift", "ChildConfig", "ParentConfig", "NestedConfig"
@@ -478,7 +532,7 @@ extension ConfigurationTests {
     }
 
     func testExcludeByPrefixForceExcludesDirectoryThatIsNotInExcludedButHasChildrenThatAre() {
-        FileManager.default.changeCurrentDirectoryPath(Mock.Dir.level0)
+        XCTAssert(FileManager.default.changeCurrentDirectoryPath(Mock.Dir.level0))
         let configuration = Configuration(
             excludedPaths: [
                 "Level1", "Directory.swift/DirectoryLevel1.swift", "ChildConfig", "ParentConfig", "NestedConfig"
@@ -492,7 +546,7 @@ extension ConfigurationTests {
     }
 
     func testExcludeByPrefixGlobExcludePaths() {
-        FileManager.default.changeCurrentDirectoryPath(Mock.Dir.level0)
+        XCTAssert(FileManager.default.changeCurrentDirectoryPath(Mock.Dir.level0))
         let configuration = Configuration(
             includedPaths: ["Level1"],
             excludedPaths: ["Level1/*/*.swift", "Level1/*/*/*.swift"])
@@ -553,5 +607,13 @@ extension ConfigurationTests {
 private extension Sequence where Element == String {
     func absolutePathsStandardized() -> [String] {
         map { $0.absolutePathStandardized() }
+    }
+}
+
+private extension Configuration {
+    var enabledRuleIdentifiers: [String] {
+        rules.map {
+            type(of: $0).identifier
+        }.sorted()
     }
 }

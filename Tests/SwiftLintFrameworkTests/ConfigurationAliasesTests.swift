@@ -7,7 +7,7 @@ final class ConfigurationAliasesTests: SwiftLintTestCase {
     func testConfiguresCorrectlyFromDeprecatedAlias() throws {
         let ruleConfiguration = [1, 2]
         let config = ["mock": ruleConfiguration]
-        let rules = try testRuleList.allRulesWrapped(configurationDict: config).map { $0.rule }
+        let rules = try testRuleList.allRulesWrapped(configurationDict: config).map(\.rule)
         // swiftlint:disable:next xct_specific_matcher
         XCTAssertTrue(rules == [try RuleWithLevelsMock(configuration: ruleConfiguration)])
     }
@@ -28,7 +28,7 @@ final class ConfigurationAliasesTests: SwiftLintTestCase {
         // swiftlint:disable:next force_try
         let configuration = try! Configuration(dict: ["only_rules": ["mock"]], ruleList: testRuleList)
         let configuredIdentifiers = configuration.rules.map {
-            type(of: $0).description.identifier
+            type(of: $0).identifier
         }
         XCTAssertEqual(configuredIdentifiers, ["severity_level_mock"])
     }

@@ -1,7 +1,7 @@
 @testable import SwiftLintBuiltInRules
 import XCTest
 
-class TodoRuleTests: SwiftLintTestCase {
+final class TodoRuleTests: SwiftLintTestCase {
     func testTodo() {
         verifyRule(TodoRule.description, commentDoesntViolate: false)
     }
@@ -41,7 +41,7 @@ class TodoRuleTests: SwiftLintTestCase {
     }
 
     private func violations(_ example: Example, config: Any? = nil) -> [StyleViolation] {
-        let config = makeConfig(config, TodoRule.description.identifier)!
+        let config = makeConfig(config, TodoRule.identifier)!
         return SwiftLintFrameworkTests.violations(example, config: config)
     }
 }

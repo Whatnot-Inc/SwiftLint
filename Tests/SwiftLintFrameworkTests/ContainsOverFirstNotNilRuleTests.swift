@@ -1,7 +1,7 @@
 @testable import SwiftLintBuiltInRules
 import XCTest
 
-class ContainsOverFirstNotNilRuleTests: SwiftLintTestCase {
+final class ContainsOverFirstNotNilRuleTests: SwiftLintTestCase {
     func testFirstReason() {
         let example = Example("↓myList.first { $0 % 2 == 0 } != nil")
         let violations = self.violations(example)
@@ -21,7 +21,7 @@ class ContainsOverFirstNotNilRuleTests: SwiftLintTestCase {
     // MARK: - Private
 
     private func violations(_ example: Example, config: Any? = nil) -> [StyleViolation] {
-        guard let config = makeConfig(config, ContainsOverFirstNotNilRule.description.identifier) else {
+        guard let config = makeConfig(config, ContainsOverFirstNotNilRule.identifier) else {
             return []
         }
 

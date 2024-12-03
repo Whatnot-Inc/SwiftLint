@@ -1,6 +1,6 @@
 @testable import SwiftLintBuiltInRules
 
-class MultilineArgumentsRuleTests: SwiftLintTestCase {
+final class MultilineArgumentsRuleTests: SwiftLintTestCase {
     func testMultilineArgumentsWithWithNextLine() {
         let nonTriggeringExamples = [
             Example("foo()"),
@@ -11,12 +11,12 @@ class MultilineArgumentsRuleTests: SwiftLintTestCase {
             "    3,\n" +
             "    bar: baz) { }"),
             Example("foo(\n" +
-            "    4, bar: baz) { }")
+            "    4, bar: baz) { }"),
         ]
 
         let triggeringExamples = [
             Example("foo(↓1,\n" +
-            "    bar: baz) { }")
+            "    bar: baz) { }"),
         ]
 
         let description = MultilineArgumentsRule.description
@@ -35,7 +35,7 @@ class MultilineArgumentsRuleTests: SwiftLintTestCase {
             "    bar()\n" +
             "}"),
             Example("foo(3,\n" +
-            "    bar: 3) { }")
+            "    bar: 3) { }"),
         ]
 
         let triggeringExamples = [
@@ -43,7 +43,7 @@ class MultilineArgumentsRuleTests: SwiftLintTestCase {
             "    ↓1, ↓bar: baz) { }"),
             Example("foo(\n" +
             "    ↓2,\n" +
-            "    bar: baz) { }")
+            "    bar: baz) { }"),
         ]
 
         let description = MultilineArgumentsRule.description
@@ -76,7 +76,7 @@ class MultilineArgumentsRuleTests: SwiftLintTestCase {
             "})"),
             Example("foo(a: a, b: { [weak self] in\n" +
             "}, c: { flag in\n" +
-            "})")
+            "})"),
         ]
 
         let triggeringExamples = [
@@ -86,7 +86,7 @@ class MultilineArgumentsRuleTests: SwiftLintTestCase {
             Example("foo(a: a, b: b,\n" +
             "    c: c, d: {\n" +
             "    }, d: {\n" +
-            "})")
+            "})"),
         ]
 
         let description = MultilineArgumentsRule.description

@@ -1,7 +1,7 @@
 @testable import SwiftLintBuiltInRules
 import XCTest
 
-class ImplicitlyUnwrappedOptionalRuleTests: SwiftLintTestCase {
+final class ImplicitlyUnwrappedOptionalRuleTests: SwiftLintTestCase {
     func testImplicitlyUnwrappedOptionalRuleDefaultConfiguration() {
         let rule = ImplicitlyUnwrappedOptionalRule()
         XCTAssertEqual(rule.configuration.mode, .allExceptIBOutlets)
@@ -13,7 +13,7 @@ class ImplicitlyUnwrappedOptionalRuleTests: SwiftLintTestCase {
         let triggeringExamples = [
             Example("@IBOutlet private var label: UILabel!"),
             Example("@IBOutlet var label: UILabel!"),
-            Example("let int: Int!")
+            Example("let int: Int!"),
         ]
 
         let nonTriggeringExamples = [Example("if !boolean {}")]
@@ -29,7 +29,7 @@ class ImplicitlyUnwrappedOptionalRuleTests: SwiftLintTestCase {
         let triggeringExamples = [
             Example("private weak var label: ↓UILabel!"),
             Example("weak var label: ↓UILabel!"),
-            Example("@objc weak var label: ↓UILabel!")
+            Example("@objc weak var label: ↓UILabel!"),
         ]
 
         let nonTriggeringExamples = [
@@ -37,7 +37,7 @@ class ImplicitlyUnwrappedOptionalRuleTests: SwiftLintTestCase {
             Example("@IBOutlet var label: UILabel!"),
             Example("@IBOutlet weak var label: UILabel!"),
             Example("var label: UILabel!"),
-            Example("let int: Int!")
+            Example("let int: Int!"),
         ]
 
         let description = baseDescription.with(nonTriggeringExamples: nonTriggeringExamples)

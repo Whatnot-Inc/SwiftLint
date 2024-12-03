@@ -2,7 +2,8 @@ import Foundation
 import SourceKittenFramework
 
 /// A rule configuration used for defining custom rules in yaml.
-public struct RegexConfiguration<Parent: Rule>: SeverityBasedRuleConfiguration, Hashable, CacheDescriptionProvider {
+public struct RegexConfiguration<Parent: Rule>: SeverityBasedRuleConfiguration, Hashable,
+                                                CacheDescriptionProvider, InlinableOptionType {
     /// The identifier for this custom rule.
     public let identifier: String
     /// The name for this custom rule.
@@ -11,7 +12,7 @@ public struct RegexConfiguration<Parent: Rule>: SeverityBasedRuleConfiguration, 
     public var message = "Regex matched"
     /// The regular expression to apply to trigger violations for this custom rule.
     @ConfigurationElement(key: "regex")
-    var regex: RegularExpression!
+    var regex: RegularExpression! // swiftlint:disable:this implicitly_unwrapped_optional
     /// Regular expressions to include when matching the file path.
     public var included: [NSRegularExpression] = []
     /// Regular expressions to exclude when matching the file path.
@@ -22,7 +23,7 @@ public struct RegexConfiguration<Parent: Rule>: SeverityBasedRuleConfiguration, 
     @ConfigurationElement(key: "severity")
     public var severityConfiguration = SeverityConfiguration<Parent>(.warning)
     /// The index of the regex capture group to match.
-    public var captureGroup: Int = 0
+    public var captureGroup = 0
 
     public var cacheDescription: String {
         let jsonObject: [String] = [
@@ -33,19 +34,20 @@ public struct RegexConfiguration<Parent: Rule>: SeverityBasedRuleConfiguration, 
             included.map(\.pattern).joined(separator: ","),
             excluded.map(\.pattern).joined(separator: ","),
             SyntaxKind.allKinds.subtracting(excludedMatchKinds)
-                .map({ $0.rawValue }).sorted(by: <).joined(separator: ","),
-            severity.rawValue
+                .map(\.rawValue).sorted(by: <).joined(separator: ","),
+            severity.rawValue,
         ]
-        if let jsonData = try? JSONSerialization.data(withJSONObject: jsonObject) {
-            return String(decoding: jsonData, as: UTF8.self)
+        if let jsonData = try? JSONSerialization.data(withJSONObject: jsonObject),
+          let jsonString = String(data: jsonData, encoding: .utf8) {
+              return jsonString
         }
         queuedFatalError("Could not serialize regex configuration for cache")
     }
 
     /// The `RuleDescription` for the custom rule defined here.
     public var description: RuleDescription {
-        return RuleDescription(identifier: identifier, name: name ?? identifier,
-                               description: "", kind: .style)
+        RuleDescription(identifier: identifier, name: name ?? identifier,
+                        description: "", kind: .style)
     }
 
     /// Create a `RegexConfiguration` with the specified identifier, with other properties to be set later.
@@ -58,7 +60,7 @@ public struct RegexConfiguration<Parent: Rule>: SeverityBasedRuleConfiguration, 
     public mutating func apply(configuration: Any) throws {
         guard let configurationDict = configuration as? [String: Any],
               let regexString = configurationDict[$regex.key] as? String else {
-            throw Issue.unknownConfiguration(ruleID: Parent.description.identifier)
+            throw Issue.invalidConfiguration(ruleID: Parent.identifier)
         }
 
         regex = try RegularExpression(pattern: regexString)
@@ -90,7 +92,7 @@ public struct RegexConfiguration<Parent: Rule>: SeverityBasedRuleConfiguration, 
         }
         if let captureGroup = configurationDict["capture_group"] as? Int {
             guard (0 ... regex.numberOfCaptureGroups).contains(captureGroup) else {
-                throw Issue.unknownConfiguration(ruleID: Parent.description.identifier)
+                throw Issue.invalidConfiguration(ruleID: Parent.identifier)
             }
             self.captureGroup = captureGroup
         }
@@ -140,7 +142,7 @@ public struct RegexConfiguration<Parent: Rule>: SeverityBasedRuleConfiguration, 
             if let kind = SyntaxKind(shortName: $0) {
                 return kind
             }
-            throw Issue.unknownConfiguration(ruleID: Parent.description.identifier)
+            throw Issue.invalidConfiguration(ruleID: Parent.identifier)
         }
         return Set(kinds)
     }

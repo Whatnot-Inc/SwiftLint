@@ -1,16 +1,16 @@
 @testable import SwiftLintBuiltInRules
 
-class TypeNameRuleTests: SwiftLintTestCase {
+final class TypeNameRuleTests: SwiftLintTestCase {
     func testTypeNameWithExcluded() {
         let baseDescription = TypeNameRule.description
         let nonTriggeringExamples = baseDescription.nonTriggeringExamples + [
             Example("class apple {}"),
             Example("struct some_apple {}"),
-            Example("protocol test123 {}")
+            Example("protocol test123 {}"),
         ]
         let triggeringExamples = baseDescription.triggeringExamples + [
             Example("enum ap_ple {}"),
-            Example("typealias appleJuice = Void")
+            Example("typealias appleJuice = Void"),
         ]
         let description = baseDescription.with(nonTriggeringExamples: nonTriggeringExamples,
                                                triggeringExamples: triggeringExamples)
@@ -24,7 +24,7 @@ class TypeNameRuleTests: SwiftLintTestCase {
             Example("struct MyType$ {}"),
             Example("enum MyType$ {}"),
             Example("typealias Foo$ = Void"),
-            Example("protocol Foo {\n associatedtype Bar$\n }")
+            Example("protocol Foo {\n associatedtype Bar$\n }"),
         ]
 
         let description = baseDescription.with(nonTriggeringExamples: nonTriggeringExamples)
@@ -47,7 +47,7 @@ class TypeNameRuleTests: SwiftLintTestCase {
             Example("private typealias ↓foo = Void"),
             Example("class ↓myType {}"),
             Example("struct ↓myType {}"),
-            Example("enum ↓myType {}")
+            Example("enum ↓myType {}"),
         ]
         let nonTriggeringExamples = baseDescription.nonTriggeringExamples +
             triggeringExamplesToRemove.removingViolationMarkers()

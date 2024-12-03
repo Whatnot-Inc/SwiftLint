@@ -1,7 +1,7 @@
 @testable import SwiftLintBuiltInRules
 import XCTest
 
-class XCTSpecificMatcherRuleTests: SwiftLintTestCase {
+final class XCTSpecificMatcherRuleTests: SwiftLintTestCase {
     func testEqualTrue() {
         let example = Example("XCTAssertEqual(a, true)")
         let violations = self.violations(example)
@@ -181,7 +181,7 @@ class XCTSpecificMatcherRuleTests: SwiftLintTestCase {
     }
 
     private func violations(_ example: Example) -> [StyleViolation] {
-        guard let config = makeConfig(nil, XCTSpecificMatcherRule.description.identifier) else { return [] }
+        guard let config = makeConfig(nil, XCTSpecificMatcherRule.identifier) else { return [] }
         return SwiftLintFrameworkTests.violations(example, config: config)
     }
 

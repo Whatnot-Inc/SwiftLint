@@ -2,14 +2,14 @@
 
 private func funcWithParameters(_ parameters: String,
                                 violates: Bool = false,
-                                file: StaticString = #file,
+                                file: StaticString = #filePath,
                                 line: UInt = #line) -> Example {
     let marker = violates ? "↓" : ""
 
     return Example("func \(marker)abc(\(parameters)) {}\n", file: file, line: line)
 }
 
-class FunctionParameterCountRuleTests: SwiftLintTestCase {
+final class FunctionParameterCountRuleTests: SwiftLintTestCase {
     func testFunctionParameterCount() {
         let baseDescription = FunctionParameterCountRule.description
         let nonTriggeringExamples = [

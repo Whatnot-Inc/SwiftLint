@@ -1,14 +1,20 @@
 @testable import SwiftLintBuiltInRules
+@testable import SwiftLintCore
 import SwiftLintTestHelpers
 import XCTest
 
-class IndentationWidthRuleTests: SwiftLintTestCase {
-    func testInvalidIndentation() {
+final class IndentationWidthRuleTests: SwiftLintTestCase {
+    func testInvalidIndentation() throws {
         var testee = IndentationWidthConfiguration()
+        let defaultValue = testee.indentationWidth
+
         for indentation in [0, -1, -5] {
-            checkError(Issue.invalidConfiguration(ruleID: IndentationWidthRule.description.identifier)) {
-                try testee.apply(configuration: ["indentation_width": indentation])
-            }
+            XCTAssertEqual(
+                try Issue.captureConsole { try testee.apply(configuration: ["indentation_width": indentation]) },
+                "warning: Invalid configuration for 'indentation_width' rule. Falling back to default."
+            )
+            // Value remains the default.
+            XCTAssertEqual(testee.indentationWidth, defaultValue)
         }
     }
 
@@ -265,7 +271,7 @@ class IndentationWidthRuleTests: SwiftLintTestCase {
         includeComments: Bool = true,
         includeCompilerDirectives: Bool = true,
         includeMultilineStrings: Bool = true,
-        file: StaticString = #file,
+        file: StaticString = #filePath,
         line: UInt = #line
     ) -> Int {
         var configDict: [String: Any] = [:]
@@ -276,7 +282,7 @@ class IndentationWidthRuleTests: SwiftLintTestCase {
         configDict["include_compiler_directives"] = includeCompilerDirectives
         configDict["include_multiline_strings"] = includeMultilineStrings
 
-        guard let config = makeConfig(configDict, IndentationWidthRule.description.identifier) else {
+        guard let config = makeConfig(configDict, IndentationWidthRule.identifier) else {
             XCTFail("Unable to create rule configuration.", file: (file), line: line)
             return 0
         }
@@ -291,7 +297,7 @@ class IndentationWidthRuleTests: SwiftLintTestCase {
         includeComments: Bool = true,
         includeCompilerDirectives: Bool = true,
         includeMultilineStrings: Bool = true,
-        file: StaticString = #file,
+        file: StaticString = #filePath,
         line: UInt = #line
     ) {
         XCTAssertEqual(
@@ -316,7 +322,7 @@ class IndentationWidthRuleTests: SwiftLintTestCase {
         includeComments: Bool = true,
         includeCompilerDirectives: Bool = true,
         includeMultilineStrings: Bool = true,
-        file: StaticString = #file,
+        file: StaticString = #filePath,
         line: UInt = #line
     ) {
         assertViolations(
@@ -337,7 +343,7 @@ class IndentationWidthRuleTests: SwiftLintTestCase {
         includeComments: Bool = true,
         includeCompilerDirectives: Bool = true,
         includeMultilineStrings: Bool = true,
-        file: StaticString = #file,
+        file: StaticString = #filePath,
         line: UInt = #line
     ) {
         assertViolations(

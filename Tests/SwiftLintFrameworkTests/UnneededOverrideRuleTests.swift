@@ -1,6 +1,6 @@
 @testable import SwiftLintBuiltInRules
 
-class UnneededOverrideRuleTests: SwiftLintTestCase {
+final class UnneededOverrideRuleTests: SwiftLintTestCase {
     func testIncludeAffectInits() {
         let nonTriggeringExamples = [
             Example("""
@@ -22,7 +22,7 @@ class UnneededOverrideRuleTests: SwiftLintTestCase {
             private override init() {
                 super.init()
             }
-            """)
+            """),
         ] + UnneededOverrideRuleExamples.nonTriggeringExamples
 
         let triggeringExamples = [
@@ -39,7 +39,7 @@ class UnneededOverrideRuleTests: SwiftLintTestCase {
                     super.init(frame: frame)
                 }
             }
-            """)
+            """),
         ]
 
         let corrections = [
@@ -52,7 +52,7 @@ class UnneededOverrideRuleTests: SwiftLintTestCase {
             """): Example("""
                           class Foo {
                           }
-                          """)
+                          """),
         ]
 
         let description = UnneededOverrideRule.description

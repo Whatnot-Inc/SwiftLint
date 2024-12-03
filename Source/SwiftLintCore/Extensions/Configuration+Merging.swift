@@ -8,7 +8,7 @@ extension Configuration {
     // MARK: - Methods: Merging
     package func merged(
         withChild childConfiguration: Configuration,
-        rootDirectory: String
+        rootDirectory: String = ""
     ) -> Configuration {
         let mergedIncludedAndExcluded = self.mergedIncludedAndExcluded(
             with: childConfiguration,
@@ -25,7 +25,11 @@ extension Configuration {
             reporter: reporter,
             cachePath: cachePath,
             allowZeroLintableFiles: childConfiguration.allowZeroLintableFiles,
-            strict: childConfiguration.strict
+            strict: childConfiguration.strict,
+            lenient: childConfiguration.lenient,
+            baseline: childConfiguration.baseline,
+            writeBaseline: childConfiguration.writeBaseline,
+            checkForUpdates: childConfiguration.checkForUpdates
         )
     }
 
@@ -81,7 +85,7 @@ extension Configuration {
     ///
     /// - returns: A new configuration.
     public func configuration(for file: SwiftLintFile) -> Configuration {
-        return (file.path?.bridge().deletingLastPathComponent).map(configuration(forDirectory:)) ?? self
+        (file.path?.bridge().deletingLastPathComponent).map(configuration(forDirectory:)) ?? self
     }
 
     private func configuration(forDirectory directory: String) -> Configuration {

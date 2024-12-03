@@ -9,14 +9,14 @@ struct CustomRulesConfiguration: RuleConfiguration, CacheDescriptionProvider {
     var cacheDescription: String {
         customRuleConfigurations
             .sorted { $0.identifier < $1.identifier }
-            .map { $0.cacheDescription }
+            .map(\.cacheDescription)
             .joined(separator: "\n")
     }
     var customRuleConfigurations = [RegexConfiguration<Parent>]()
 
     mutating func apply(configuration: Any) throws {
         guard let configurationDict = configuration as? [String: Any] else {
-            throw Issue.unknownConfiguration(ruleID: Parent.identifier)
+            throw Issue.invalidConfiguration(ruleID: Parent.identifier)
         }
 
         for (key, value) in configurationDict {
@@ -38,7 +38,11 @@ struct CustomRulesConfiguration: RuleConfiguration, CacheDescriptionProvider {
 
 struct CustomRules: Rule, CacheDescriptionProvider {
     var cacheDescription: String {
-        return configuration.cacheDescription
+        configuration.cacheDescription
+    }
+
+    var customRuleIdentifiers: [String] {
+        configuration.customRuleConfigurations.map(\.identifier)
     }
 
     static let description = RuleDescription(
@@ -79,19 +83,29 @@ struct CustomRules: Rule, CacheDescriptionProvider {
                                severity: configuration.severity,
                                location: Location(file: file, characterOffset: $0.location),
                                reason: configuration.message)
-            }).filter { violation in
-                guard let region = file.regions().first(where: { $0.contains(violation.location) }) else {
-                    return true
-                }
-
-                return !region.isRuleDisabled(customRuleIdentifier: configuration.identifier)
-            }
+            })
         }
     }
-}
 
-private extension Region {
-    func isRuleDisabled(customRuleIdentifier: String) -> Bool {
-        return disabledRuleIdentifiers.contains(RuleIdentifier(customRuleIdentifier))
+    func canBeDisabled(violation: StyleViolation, by ruleID: RuleIdentifier) -> Bool {
+        switch ruleID {
+        case let .single(identifier: id):
+            id == Self.identifier
+                ? customRuleIdentifiers.contains(violation.ruleIdentifier)
+                : customRuleIdentifiers.contains(id) && violation.ruleIdentifier == id
+        default:
+            (self as any Rule).canBeDisabled(violation: violation, by: ruleID)
+        }
+    }
+
+    func isEnabled(in region: Region, for ruleID: String) -> Bool {
+        if !Self.description.allIdentifiers.contains(ruleID),
+           !customRuleIdentifiers.contains(ruleID),
+           Self.identifier != ruleID {
+            return true
+        }
+        return !region.disabledRuleIdentifiers.contains(RuleIdentifier(Self.identifier))
+            && !region.disabledRuleIdentifiers.contains(RuleIdentifier(ruleID))
+            && !region.disabledRuleIdentifiers.contains(.all)
     }
 }

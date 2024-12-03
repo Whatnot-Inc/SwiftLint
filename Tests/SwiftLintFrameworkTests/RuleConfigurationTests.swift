@@ -3,7 +3,7 @@ import SourceKittenFramework
 @testable import SwiftLintCore
 import XCTest
 
-class RuleConfigurationTests: SwiftLintTestCase {
+final class RuleConfigurationTests: SwiftLintTestCase {
     private let defaultNestingConfiguration = NestingConfiguration(
         typeLevel: SeverityLevelsConfiguration(warning: 0),
         functionLevel: SeverityLevelsConfiguration(warning: 0)
@@ -18,7 +18,7 @@ class RuleConfigurationTests: SwiftLintTestCase {
                 "warning": 8, "error": 18
             ],
             "check_nesting_in_closures_and_statements": false,
-            "always_allow_one_type_in_functions": true
+            "always_allow_one_type_in_functions": true,
         ] as [String: any Sendable]
         var nestingConfig = defaultNestingConfiguration
         do {
@@ -37,9 +37,16 @@ class RuleConfigurationTests: SwiftLintTestCase {
     func testNestingConfigurationThrowsOnBadConfig() {
         let config = 17
         var nestingConfig = defaultNestingConfiguration
-        checkError(Issue.invalidConfiguration(ruleID: NestingRule.description.identifier)) {
+        checkError(Issue.invalidConfiguration(ruleID: NestingRule.identifier)) {
             try nestingConfig.apply(configuration: config)
         }
+    }
+
+    func testSeverityWorksAsOnlyParameter() throws {
+        var config = AttributesConfiguration()
+        XCTAssertEqual(config.severity, .warning)
+        try config.apply(configuration: "error")
+        XCTAssertEqual(config.severity, .error)
     }
 
     func testSeverityConfigurationFromString() {
@@ -66,18 +73,28 @@ class RuleConfigurationTests: SwiftLintTestCase {
         }
     }
 
-    func testSeverityConfigurationThrowsOnBadConfig() {
+    func testSeverityConfigurationThrowsNothingApplied() throws {
         let config = 17
+        var severityConfig = SeverityConfiguration<RuleMock>(.error)
+        checkError(Issue.nothingApplied(ruleID: RuleMock.identifier)) {
+            try severityConfig.apply(configuration: config)
+        }
+    }
+
+    func testSeverityConfigurationThrowsInvalidConfiguration() {
+        let config = "foo"
         var severityConfig = SeverityConfiguration<RuleMock>(.warning)
-        checkError(Issue.unknownConfiguration(ruleID: RuleMock.description.identifier)) {
+        checkError(Issue.invalidConfiguration(ruleID: RuleMock.identifier)) {
             try severityConfig.apply(configuration: config)
         }
     }
 
     func testSeverityLevelConfigParams() {
         let severityConfig = SeverityLevelsConfiguration<RuleMock>(warning: 17, error: 7)
-        XCTAssertEqual(severityConfig.params, [RuleParameter(severity: .error, value: 7),
-                                               RuleParameter(severity: .warning, value: 17)])
+        XCTAssertEqual(
+            severityConfig.params,
+            [RuleParameter(severity: .error, value: 7), RuleParameter(severity: .warning, value: 17)]
+        )
     }
 
     func testSeverityLevelConfigPartialParams() {
@@ -100,7 +117,7 @@ class RuleConfigurationTests: SwiftLintTestCase {
     func testRegexConfigurationThrows() {
         let config = 17
         var regexConfig = RegexConfiguration<RuleMock>(identifier: "")
-        checkError(Issue.unknownConfiguration(ruleID: RuleMock.description.identifier)) {
+        checkError(Issue.invalidConfiguration(ruleID: RuleMock.identifier)) {
             try regexConfig.apply(configuration: config)
         }
     }
@@ -120,7 +137,7 @@ class RuleConfigurationTests: SwiftLintTestCase {
         let config = "unknown"
         var configuration = TrailingWhitespaceConfiguration(ignoresEmptyLines: false,
                                                             ignoresComments: true)
-        checkError(Issue.invalidConfiguration(ruleID: TrailingWhitespaceRule.description.identifier)) {
+        checkError(Issue.invalidConfiguration(ruleID: TrailingWhitespaceRule.identifier)) {
             try configuration.apply(configuration: config)
         }
     }
@@ -232,7 +249,7 @@ class RuleConfigurationTests: SwiftLintTestCase {
         let conf2 = [
             "severity": "error",
             "excluded": "viewWillAppear(_:)",
-            "included": ["*", "testMethod1()", "testMethod2(_:)"]
+            "included": ["*", "testMethod1()", "testMethod2(_:)"],
         ] as [String: any Sendable]
         do {
             try configuration.apply(configuration: conf2)
@@ -249,7 +266,7 @@ class RuleConfigurationTests: SwiftLintTestCase {
         let conf3 = [
             "severity": "warning",
             "excluded": "*",
-            "included": ["testMethod1()", "testMethod2(_:)"]
+            "included": ["testMethod1()", "testMethod2(_:)"],
         ] as [String: any Sendable]
         do {
             try configuration.apply(configuration: conf3)
@@ -278,8 +295,8 @@ class RuleConfigurationTests: SwiftLintTestCase {
                 "required",
                 "convenience",
                 "lazy",
-                "dynamic"
-            ]
+                "dynamic",
+            ],
         ]
 
         try configuration.apply(configuration: config)
@@ -294,7 +311,7 @@ class RuleConfigurationTests: SwiftLintTestCase {
             .required,
             .convenience,
             .lazy,
-            .dynamic
+            .dynamic,
         ]
         XCTAssertEqual(configuration.severityConfiguration.severity, .warning)
         XCTAssertEqual(configuration.preferredModifierOrder, expected)
@@ -304,7 +321,7 @@ class RuleConfigurationTests: SwiftLintTestCase {
         var configuration = ModifierOrderConfiguration()
         let config = ["severity": "warning", "preferred_modifier_order": ["specialize"]]  as [String: any Sendable]
 
-        checkError(Issue.unknownConfiguration(ruleID: ModifierOrderRule.description.identifier)) {
+        checkError(Issue.invalidConfiguration(ruleID: ModifierOrderRule.identifier)) {
             try configuration.apply(configuration: config)
         }
     }
@@ -312,7 +329,7 @@ class RuleConfigurationTests: SwiftLintTestCase {
     func testModifierOrderConfigurationThrowsOnNonModifiableGroup() {
         var configuration = ModifierOrderConfiguration()
         let config = ["severity": "warning", "preferred_modifier_order": ["atPrefixed"]]  as [String: any Sendable]
-        checkError(Issue.unknownConfiguration(ruleID: ModifierOrderRule.description.identifier)) {
+        checkError(Issue.invalidConfiguration(ruleID: ModifierOrderRule.identifier)) {
             try configuration.apply(configuration: config)
         }
     }

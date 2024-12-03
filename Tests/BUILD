@@ -2,7 +2,18 @@ load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library", "swift_test")
 
 exports_files(["BUILD"])
 
-copts = ["-enable-upcoming-feature", "ExistentialAny"]
+copts = [
+    "-enable-upcoming-feature",
+    "ExistentialAny",
+    "-enable-upcoming-feature",
+    "ConciseMagicFile",
+    "-enable-upcoming-feature",
+    "ImportObjcForwardDeclarations",
+    "-enable-upcoming-feature",
+    "ForwardTrailingClosures",
+    "-enable-upcoming-feature",
+    "ImplicitOpenExistentials",
+]
 
 # CLITests
 
@@ -13,7 +24,7 @@ swift_library(
     module_name = "CLITests",
     package_name = "SwiftLint",
     deps = [
-        "//:swiftlint.library",
+        "//:SwiftLintFramework",
     ],
     copts = copts,
 )
@@ -141,7 +152,10 @@ swift_library(
 
 swift_test(
     name = "IntegrationTests",
-    data = ["//:LintInputs"],
+    data = [
+        "//:LintInputs",
+        "IntegrationTests/default_rule_configurations.yml"
+    ],
     visibility = ["//visibility:public"],
     deps = [":IntegrationTests.library"],
 )

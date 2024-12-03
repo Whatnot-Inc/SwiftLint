@@ -41,7 +41,7 @@ private extension UnneededOverrideRule {
         }
 
         override func visit(_ node: InitializerDeclSyntax) -> DeclSyntax {
-            guard node.isUnneededOverride else {
+            guard configuration.affectInits, node.isUnneededOverride else {
                 return super.visit(node)
             }
 
@@ -89,8 +89,8 @@ private extension OverridableDecl {
             return false
         }
 
-        // Assume having @available changes behavior.
-        if attributes.contains(attributeNamed: "available") {
+        // Assume attributes change behavior.
+        guard attributes.isEmpty else {
             return false
         }
 

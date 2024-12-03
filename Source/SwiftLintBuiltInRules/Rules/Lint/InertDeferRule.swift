@@ -2,7 +2,7 @@ import SwiftSyntax
 
 // TODO: [12/23/2024] Remove deprecation warning after ~2 years.
 private let warnDeprecatedOnceImpl: Void = {
-    Issue.ruleDeprecated(ruleID: InertDeferRule.description.identifier).print()
+    Issue.ruleDeprecated(ruleID: InertDeferRule.identifier).print()
 }()
 
 private func warnDeprecatedOnce() {
@@ -42,7 +42,7 @@ struct InertDeferRule: SwiftSyntaxRule, OptInRule {
                 #endif
                 print(1)
             }
-            """, excludeFromDocumentation: true)
+            """, excludeFromDocumentation: true),
         ],
         triggeringExamples: [
             Example("""
@@ -79,7 +79,7 @@ struct InertDeferRule: SwiftSyntaxRule, OptInRule {
                 ↓defer { print(5) }
                 #endif
             }
-            """, excludeFromDocumentation: true)
+            """, excludeFromDocumentation: true),
         ]
     )
 

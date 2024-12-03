@@ -1,7 +1,7 @@
 @testable import SwiftLintBuiltInRules
 import XCTest
 
-class TrailingClosureConfigurationTests: SwiftLintTestCase {
+final class TrailingClosureConfigurationTests: SwiftLintTestCase {
     func testDefaultConfiguration() {
         let config = TrailingClosureConfiguration()
         XCTAssertEqual(config.severityConfiguration.severity, .warning)
@@ -10,8 +10,12 @@ class TrailingClosureConfigurationTests: SwiftLintTestCase {
 
     func testApplyingCustomConfiguration() throws {
         var config = TrailingClosureConfiguration()
-        try config.apply(configuration: ["severity": "error",
-                                         "only_single_muted_parameter": true] as [String: any Sendable])
+        try config.apply(
+            configuration: [
+                "severity": "error",
+                "only_single_muted_parameter": true,
+            ] as [String: any Sendable]
+        )
         XCTAssertEqual(config.severityConfiguration.severity, .error)
         XCTAssertTrue(config.onlySingleMutedParameter)
     }

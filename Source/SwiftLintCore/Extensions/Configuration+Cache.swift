@@ -60,7 +60,7 @@ extension Configuration {
         }
 
         let cacheRulesDescriptions = rules
-            .map { rule in [type(of: rule).description.identifier, rule.cacheDescription] }
+            .map { rule in [type(of: rule).identifier, rule.cacheDescription] }
             .sorted { $0[0] < $1[0] }
         let jsonObject: [Any] = [rootDirectory, cacheRulesDescriptions]
         if let jsonData = try? JSONSerialization.data(withJSONObject: jsonObject) {
@@ -84,7 +84,7 @@ extension Configuration {
         let versionedDirectory = [
             "SwiftLint",
             Version.current.value,
-            ExecutableInfo.buildID
+            ExecutableInfo.buildID,
         ].compactMap({ $0 }).joined(separator: "/")
 
         let folder = baseURL.appendingPathComponent(versionedDirectory)

@@ -1,7 +1,7 @@
 @testable import SwiftLintBuiltInRules
 import XCTest
 
-class ExpiringTodoRuleTests: SwiftLintTestCase {
+final class ExpiringTodoRuleTests: SwiftLintTestCase {
     private lazy var config: Configuration = makeConfiguration()
 
     func testExpiringTodo() {
@@ -141,7 +141,7 @@ class ExpiringTodoRuleTests: SwiftLintTestCase {
     }
 
     private func violations(_ example: Example) -> [StyleViolation] {
-        return SwiftLintFrameworkTests.violations(example, config: config)
+        SwiftLintFrameworkTests.violations(example, config: config)
     }
 
     private func dateString(for status: ExpiringTodoRule.ExpiryViolationLevel) -> String {
@@ -185,19 +185,19 @@ class ExpiringTodoRuleTests: SwiftLintTestCase {
                 "date_format": config.dateFormat,
                 "date_delimiters": [
                     "opening": config.dateDelimiters.opening,
-                    "closing": config.dateDelimiters.closing
+                    "closing": config.dateDelimiters.closing,
                 ],
-                "date_separator": config.dateSeparator
+                "date_separator": config.dateSeparator,
             ]
         }
 
-        return makeConfig(serializedConfig, ExpiringTodoRule.description.identifier)!
+        return makeConfig(serializedConfig, ExpiringTodoRule.identifier)!
     }
 }
 
 fileprivate extension Configuration {
     var ruleConfiguration: ExpiringTodoConfiguration {
         // swiftlint:disable:next force_cast
-        return (rules.first(where: { $0 is ExpiringTodoRule }) as! ExpiringTodoRule).configuration
+        (rules.first(where: { $0 is ExpiringTodoRule }) as! ExpiringTodoRule).configuration
     }
 }

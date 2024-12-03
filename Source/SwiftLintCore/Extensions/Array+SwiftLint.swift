@@ -59,7 +59,7 @@ public extension Array {
     ///
     /// - returns: The elements grouped by applying the specified transformation.
     func group<U: Hashable>(by transform: (Element) -> U) -> [U: [Element]] {
-        return Dictionary(grouping: self, by: { transform($0) })
+        Dictionary(grouping: self, by: { transform($0) })
     }
 
     /// Returns the elements failing the `belongsInSecondPartition` test, followed by the elements passing the
@@ -83,7 +83,7 @@ public extension Array {
     ///
     /// - returns: The result of applying `transform` on every element and flattening the results.
     func parallelFlatMap<T>(transform: (Element) -> [T]) -> [T] {
-        return parallelMap(transform: transform).flatMap { $0 }
+        parallelMap(transform: transform).flatMap { $0 }
     }
 
     /// Same as `compactMap` but spreads the work in the `transform` block in parallel using GCD's `concurrentPerform`.
@@ -92,7 +92,7 @@ public extension Array {
     ///
     /// - returns: The result of applying `transform` on every element and discarding the `nil` ones.
     func parallelCompactMap<T>(transform: (Element) -> T?) -> [T] {
-        return parallelMap(transform: transform).compactMap { $0 }
+        parallelMap(transform: transform).compactMap { $0 }
     }
 
     /// Same as `map` but spreads the work in the `transform` block in parallel using GCD's `concurrentPerform`.
@@ -103,10 +103,36 @@ public extension Array {
     func parallelMap<T>(transform: (Element) -> T) -> [T] {
         var result = ContiguousArray<T?>(repeating: nil, count: count)
         return result.withUnsafeMutableBufferPointer { buffer in
+            let buffer = Wrapper(buffer: buffer)
             DispatchQueue.concurrentPerform(iterations: buffer.count) { idx in
                 buffer[idx] = transform(self[idx])
             }
-            return buffer.map { $0! }
+            return buffer.data
+        }
+    }
+
+    private class Wrapper<T>: @unchecked Sendable {
+        let buffer: UnsafeMutableBufferPointer<T?>
+
+        init(buffer: UnsafeMutableBufferPointer<T?>) {
+            self.buffer = buffer
+        }
+
+        var data: [T] {
+            buffer.map { $0! }
+        }
+
+        var count: Int {
+            buffer.count
+        }
+
+        subscript(index: Int) -> T {
+            get {
+                queuedFatalError("Do not call this getter.")
+            }
+            set(newValue) {
+                buffer[index] = newValue
+            }
         }
     }
 }
@@ -114,7 +140,7 @@ public extension Array {
 public extension Collection {
     /// Whether this collection has one or more element.
     var isNotEmpty: Bool {
-        return !isEmpty
+        !isEmpty
     }
 
     /// Get the only element in the collection.

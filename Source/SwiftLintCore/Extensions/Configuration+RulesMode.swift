@@ -6,7 +6,7 @@ public extension Configuration {
     /// - returns: The rule for the specified ID, if configured in this configuration.
     func configuredRule(forID ruleID: String) -> (any Rule)? {
         rules.first { rule in
-            if type(of: rule).description.identifier == ruleID {
+            if type(of: rule).identifier == ruleID {
                 if let customRules = rule as? CustomRules {
                     return customRules.configuration.customRuleConfigurations.isNotEmpty
                 }
@@ -17,20 +17,25 @@ public extension Configuration {
     }
 
     /// Represents how a Configuration object can be configured with regards to rules.
-    enum RulesMode {
+    enum RulesMode: Equatable {
         /// The default rules mode, which will enable all rules that aren't defined as being opt-in
         /// (conforming to the `OptInRule` protocol), minus the rules listed in `disabled`, plus the rules listed in
         /// `optIn`.
-        case `default`(disabled: Set<String>, optIn: Set<String>)
+        case defaultConfiguration(disabled: Set<String>, optIn: Set<String>)
 
-        /// Only enable the rules explicitly listed.
-        case only(Set<String>)
+        /// Only enable the rules explicitly listed in the configuration files.
+        case onlyConfiguration(Set<String>)
+
+        /// Only enable the rule(s) explicitly listed on the command line (and their aliases). `--only-rule` can be
+        /// specified multiple times to enable multiple rules.
+        case onlyCommandLine(Set<String>)
 
         /// Enable all available rules.
-        case allEnabled
+        case allCommandLine
 
         internal init(
             enableAllRules: Bool,
+            onlyRule: [String],
             onlyRules: [String],
             optInRules: [String],
             disabledRules: [String],
@@ -47,7 +52,9 @@ public extension Configuration {
             }
 
             if enableAllRules {
-                self = .allEnabled
+                self = .allCommandLine
+            } else if onlyRule.isNotEmpty {
+                self = .onlyCommandLine(Set(onlyRule))
             } else if onlyRules.isNotEmpty {
                 if disabledRules.isNotEmpty || optInRules.isNotEmpty {
                     throw Issue.genericWarning(
@@ -58,7 +65,7 @@ public extension Configuration {
                 }
 
                 warnAboutDuplicates(in: onlyRules + analyzerRules)
-                self = .only(Set(onlyRules + analyzerRules))
+                self = .onlyConfiguration(Set(onlyRules + analyzerRules))
             } else {
                 warnAboutDuplicates(in: disabledRules)
 
@@ -72,35 +79,51 @@ public extension Configuration {
                     effectiveOptInRules = optInRules
                 }
 
-                warnAboutDuplicates(in: effectiveOptInRules + analyzerRules)
-                self = .default(disabled: Set(disabledRules), optIn: Set(effectiveOptInRules + analyzerRules))
+                let effectiveAnalyzerRules: [String]
+                if analyzerRules.contains(RuleIdentifier.all.stringRepresentation) {
+                    let allAnalyzerRules = RuleRegistry.shared.list.list.compactMap { ruleID, ruleType in
+                        ruleType is any AnalyzerRule.Type ? ruleID : nil
+                    }
+                    effectiveAnalyzerRules = allAnalyzerRules
+                } else {
+                    effectiveAnalyzerRules = analyzerRules
+                }
+
+                warnAboutDuplicates(in: effectiveOptInRules + effectiveAnalyzerRules)
+                self = .defaultConfiguration(
+                    disabled: Set(disabledRules), optIn: Set(effectiveOptInRules + effectiveAnalyzerRules)
+                )
             }
         }
 
-        internal func applied(aliasResolver: (String) -> String) -> RulesMode {
+        internal func applied(aliasResolver: (String) -> String) -> Self {
             switch self {
-            case let .default(disabled, optIn):
-                return .default(
+            case let .defaultConfiguration(disabled, optIn):
+                return .defaultConfiguration(
                     disabled: Set(disabled.map(aliasResolver)),
                     optIn: Set(optIn.map(aliasResolver))
                 )
 
-            case let .only(onlyRules):
-                return .only(Set(onlyRules.map(aliasResolver)))
+            case let .onlyConfiguration(onlyRules):
+                return .onlyConfiguration(Set(onlyRules.map(aliasResolver)))
 
-            case .allEnabled:
-                return .allEnabled
+            case let .onlyCommandLine(onlyRules):
+                return .onlyCommandLine(Set(onlyRules.map(aliasResolver)))
+
+            case .allCommandLine:
+                return .allCommandLine
             }
         }
 
-        internal func activateCustomRuleIdentifiers(allRulesWrapped: [ConfigurationRuleWrapper]) -> RulesMode {
+        internal func activateCustomRuleIdentifiers(allRulesWrapped: [ConfigurationRuleWrapper]) -> Self {
             // In the only mode, if the custom rules rule is enabled, all custom rules are also enabled implicitly
             // This method makes the implicitly explicit
             switch self {
-            case let .only(onlyRules) where onlyRules.contains { $0 == CustomRules.description.identifier }:
+            case let .onlyConfiguration(onlyRules) where onlyRules.contains {
+                $0 == CustomRules.identifier
+            }:
                 let customRulesRule = (allRulesWrapped.first { $0.rule is CustomRules })?.rule as? CustomRules
-                let customRuleIdentifiers = customRulesRule?.configuration.customRuleConfigurations.map(\.identifier)
-                return .only(onlyRules.union(Set(customRuleIdentifiers ?? [])))
+                return .onlyConfiguration(onlyRules.union(Set(customRulesRule?.customRuleIdentifiers ?? [])))
 
             default:
                 return self

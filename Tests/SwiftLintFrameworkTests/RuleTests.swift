@@ -10,27 +10,27 @@ struct RuleWithLevelsMock: Rule {
                                              kind: .style,
                                              deprecatedAliases: ["mock"])
 
-    init() {}
+    init() { /* conformance for test */ }
     init(configuration: Any) throws {
         self.init()
         try self.configuration.apply(configuration: configuration)
     }
 
-    func validate(file: SwiftLintFile) -> [StyleViolation] { return [] }
+    func validate(file _: SwiftLintFile) -> [StyleViolation] { [] }
 }
 
-class RuleTests: SwiftLintTestCase {
+final class RuleTests: SwiftLintTestCase {
     fileprivate struct RuleMock1: Rule {
         var configuration = SeverityConfiguration<Self>(.warning)
         var configurationDescription: some Documentable { RuleConfigurationOption.noOptions }
         static let description = RuleDescription(identifier: "RuleMock1", name: "",
                                                  description: "", kind: .style)
 
-        init() {}
-        init(configuration: Any) throws { self.init() }
+        init() { /* conformance for test */ }
+        init(configuration _: Any) throws { self.init() }
 
-        func validate(file: SwiftLintFile) -> [StyleViolation] {
-            return []
+        func validate(file _: SwiftLintFile) -> [StyleViolation] {
+            []
         }
     }
 
@@ -40,11 +40,11 @@ class RuleTests: SwiftLintTestCase {
         static let description = RuleDescription(identifier: "RuleMock2", name: "",
                                                  description: "", kind: .style)
 
-        init() {}
-        init(configuration: Any) throws { self.init() }
+        init() { /* conformance for test */ }
+        init(configuration _: Any) throws { self.init() }
 
-        func validate(file: SwiftLintFile) -> [StyleViolation] {
-            return []
+        func validate(file _: SwiftLintFile) -> [StyleViolation] {
+            []
         }
     }
 
@@ -55,13 +55,13 @@ class RuleTests: SwiftLintTestCase {
                                                  name: "",
                                                  description: "", kind: .style)
 
-        init() {}
+        init() { /* conformance for test */ }
         init(configuration: Any) throws {
             self.init()
             try self.configuration.apply(configuration: configuration)
         }
 
-        func validate(file: SwiftLintFile) -> [StyleViolation] { return [] }
+        func validate(file _: SwiftLintFile) -> [StyleViolation] { [] }
     }
 
     func testRuleIsEqualTo() {

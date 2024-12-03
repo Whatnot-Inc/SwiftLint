@@ -18,6 +18,13 @@ struct UnneededOverrideRuleExamples {
         """),
         Example("""
         class Foo {
+            @objc override func bar() {
+                super.bar()
+            }
+        }
+        """),
+        Example("""
+        class Foo {
             override func bar() {
                 super.bar()
                 super.bar()
@@ -113,7 +120,7 @@ struct UnneededOverrideRuleExamples {
                 super.bar(value: value)
             }
         }
-        """)
+        """),
     ]
 
     static let triggeringExamples = [
@@ -167,7 +174,7 @@ struct UnneededOverrideRuleExamples {
                 super.bar(animated: animated, completion: completion)
             }
         }
-        """)
+        """),
     ]
 
     static let corrections = [
@@ -206,6 +213,21 @@ struct UnneededOverrideRuleExamples {
                           // This is another function
                           func baz() {}
                       }
-                      """)
+                      """),
+        // Nothing happens to initializers by default.
+        Example("""
+        class Foo {
+            ↓override func foo() { super.foo() }
+            override init(i: Int) {
+                super.init(i: i)
+            }
+        }
+        """): Example("""
+                      class Foo {
+                          override init(i: Int) {
+                              super.init(i: i)
+                          }
+                      }
+                      """),
     ]
 }

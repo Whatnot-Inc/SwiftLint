@@ -1,7 +1,7 @@
 @testable import SwiftLintBuiltInRules
 import XCTest
 
-class ComputedAccessorsOrderRuleTests: SwiftLintTestCase {
+final class ComputedAccessorsOrderRuleTests: SwiftLintTestCase {
     func testSetGetConfiguration() {
         let nonTriggeringExamples = [
             Example("""
@@ -15,7 +15,7 @@ class ComputedAccessorsOrderRuleTests: SwiftLintTestCase {
                     }
                 }
             }
-            """)
+            """),
         ]
         let triggeringExamples = [
             Example("""
@@ -29,7 +29,7 @@ class ComputedAccessorsOrderRuleTests: SwiftLintTestCase {
                     }
                 }
             }
-            """)
+            """),
         ]
 
         let description = ComputedAccessorsOrderRule.description
@@ -120,7 +120,7 @@ class ComputedAccessorsOrderRuleTests: SwiftLintTestCase {
     }
 
     private func ruleViolations(_ example: Example, ruleConfiguration: Any? = nil) -> [StyleViolation] {
-        guard let config = makeConfig(ruleConfiguration, ComputedAccessorsOrderRule.description.identifier) else {
+        guard let config = makeConfig(ruleConfiguration, ComputedAccessorsOrderRule.identifier) else {
             return []
         }
 

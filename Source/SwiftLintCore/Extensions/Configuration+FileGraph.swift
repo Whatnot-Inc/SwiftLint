@@ -41,6 +41,7 @@ package extension Configuration {
         // MARK: - Methods
         internal mutating func resultingConfiguration(
             enableAllRules: Bool,
+            onlyRule: [String],
             cachePath: String?
         ) throws -> Configuration {
             // Build if needed
@@ -51,6 +52,7 @@ package extension Configuration {
             return try merged(
                 configurationData: try validate(),
                 enableAllRules: enableAllRules,
+                onlyRule: onlyRule,
                 cachePath: cachePath
             )
         }
@@ -88,17 +90,43 @@ package extension Configuration {
             )
 
             if !ignoreParentAndChildConfigs {
-                try processPossibleReference(
+                try processPossibleReferenceIgnoringFileAbsence(
                     ofType: .childConfig,
+                    from: vertex,
+                    remoteConfigTimeoutOverride: remoteConfigTimeoutOverride,
+                    remoteConfigTimeoutIfCachedOverride: remoteConfigTimeoutIfCachedOverride)
+
+                try processPossibleReferenceIgnoringFileAbsence(
+                    ofType: .parentConfig,
+                    from: vertex,
+                    remoteConfigTimeoutOverride: remoteConfigTimeoutOverride,
+                    remoteConfigTimeoutIfCachedOverride: remoteConfigTimeoutIfCachedOverride)
+            }
+        }
+
+        private mutating func processPossibleReferenceIgnoringFileAbsence(
+            ofType type: EdgeType,
+            from vertex: Vertex,
+            remoteConfigTimeoutOverride: TimeInterval?,
+            remoteConfigTimeoutIfCachedOverride: TimeInterval?
+        ) throws {
+            do {
+                try processPossibleReference(
+                    ofType: type,
                     from: vertex,
                     remoteConfigTimeoutOverride: remoteConfigTimeoutOverride,
                     remoteConfigTimeoutIfCachedOverride: remoteConfigTimeoutIfCachedOverride
                 )
-                try processPossibleReference(
-                    ofType: .parentConfig,
-                    from: vertex,
-                    remoteConfigTimeoutOverride: remoteConfigTimeoutOverride,
-                    remoteConfigTimeoutIfCachedOverride: remoteConfigTimeoutIfCachedOverride
+            } catch {
+                // If a child or parent config file doesn't exist, do not fail the rest of the config tree.
+                // Instead, just ignore this leaf of the config. Otherwise, rethrow the error.
+                guard case let Issue.fileNotFound(path) = error else {
+                    throw error
+                }
+                queuedPrintError("""
+                    A local configuration at \(path) was not found. \
+                    Ignoring this part of the configuration.
+                    """
                 )
             }
         }
@@ -153,7 +181,7 @@ package extension Configuration {
         }
 
         private func findPossiblyExistingVertex(sameAs vertex: Vertex) -> Vertex? {
-            return vertices.first {
+            vertices.first {
                 $0.originalRemoteString != nil && $0.originalRemoteString == vertex.originalRemoteString
             } ?? vertices.first { $0.filePath == vertex.filePath }
         }
@@ -211,7 +239,7 @@ package extension Configuration {
             }
 
             return verticesToMerge.map {
-                return (
+                (
                     configurationDict: $0.configurationDict,
                     rootDirectory: $0.rootDirectory
                 )
@@ -222,6 +250,7 @@ package extension Configuration {
         private func merged(
             configurationData: [(configurationDict: [String: Any], rootDirectory: String)],
             enableAllRules: Bool,
+            onlyRule: [String],
             cachePath: String?
         ) throws -> Configuration {
             // Split into first & remainder; use empty dict for first if the array is empty
@@ -232,6 +261,7 @@ package extension Configuration {
             var firstConfiguration = try Configuration(
                 dict: firstConfigurationData.configurationDict,
                 enableAllRules: enableAllRules,
+                onlyRule: onlyRule,
                 cachePath: cachePath
             )
 
@@ -247,8 +277,10 @@ package extension Configuration {
             // Build succeeding configurations
             return try configurationData.reduce(firstConfiguration) {
                 var childConfiguration = try Configuration(
+                    parentConfiguration: $0,
                     dict: $1.configurationDict,
                     enableAllRules: enableAllRules,
+                    onlyRule: onlyRule,
                     cachePath: cachePath
                 )
                 childConfiguration.fileGraph = Self(rootDirectory: $1.rootDirectory)

@@ -1,7 +1,7 @@
 @testable import SwiftLintBuiltInRules
 import XCTest
 
-class TrailingCommaRuleTests: SwiftLintTestCase {
+final class TrailingCommaRuleTests: SwiftLintTestCase {
     func testTrailingCommaRuleWithDefaultConfiguration() {
         // Verify TrailingCommaRule with test values for when mandatory_comma is false (default).
         let triggeringExamples = TrailingCommaRule.description.triggeringExamples +
@@ -21,7 +21,7 @@ class TrailingCommaRuleTests: SwiftLintTestCase {
         Example("struct Bar {\n let foo = [1: 2,\n 2: 3↓]\n}\n"),
         Example("let foo = [1, 2,\n 3↓] + [4,\n 5, 6↓]\n"),
         Example("let foo = [1, 2,\n 3↓  ]"),
-        Example("let foo = [\"אבג\", \"αβγ\",\n\"🇺🇸\"↓]\n")
+        Example("let foo = [\"אבג\", \"αβγ\",\n\"🇺🇸\"↓]\n"),
     ]
 
     private static let nonTriggeringExamples = [
@@ -38,7 +38,7 @@ class TrailingCommaRuleTests: SwiftLintTestCase {
         Example("let foo = [1: 2, 2: 3]\n"),
         Example("let foo = [1: 2, 2: 3   ]\n"),
         Example("struct Bar {\n let foo = [1: 2, 2: 3]\n}\n"),
-        Example("let foo = [1, 2, 3] + [4, 5, 6]\n")
+        Example("let foo = [1, 2, 3] + [4, 5, 6]\n"),
     ]
 
     private static let corrections: [Example: Example] = {
@@ -69,7 +69,7 @@ class TrailingCommaRuleTests: SwiftLintTestCase {
     }
 
     private func trailingCommaViolations(_ example: Example, ruleConfiguration: Any? = nil) -> [StyleViolation] {
-        let config = makeConfig(ruleConfiguration, TrailingCommaRule.description.identifier)!
+        let config = makeConfig(ruleConfiguration, TrailingCommaRule.identifier)!
         return violations(example, config: config)
     }
 }

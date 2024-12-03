@@ -1,6 +1,6 @@
 @testable import SwiftLintBuiltInRules
 
-class ObjectLiteralRuleTests: SwiftLintTestCase {
+final class ObjectLiteralRuleTests: SwiftLintTestCase {
     // MARK: - Instance Properties
     private let imageLiteralTriggeringExamples = ["", ".init"].flatMap { (method: String) -> [Example] in
         ["UI", "NS"].flatMap { (prefix: String) -> [Example] in
@@ -15,13 +15,13 @@ class ObjectLiteralRuleTests: SwiftLintTestCase {
             [
                 Example("let color = ↓\(prefix)Color\(method)(red: 0.3, green: 0.3, blue: 0.3, alpha: 1)"),
                 Example("let color = ↓\(prefix)Color\(method)(red: 100 / 255.0, green: 50 / 255.0, blue: 0, alpha: 1)"),
-                Example("let color = ↓\(prefix)Color\(method)(white: 0.5, alpha: 1)")
+                Example("let color = ↓\(prefix)Color\(method)(white: 0.5, alpha: 1)"),
             ]
         }
     }
 
     private var allTriggeringExamples: [Example] {
-        return imageLiteralTriggeringExamples + colorLiteralTriggeringExamples
+        imageLiteralTriggeringExamples + colorLiteralTriggeringExamples
     }
 
     // MARK: - Test Methods

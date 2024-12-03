@@ -1,7 +1,7 @@
 @testable import SwiftLintCore
 import XCTest
 
-class RegexConfigurationTests: SwiftLintTestCase {
+final class RegexConfigurationTests: SwiftLintTestCase {
     func testShouldValidateIsTrueByDefault() {
         let config = RegexConfiguration<RuleMock>(identifier: "example")
         XCTAssertTrue(config.shouldValidate(filePath: "App/file.swift"))
@@ -11,7 +11,7 @@ class RegexConfigurationTests: SwiftLintTestCase {
         var config = RegexConfiguration<RuleMock>(identifier: "example")
         try config.apply(configuration: [
             "regex": "try!",
-            "excluded": "Tests/.*\\.swift"
+            "excluded": "Tests/.*\\.swift",
         ])
 
         XCTAssertFalse(config.shouldValidate(filePath: "Tests/file.swift"))
@@ -24,8 +24,8 @@ class RegexConfigurationTests: SwiftLintTestCase {
             "regex": "try!",
             "excluded": [
                 "^Tests/.*\\.swift",
-                "^MyFramework/Tests/.*\\.swift"
-            ] as Any
+                "^MyFramework/Tests/.*\\.swift",
+            ] as Any,
         ])
 
         XCTAssertFalse(config.shouldValidate(filePath: "Tests/file.swift"))
@@ -37,7 +37,7 @@ class RegexConfigurationTests: SwiftLintTestCase {
         var config = RegexConfiguration<RuleMock>(identifier: "example")
         try config.apply(configuration: [
             "regex": "try!",
-            "included": "App/.*\\.swift"
+            "included": "App/.*\\.swift",
         ])
 
         XCTAssertFalse(config.shouldValidate(filePath: "Tests/file.swift"))
@@ -51,8 +51,8 @@ class RegexConfigurationTests: SwiftLintTestCase {
             "regex": "try!",
             "included": [
                 "App/.*\\.swift",
-                "MyFramework/.*\\.swift"
-            ] as Any
+                "MyFramework/.*\\.swift",
+            ] as Any,
         ])
 
         XCTAssertFalse(config.shouldValidate(filePath: "Tests/file.swift"))
@@ -66,12 +66,12 @@ class RegexConfigurationTests: SwiftLintTestCase {
             "regex": "try!",
             "included": [
                 "App/.*\\.swift",
-                "MyFramework/.*\\.swift"
+                "MyFramework/.*\\.swift",
             ] as Any,
             "excluded": [
                 "Tests/.*\\.swift",
-                "App/Fixtures/.*\\.swift"
-            ] as Any
+                "App/Fixtures/.*\\.swift",
+            ] as Any,
         ])
 
         XCTAssertTrue(config.shouldValidate(filePath: "App/file.swift"))

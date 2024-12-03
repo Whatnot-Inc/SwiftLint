@@ -72,16 +72,16 @@ internal extension Configuration.FileGraph {
 
         private func read(at path: String) throws -> String {
             guard !path.isEmpty && FileManager.default.fileExists(atPath: path) else {
-                throw isInitialVertex ?
-                    Issue.initialFileNotFound(path: path) :
-                    Issue.genericWarning("File \(path) can't be found.")
+                throw isInitialVertex
+                    ? Issue.initialFileNotFound(path: path)
+                    : Issue.fileNotFound(path: path)
             }
 
             return try String(contentsOfFile: path, encoding: .utf8)
         }
 
         internal static func == (lhs: Vertex, rhs: Vertex) -> Bool {
-            return lhs.filePath == rhs.filePath
+            lhs.filePath == rhs.filePath
                 && lhs.originalRemoteString == rhs.originalRemoteString
                 && lhs.rootDirectory == rhs.rootDirectory
         }
@@ -95,8 +95,10 @@ internal extension Configuration.FileGraph {
 
     // MARK: - Edge
     struct Edge: Hashable {
+        // swiftlint:disable implicitly_unwrapped_optional
         var parent: Vertex!
         var child: Vertex!
+        // swiftlint:enable implicitly_unwrapped_optional
     }
 
     // MARK: - EdgeType

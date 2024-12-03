@@ -1,17 +1,17 @@
 @testable import SwiftLintBuiltInRules
 
-class PrivateOverFilePrivateRuleTests: SwiftLintTestCase {
+final class PrivateOverFilePrivateRuleTests: SwiftLintTestCase {
     func testPrivateOverFilePrivateValidatingExtensions() {
         let baseDescription = PrivateOverFilePrivateRule.description
         let triggeringExamples = baseDescription.triggeringExamples + [
             Example("↓fileprivate extension String {}"),
             Example("↓fileprivate \n extension String {}"),
-            Example("↓fileprivate extension \n String {}")
+            Example("↓fileprivate extension \n String {}"),
         ]
         let corrections = [
             Example("↓fileprivate extension String {}"): Example("private extension String {}"),
             Example("↓fileprivate \n extension String {}"): Example("private \n extension String {}"),
-            Example("↓fileprivate extension \n String {}"): Example("private extension \n String {}")
+            Example("↓fileprivate extension \n String {}"): Example("private extension \n String {}"),
         ]
 
         let description = baseDescription.with(nonTriggeringExamples: [])

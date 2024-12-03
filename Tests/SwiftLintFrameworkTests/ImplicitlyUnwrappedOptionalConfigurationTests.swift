@@ -2,7 +2,7 @@
 import XCTest
 
 // swiftlint:disable:next type_name
-class ImplicitlyUnwrappedOptionalConfigurationTests: SwiftLintTestCase {
+final class ImplicitlyUnwrappedOptionalConfigurationTests: SwiftLintTestCase {
     func testImplicitlyUnwrappedOptionalConfigurationProperlyAppliesConfigurationFromDictionary() throws {
         var configuration = ImplicitlyUnwrappedOptionalConfiguration(
             severityConfiguration: SeverityConfiguration(.warning),
@@ -30,7 +30,7 @@ class ImplicitlyUnwrappedOptionalConfigurationTests: SwiftLintTestCase {
         let badConfigs: [[String: Any]] = [
             ["mode": "everything"],
             ["mode": false],
-            ["mode": 42]
+            ["mode": 42],
         ]
 
         for badConfig in badConfigs {
@@ -39,7 +39,7 @@ class ImplicitlyUnwrappedOptionalConfigurationTests: SwiftLintTestCase {
                 mode: .allExceptIBOutlets
             )
 
-            checkError(Issue.unknownConfiguration(ruleID: ImplicitlyUnwrappedOptionalRule.description.identifier)) {
+            checkError(Issue.invalidConfiguration(ruleID: ImplicitlyUnwrappedOptionalRule.identifier)) {
                 try configuration.apply(configuration: badConfig)
             }
         }

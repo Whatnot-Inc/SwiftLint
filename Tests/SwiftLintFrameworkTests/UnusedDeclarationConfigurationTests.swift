@@ -1,13 +1,13 @@
 @testable import SwiftLintBuiltInRules
 import XCTest
 
-class UnusedDeclarationConfigurationTests: XCTestCase {
+final class UnusedDeclarationConfigurationTests: XCTestCase {
     func testParseConfiguration() throws {
         var testee = UnusedDeclarationConfiguration()
         let config = [
             "severity": "warning",
             "include_public_and_open": true,
-            "related_usrs_to_skip": ["a", "b"]
+            "related_usrs_to_skip": ["a", "b"],
         ] as [String: any Sendable]
 
         try testee.apply(configuration: config)

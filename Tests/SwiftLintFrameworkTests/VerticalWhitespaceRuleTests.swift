@@ -1,8 +1,8 @@
 @testable import SwiftLintBuiltInRules
 import XCTest
 
-class VerticalWhitespaceRuleTests: SwiftLintTestCase {
-    private let ruleID = VerticalWhitespaceRule.description.identifier
+final class VerticalWhitespaceRuleTests: SwiftLintTestCase {
+    private let ruleID = VerticalWhitespaceRule.identifier
 
     func testAttributesWithMaxEmptyLines() {
         // Test with custom `max_empty_lines`
@@ -21,7 +21,7 @@ class VerticalWhitespaceRuleTests: SwiftLintTestCase {
             .with(triggeringExamples: [])
             .with(corrections: [
                 Example("let b = 0\n\n↓\n↓\n↓\n\nclass AAA {}\n"): Example("let b = 0\n\n\nclass AAA {}\n"),
-                Example("let b = 0\n\n\nclass AAA {}\n"): Example("let b = 0\n\n\nclass AAA {}\n")
+                Example("let b = 0\n\n\nclass AAA {}\n"): Example("let b = 0\n\n\nclass AAA {}\n"),
             ])
 
         verifyRule(maxEmptyLinesDescription,
