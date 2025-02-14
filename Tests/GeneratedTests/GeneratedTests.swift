@@ -1135,6 +1135,12 @@ final class SelfInPropertyInitializationRuleGeneratedTests: SwiftLintTestCase {
     }
 }
 
+final class SerializableEventRuleGeneratedTests: SwiftLintTestCase {
+    func testWithDefaultConfiguration() {
+        verifyRule(SerializableEventRule.description)
+    }
+}
+
 final class ShorthandArgumentRuleGeneratedTests: SwiftLintTestCase {
     func testWithDefaultConfiguration() {
         verifyRule(ShorthandArgumentRule.description)
