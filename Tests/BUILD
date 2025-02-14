@@ -2,7 +2,28 @@ load("@build_bazel_rules_swift//swift:swift.bzl", "swift_library", "swift_test")
 
 exports_files(["BUILD"])
 
-copts = ["-enable-upcoming-feature", "ExistentialAny"]
+copts = [
+    "-warnings-as-errors",
+    "-enable-upcoming-feature",
+    "ExistentialAny",
+    "-enable-upcoming-feature",
+    "ConciseMagicFile",
+    "-enable-upcoming-feature",
+    "ImportObjcForwardDeclarations",
+    "-enable-upcoming-feature",
+    "ForwardTrailingClosures",
+    "-enable-upcoming-feature",
+    "ImplicitOpenExistentials",
+]
+
+strict_concurrency_copts = [
+    "-Xfrontend",
+    "-strict-concurrency=complete",
+]
+targeted_concurrency_copts = [
+    "-Xfrontend",
+    "-strict-concurrency=targeted",
+]
 
 # CLITests
 
@@ -13,9 +34,9 @@ swift_library(
     module_name = "CLITests",
     package_name = "SwiftLint",
     deps = [
-        "//:swiftlint.library",
+        "//:SwiftLintFramework",
     ],
-    copts = copts,
+    copts = copts + strict_concurrency_copts,
 )
 
 swift_test(
@@ -35,7 +56,7 @@ swift_library(
         "//:SwiftLintCoreMacrosLib",
         "@SwiftSyntax//:SwiftSyntaxMacrosTestSupport_opt",
     ],
-    copts = copts,
+    copts = copts + strict_concurrency_copts,
 )
 
 swift_test(
@@ -44,65 +65,79 @@ swift_test(
     deps = [":MacroTests.library"],
 )
 
-# SwiftLintTestHelpers
+# TestHelpers
 
 swift_library(
-    name = "SwiftLintTestHelpers",
+    name = "TestHelpers",
     testonly = True,
-    srcs = glob(["SwiftLintTestHelpers/**/*.swift"]),
-    module_name = "SwiftLintTestHelpers",
+    srcs = glob(["TestHelpers/**/*.swift"]),
+    module_name = "TestHelpers",
     package_name = "SwiftLint",
     deps = [
         "//:SwiftLintFramework",
     ],
-    copts = copts,
+    copts = copts + strict_concurrency_copts,
 )
 
-# SwiftLintFrameworkTests
-
-filegroup(
-    name = "SwiftLintFrameworkTestsSources",
-    srcs = glob(
-        ["SwiftLintFrameworkTests/**/*.swift"],
-        exclude = [
-            "SwiftLintFrameworkTests/Resources/**",
-            # Bazel doesn't support paths with spaces in them
-            "SwiftLintFrameworkTests/FileNameNoSpaceRuleTests.swift",
-        ],
-    ),
-)
-
-filegroup(
-    name = "SwiftLintFrameworkTestsData",
-    srcs = glob(
-        ["**/**"],
-        # Bazel doesn't support paths with spaces in them
-        exclude = ["SwiftLintFrameworkTests/Resources/FileNameNoSpaceRuleFixtures/**"],
-    ),
-    visibility = ["//visibility:public"],
-)
+# BuiltInRulesTests
 
 swift_library(
-    name = "SwiftLintFrameworkTests.library",
+    name = "BuiltInRulesTests.library",
     testonly = True,
-    srcs = [":SwiftLintFrameworkTestsSources"],
-    module_name = "SwiftLintFrameworkTests",
+    srcs = glob(
+        ["BuiltInRulesTests/**/*.swift"],
+        exclude = [
+            "BuiltInRulesTests/Resources/**",
+            # Bazel doesn't support paths with spaces in them
+            "BuiltInRulesTests/FileNameNoSpaceRuleTests.swift",
+        ],
+    ),
+    module_name = "BuiltInRulesTests",
     package_name = "SwiftLint",
     deps = [
-        ":SwiftLintTestHelpers",
+        ":TestHelpers",
     ],
-    copts = copts,
+    copts = copts + strict_concurrency_copts,
 )
 
 swift_test(
-    name = "SwiftLintFrameworkTests",
+    name = "BuiltInRulesTests",
     data = glob(
-        ["SwiftLintFrameworkTests/Resources/**"],
+        ["BuiltInRulesTests/Resources/**"],
+        allow_empty = True,
         # Bazel doesn't support paths with spaces in them
-        exclude = ["SwiftLintFrameworkTests/Resources/FileNameNoSpaceRuleFixtures/**"],
+        exclude = ["BuiltInRulesTests/Resources/FileNameNoSpaceRuleFixtures/**"],
     ),
     visibility = ["//visibility:public"],
-    deps = [":SwiftLintFrameworkTests.library"],
+    deps = [":BuiltInRulesTests.library"],
+)
+
+# FrameworkTests
+
+swift_library(
+    name = "FrameworkTests.library",
+    testonly = True,
+    srcs = glob(
+        ["FrameworkTests/**/*.swift"],
+        exclude = [
+            "FrameworkTests/Resources/**",
+        ],
+    ),
+    module_name = "FrameworkTests",
+    package_name = "SwiftLint",
+    deps = [
+        ":TestHelpers",
+    ],
+    copts = copts + strict_concurrency_copts,
+)
+
+swift_test(
+    name = "FrameworkTests",
+    data = glob(
+        ["FrameworkTests/Resources/**"],
+    ),
+    visibility = ["//visibility:public"],
+    deps = [":FrameworkTests.library"],
 )
 
 # GeneratedTests
@@ -114,9 +149,9 @@ swift_library(
     module_name = "GeneratedTests",
     package_name = "SwiftLint",
     deps = [
-        ":SwiftLintTestHelpers",
+        ":TestHelpers",
     ],
-    copts = copts,
+    copts = copts + strict_concurrency_copts,
 )
 
 swift_test(
@@ -127,6 +162,15 @@ swift_test(
 
 # IntegrationTests
 
+filegroup(
+    name = "TestSources",
+    srcs = glob(
+        ["**/*.swift"],
+        exclude = ["**/Resources/**"],
+    ),
+    visibility = ["//visibility:public"],
+)
+
 swift_library(
     name = "IntegrationTests.library",
     testonly = True,
@@ -134,14 +178,17 @@ swift_library(
     module_name = "IntegrationTests",
     package_name = "SwiftLint",
     deps = [
-        ":SwiftLintTestHelpers",
+        ":TestHelpers",
     ],
-    copts = copts,
+    copts = copts + targeted_concurrency_copts, # Set to strict once SwiftLintFramework is updated
 )
 
 swift_test(
     name = "IntegrationTests",
-    data = ["//:LintInputs"],
+    data = [
+        "//:LintInputs",
+        "IntegrationTests/default_rule_configurations.yml"
+    ],
     visibility = ["//visibility:public"],
     deps = [":IntegrationTests.library"],
 )
@@ -170,8 +217,9 @@ swift_library(
     module_name = "ExtraRulesTests",
     package_name = "SwiftLint",
     deps = [
-        ":SwiftLintTestHelpers",
+        ":TestHelpers",
     ],
+    copts = copts + strict_concurrency_copts,
 )
 
 swift_test(
