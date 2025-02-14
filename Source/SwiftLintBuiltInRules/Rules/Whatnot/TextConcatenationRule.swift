@@ -20,22 +20,22 @@ struct TextConcatenationRule: Rule {
                     Text("foo")
                     Text("bar")
                 }
-            """)
+            """),
         ],
         triggeringExamples: [
             Example("""
                 Text("bar") ↓+ Text("foo")
             """),
             Example("""
-            Text("wow")
-                .foregroundColor(.blue)
-                .font(.heavy)
+                Text("wow")
+                    .foregroundColor(.blue)
+                    .font(.heavy)
 
-            ↓+
+                ↓+
 
-            Text("wow2")
-                .foregroundColor(.black)
-         """)
+                Text("wow2")
+                    .foregroundColor(.black)
+             """),
         ]
     )
 }
@@ -51,7 +51,10 @@ private extension TextConcatenationRule {
             }
         }
 
-        func recursivelySearchForTextInitializerCall(_ node: any ExprSyntaxProtocol) -> FunctionCallExprSyntax? {
+        func recursivelySearchForTextInitializerCall<Node>(
+            _ node: Node
+        ) -> FunctionCallExprSyntax?
+        where Node: ExprSyntaxProtocol {
             if let funcCall = node.as(FunctionCallExprSyntax.self) {
                 let isTextInit = funcCall.calledExpression.as(DeclReferenceExprSyntax.self)?.baseName.text == "Text"
 

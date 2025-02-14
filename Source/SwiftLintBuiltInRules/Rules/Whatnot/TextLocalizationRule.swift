@@ -19,7 +19,7 @@ struct TextLocalizationRule: SwiftSyntaxRule {
             """),
             Example("""
                 Text(verbatim: "blah")
-            """)
+            """),
         ],
         triggeringExamples: [
             Example("""
@@ -32,7 +32,7 @@ struct TextLocalizationRule: SwiftSyntaxRule {
                 ↓Text("blah", bundle: .module, comment: "A nice comment")
             """),
             // String interpolation
-            Example(#"↓Text("foo \(blah) bar")"#)
+            Example(#"↓Text("foo \(blah) bar")"#),
         ]
     )
 

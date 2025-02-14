@@ -27,7 +27,7 @@ struct JSONDecodingRule: Rule {
             """),
             Example("""
                 let container = try decoder.singleValueContainer().decode(MyType.self)
-            """)
+            """),
         ],
         triggeringExamples: [
             Example("""
@@ -39,7 +39,7 @@ struct JSONDecodingRule: Rule {
             """),
             Example("""
                 JSONDecoder().snakeCase().↓decode(Self.self, from: data)
-            """)
+            """),
         ]
     )
 }
