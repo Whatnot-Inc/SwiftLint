@@ -882,6 +882,10 @@ self_in_property_initialization:
   severity: warning
   meta:
     opt-in: false
+serializable_event:
+  severity: warning
+  meta:
+    opt-in: false
 shorthand_argument:
   severity: warning
   allow_until_line_after_opening_brace: 4
