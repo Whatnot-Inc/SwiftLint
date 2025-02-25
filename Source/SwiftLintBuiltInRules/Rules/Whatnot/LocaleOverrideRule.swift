@@ -12,7 +12,7 @@ struct LocaleOverrideRule: SwiftSyntaxRule {
         nonTriggeringExamples: [
             Example("let df = Locale.overriddenOrCurrent"),
             Example("Locale.overriddenOrCurrent"),
-            Example("locale: .overriddenOrCurrent")
+            Example("locale: .overriddenOrCurrent"),
         ],
         triggeringExamples: [
             Example("let locale = ↓Locale.init()"),
@@ -26,7 +26,7 @@ struct LocaleOverrideRule: SwiftSyntaxRule {
             Example("↓Locale.current"),
             Example("""
                 Decimal(string: "123", ↓locale: .current)
-            """)
+            """),
         ]
     )
 
@@ -95,7 +95,7 @@ private extension LocaleOverrideRule.Visitor {
             Locale.overriddenOrCurrent allows us to override the locale \
             for testing purposes; prefer it over other instances of Locale
             """,
-            severity: .warning
+            severity: configuration.severity
         )
     }
 }

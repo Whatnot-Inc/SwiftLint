@@ -24,7 +24,7 @@ struct NavigationTitleRule: SwiftSyntaxRule {
                     Text(verbatim: "wow")
                 }
                 .navigationTitle(verbatim: "title")
-            """)
+            """),
         ],
         triggeringExamples: [
             Example("""
@@ -41,7 +41,7 @@ struct NavigationTitleRule: SwiftSyntaxRule {
                     Text(verbatim: "wow")
                         .↓navigationTitle("title")
                 }
-            """)
+            """),
         ]
     )
 
@@ -88,7 +88,7 @@ private extension NavigationTitleRule.Visitor {
         .init(
             position: position,
             reason: reason,
-            severity: .warning
+            severity: configuration.severity
         )
     }
 }

@@ -27,7 +27,7 @@ struct JSONDecodingRule: Rule {
             """),
             Example("""
                 let container = try decoder.singleValueContainer().decode(MyType.self)
-            """)
+            """),
         ],
         triggeringExamples: [
             Example("""
@@ -39,7 +39,7 @@ struct JSONDecodingRule: Rule {
             """),
             Example("""
                 JSONDecoder().snakeCase().↓decode(Self.self, from: data)
-            """)
+            """),
         ]
     )
 }
@@ -69,7 +69,7 @@ private extension JSONDecodingRule {
                 Use `\(modelName).decode(\(dataName))` instead. It will automatically trigger \
                 error logs if the decoding fails
                 """,
-                severity: .warning
+                severity: configuration.severity
             )
         }
     }
