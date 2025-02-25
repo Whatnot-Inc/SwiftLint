@@ -1,6 +1,3 @@
-load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
-load("@com_github_jpsim_sourcekitten//bazel:repos.bzl", "sourcekitten_repos")
-
 def _extra_swift_sources_impl(ctx):
     ctx.file("WORKSPACE", "")
     ctx.file("empty.swift", "public func extraRules() -> [any Rule.Type] { [] }")
@@ -36,5 +33,3 @@ def swiftlint_deps():
 
     if not native.existing_rule("swiftlint_extra_rules"):
         extra_swift_sources(name = "swiftlint_extra_rules")
-
-    sourcekitten_repos()
