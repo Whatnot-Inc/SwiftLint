@@ -21,16 +21,16 @@ require 'erb'
 }
 
 OptionParser.new do |opts|
-  opts.on('--branch BRANCH', "compares the performance of BRANCH against 'main'") do |branch|
+  opts.on('--branch BRANCH', "Compares the performance of BRANCH against `main`") do |branch|
     @options[:branch] = branch
   end
-  opts.on('--iterations N', Integer, 'iterates lint N times on each repositories') do |iterations|
+  opts.on('--iterations N', Integer, 'Runs linting N times on each repository') do |iterations|
     @options[:iterations] = iterations
   end
-  opts.on('--skip-clean', 'skip cleaning on completion') do |skip_clean|
+  opts.on('--skip-clean', 'Skip cleaning upon completion') do |skip_clean|
     @options[:skip_clean] = skip_clean
   end
-  opts.on('--force', 'run oss-check even if binaries are equal') do |force|
+  opts.on('--force', 'Run oss-check even if binaries are equal') do |force|
     @options[:force] = force
   end
   opts.on('-v', '--[no-]verbose', 'Run verbosely') do |v|
@@ -45,6 +45,7 @@ end.parse!
 class Repo
   attr_accessor :name
   attr_accessor :github_location
+  attr_accessor :keep_config
   attr_accessor :config
   attr_accessor :commit_hash
   attr_accessor :branch_exit_value
@@ -52,9 +53,10 @@ class Repo
   attr_accessor :main_exit_value
   attr_accessor :main_duration
 
-  def initialize(name, github_location, config=nil)
+  def initialize(name, github_location, keep_config=false, config=nil)
     @name = name
     @github_location = github_location
+    @keep_config = keep_config
     @config = config
   end
 
@@ -75,8 +77,8 @@ class Repo
       faster_slower = 'slower'
       percent_change *= -1
     end
-    "Linting #{self} with this PR took #{@branch_duration}s " \
-    "vs #{@main_duration}s on main (#{percent_change.to_i}\% #{faster_slower})"
+    "Linting #{self} with this PR took #{@branch_duration} s " \
+    "vs #{@main_duration} s on `main` (#{percent_change.to_i}\% #{faster_slower})."
   end
 end
 
@@ -97,15 +99,12 @@ def fail(str)
   exit
 end
 
-def perform(*args)
-  commands = args
-  if @options[:verbose]
-    commands.each do |x|
-      puts(x)
-      system(x)
-    end
+def perform(command, dir: nil)
+  puts command if @options[:verbose]
+  if dir
+    Dir.chdir(dir) { perform(command) }
   else
-    commands.each { |x| `#{x}` }
+    system(command)
   end
 end
 
@@ -143,7 +142,9 @@ def setup_repos
     puts "Cloning #{repo}"
     perform("git clone #{repo.git_url} --depth 1 #{dir} 2> /dev/null")
     swiftlint_config = "#{dir}/.swiftlint.yml"
-    FileUtils.rm_rf(swiftlint_config)
+    if !repo.keep_config
+      FileUtils.rm_rf(swiftlint_config)
+    end
     if repo.config
       File.open(swiftlint_config, 'a') do |file|
         file.puts(repo.config)
@@ -208,24 +209,24 @@ def build(branch)
   dir = "#{@working_dir}/builds"
   target = branch == 'main' ? @effective_main_commitish : @options[:branch]
   if File.directory?(dir)
-    perform("cd #{dir}; git checkout #{target}")
+    perform("git checkout #{target}", dir: dir)
   else
     perform("git worktree add --detach #{dir} #{target}")
   end
 
-  build_command = "cd #{dir}; bazel build --config=release @SwiftLint//:swiftlint && mv bazel-bin/swiftlint swiftlint-#{branch}"
-
-  perform(build_command)
-  return if $?.success?
+  build_command = "bazel build --config=release @SwiftLint//:swiftlint"
 
   return_value = nil
   puts build_command if @options[:verbose]
-  Open3.popen3(build_command) do |_, stdout, _, wait_thr|
+  Open3.popen3(build_command, :chdir=>"#{dir}")  do |_, stdout, stderr, wait_thr|
     puts stdout.read.chomp
+    puts stderr.read.chomp
     return_value = wait_thr.value
   end
 
   fail "Could not build #{branch}" unless return_value.success?
+
+  perform("mv bazel-bin/swiftlint swiftlint-#{branch}", dir: dir)
 end
 
 def diff_and_report_changes_to_danger
@@ -233,8 +234,8 @@ def diff_and_report_changes_to_danger
 
   @repos.each do |repo|
     if repo.main_exit_value != repo.branch_exit_value
-      warn "This PR changed the exit value when running on #{repo.name}: " \
-           "(#{repo.main_exit_value} to #{repo.branch_exit_value})"
+      warn "This PR changed the exit value from #{repo.main_exit_value} to #{repo.branch_exit_value} when " \
+           "running in #{repo.name}."
       # If the exit value changed, don't show the fixes or regressions for this
       # repo because it's likely due to a crash, and all violations would be noisy
       next
@@ -286,6 +287,25 @@ def print_rules_changed
   end
 end
 
+def report_binary_size
+  size_branch = File.size("#{@working_dir}/builds/swiftlint-branch")
+  size_main = File.size("#{@working_dir}/builds/swiftlint-main")
+  if size_branch == size_main
+    message "Building this branch resulted in the same binary size as when built on `main`."
+  else
+    percent_change = 100 * (size_branch - size_main) / size_main
+    faster_slower = size_branch < size_main ? 'smaller' : 'larger'
+    in_kilo_bytes = ->(size) { (size / 1024.0).round(2) }
+    msg = "Building this branch resulted in a binary size of #{in_kilo_bytes.call(size_branch)} KiB " \
+          "vs #{in_kilo_bytes.call(size_main)} KiB when built on `main` (#{percent_change.to_i}\% #{faster_slower})."
+    if percent_change.abs < 2
+      message msg
+    else
+      warn msg
+    end
+  end
+end
+
 ################################
 # Script
 ################################
@@ -295,7 +315,7 @@ end
 @repos = [
   Repo.new('Aerial', 'JohnCoates/Aerial'),
   Repo.new('Alamofire', 'Alamofire/Alamofire'),
-  Repo.new('Brave', 'brave/brave-ios'),
+  Repo.new('Brave', 'brave/brave-core', false, 'included: ios/brave-ios'),
   Repo.new('DuckDuckGo', 'duckduckgo/iOS'),
   Repo.new('Firefox', 'mozilla-mobile/firefox-ios'),
   Repo.new('Kickstarter', 'kickstarter/ios-oss'),
@@ -306,9 +326,9 @@ end
   Repo.new('Quick', 'Quick/Quick'),
   Repo.new('Realm', 'realm/realm-swift'),
   Repo.new('Sourcery', 'krzysztofzablocki/Sourcery'),
-  Repo.new('Swift', 'apple/swift', 'included: stdlib'),
+  Repo.new('Swift', 'apple/swift', false, 'included: stdlib'),
   Repo.new('VLC', 'videolan/vlc-ios'),
-  Repo.new('Wire', 'wireapp/wire-ios', 'excluded: wire-ios/Templates/Viper'),
+  Repo.new('Wire', 'wireapp/wire-ios', false, 'excluded: wire-ios/Templates/Viper'),
   Repo.new('WordPress', 'wordpress-mobile/WordPress-iOS')
 ]
 
@@ -328,12 +348,15 @@ make_directory_structure
   build(branch)
 end
 
+# Compare binary size of both builds.
+report_binary_size
+
 unless @options[:force]
   full_version_branch = `#{@working_dir}/builds/swiftlint-branch version --verbose`
   full_version_main = `#{@working_dir}/builds/swiftlint-main version --verbose`
 
   if full_version_branch == full_version_main
-    message "Skipping OSSCheck because SwiftLint hasn't changed compared to 'main'"
+    message "Skipping OSS check because SwiftLint hasn't changed compared to `main`."
     # Clean up
     clean_up unless @options[:skip_clean]
     exit

@@ -20,7 +20,7 @@ struct TextConcatenationRule: Rule {
                     Text("foo")
                     Text("bar")
                 }
-            """)
+            """),
         ],
         triggeringExamples: [
             Example("""
@@ -35,7 +35,7 @@ struct TextConcatenationRule: Rule {
 
             Text("wow2")
                 .foregroundColor(.black)
-         """)
+         """),
         ]
     )
 }
@@ -51,7 +51,7 @@ private extension TextConcatenationRule {
             }
         }
 
-        func recursivelySearchForTextInitializerCall(_ node: any ExprSyntaxProtocol) -> FunctionCallExprSyntax? {
+        func recursivelySearchForTextInitializerCall(_ node: some ExprSyntaxProtocol) -> FunctionCallExprSyntax? {
             if let funcCall = node.as(FunctionCallExprSyntax.self) {
                 let isTextInit = funcCall.calledExpression.as(DeclReferenceExprSyntax.self)?.baseName.text == "Text"
 
@@ -74,7 +74,7 @@ private extension TextConcatenationRule {
                 Avoid concatenating Swift.Text elements with '+' because it breaks translations. \
                 Use AttributedString.init if you need to apply multiple styles inside a single string
                 """,
-                severity: .warning
+                severity: configuration.severity
             )
         }
     }

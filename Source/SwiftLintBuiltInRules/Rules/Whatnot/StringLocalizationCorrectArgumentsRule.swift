@@ -31,7 +31,7 @@ struct StringLocalizationCorrectArgumentsRule: SwiftSyntaxRule {
                     bundle: .module,
                     comment: "d"
                 )
-            """)
+            """),
         ],
         triggeringExamples: [
             Example("""
@@ -89,7 +89,7 @@ struct StringLocalizationCorrectArgumentsRule: SwiftSyntaxRule {
                     bundle: .module,
                     comment: "wow"
                 )
-            """)
+            """),
         ]
     )
 
@@ -185,7 +185,7 @@ private extension StringLocalizationCorrectArgumentsRule.Visitor {
         .init(
             position: position,
             reason: reason,
-            severity: .warning
+            severity: configuration.severity
         )
     }
 }

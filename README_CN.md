@@ -14,13 +14,39 @@ SwiftLint Hook 了 [Clang](http://clang.llvm.org) 和 [SourceKit](http://www.jps
 
 ## 安装
 
-### 使用 [Homebrew](http://brew.sh/)：
+### 使用[Swift Package Manager](https://github.com/apple/swift-package-manager)
+
+SwiftLint 可以用作[命令插件](#swift-package-command-plugin)或[构建工具插件](#build-tool-plugins)
+
+添加
+
+```swift
+.package(url: "https://github.com/SimplyDanny/SwiftLintPlugins", from: "<version>")
+```
+
+到你的 `Package.swift` 文件中，以自动获取 SwiftLint 的最新版本，或者将依赖项固定到特定版本：
+
+```swift
+.package(url: "https://github.com/SimplyDanny/SwiftLintPlugins", exact: "<version>")
+```
+
+其中，用所需的最低版本或精确版本替换 `<version>`。
+
+### [Xcode Package Dependency](https://developer.apple.com/documentation/xcode/adding-package-dependencies-to-your-app)
+
+使用以下链接将 SwiftLint 作为包依赖添加到 Xcode 项目中：
+
+```bash
+https://github.com/SimplyDanny/SwiftLintPlugins
+```
+
+### 使用 [Homebrew](http://brew.sh/)
 
 ```
 brew install swiftlint
 ```
 
-### 使用 [CocoaPods](https://cocoapods.org)：
+### 使用 [CocoaPods](https://cocoapods.org)
 
 将如下代码添加到你的 Podfile 即可：
 
@@ -34,16 +60,17 @@ pod 'SwiftLint'
 
 请注意这会将 SwiftLint 二进制文件、所依赖的二进制文件和 Swift 二进制库安装到 `Pods/` 目录下，所以不推荐将此目录添加到版本控制系统（如 git）中进行跟踪。
 
-### 使用 [Mint](https://github.com/yonaskolb/mint)：
+### 使用 [Mint](https://github.com/yonaskolb/mint)
+
 ```
-$ mint install realm/SwiftLint
+mint install realm/SwiftLint
 ```
 
-### 使用安装包：
+### 使用安装包
 
 你也可以通过从[最新的 GitHub 发布地址](https://github.com/realm/SwiftLint/releases/latest)下载 `SwiftLint.pkg` 然后执行的方式安装 SwiftLint。
 
-### 编译源代码：
+### 编译源代码
 
 你也可以通过 clone SwiftLint 的 Git 仓库到本地然后执行
 `make install` (Xcode 15.0+) 以从源代码构建及安装。
@@ -115,7 +142,6 @@ swiftlint_deps()
 bazel run -c opt @SwiftLint//:swiftlint
 ```
 
-
 ## 用法
 
 ### 报告
@@ -137,7 +163,7 @@ Xcode 15 对 Build Settings 进行了重大更改，它将 `ENABLE_USER_SCRIPT_S
 
 如果你是在搭载 Apple 芯片的 Mac 上通过 Homebrew 安装的 SwiftLint，你可能会遇到这个警告：
 
-> warning: SwiftLint not installed, download from https://github.com/realm/SwiftLint
+> warning: SwiftLint not installed, download from <https://github.com/realm/SwiftLint>
 
 这是因为 Homebrew 在搭载 Apple 芯片的 Mac 上将二进制文件默认安装到了 `/opt/homebrew/bin`
 下。如果要让 Xcode 知道 SwiftLint 在哪，你可以在 Build Phase 中将
@@ -193,14 +219,14 @@ Xcode 构建工具插件。
 
 选择要添加修正的目标，打开 `Build Phases` 检查器。
 打开 `Run Build Tool Plug-ins` 并选择 `+` 按钮。
-从列表中选择 `SwiftLintPlugin` 并将其添加到项目中。
+从列表中选择 `SwiftLintBuildToolPlugin` 并将其添加到项目中。
 
 ![](https://raw.githubusercontent.com/realm/SwiftLint/main/assets/select-swiftlint-plugin.png)
 
 对于无人值守的使用场景（例如在 CI 上），可以通过以下方式禁用软件包和宏的验证对话框
 
 * 单独将 `-skipPackagePluginValidation` 和 `-skipMacroValidation` 传递到 `xcodebuild` 或者
-* 为那个用户使用 `defaults write com.apple.dt.Xcode IDESkipPackagePluginFingerprintValidatation -bool YES` 进行全局设置，然后写入 `defaults write com.apple.dt.Xcode IDESkipMacroFingerprintValidation -bool YES` 
+* 为那个用户使用 `defaults write com.apple.dt.Xcode IDESkipPackagePluginFingerprintValidatation -bool YES` 进行全局设置，然后写入 `defaults write com.apple.dt.Xcode IDESkipMacroFingerprintValidation -bool YES`
 
 _注意：这将隐含地信任所有的Xcode软件包插件，并绕过Xcode的软件包验证对话框。
        这对安全有影响。_
@@ -251,16 +277,19 @@ swiftlint(
 
 `swiftlint` 也可以在 [Docker](https://www.docker.com/) 上使用 `Ubuntu` 作为一个镜像使用。
 因此，第一次你需要使用下面的命令调用 docker 镜像：
+
 ```bash
 docker pull ghcr.io/realm/swiftlint:latest
 ```
 
 接下来，你只需在 docker 中运行`swiftlint`：
+
 ```bash
 docker run -it -v `pwd`:`pwd` -w `pwd` ghcr.io/realm/swiftlint:latest
 ```
 
 这将在你现在所在的文件夹（`pwd`）中执行`swiftlint`，显示类似的输出：
+
 ```bash
 $ docker run -it -v `pwd`:`pwd` -w `pwd` ghcr.io/realm/swiftlint:latest
 Linting Swift files in current working directory
@@ -317,7 +346,7 @@ SwiftLint 工作于 SourceKit 这一层，所以 Swift 版本发生变化时它�
 你可能也给反向 DNS 符号设置了 `TOOLCHAINS` 环境变量来标记一个特定的 Swift 工具集版本：
 
 ```shell
-$ TOOLCHAINS=com.apple.dt.toolchain.Swift_2_3 swiftlint autocorrect
+TOOLCHAINS=com.apple.dt.toolchain.Swift_2_3 swiftlint autocorrect
 ```
 
 在 Linux 上，SourceKit 默认需要位于 `/usr/lib/libsourcekitdInProc.so` 或者通过 `LINUX_SOURCEKIT_LIB_PATH` 环境变量进行指定。
@@ -339,6 +368,7 @@ repos:
 将 `rev` 调整为您选择的 SwiftLint 版本。可以使用 `pre-commit autoupdate` 来更新到当前版本。
 
 SwiftLint 可以使用 `entry` 进行配置以应用修复和报错：
+
 ```yaml
 -   repo: https://github.com/realm/SwiftLint
     rev: 0.50.3

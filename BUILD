@@ -7,11 +7,8 @@ load(
     "swift_library",
     "universal_swift_compiler_plugin",
 )
-
-config_setting(
-    name = "strict_concurrency_builtin_rules",
-    values = {"define": "strict_concurrency_builtin_rules=true"},
-)
+load("@build_bazel_rules_cc//cc:cc_library.bzl", "cc_library")
+load("@build_bazel_rules_shell//shell:sh_test.bzl", "sh_test")
 
 bool_flag(
     name = "universal_tools",
@@ -26,13 +23,29 @@ config_setting(
 )
 
 copts = [
+    "-warnings-as-errors",
     "-enable-upcoming-feature",
     "ExistentialAny",
+    "-enable-upcoming-feature",
+    "ConciseMagicFile",
+    "-enable-upcoming-feature",
+    "ImportObjcForwardDeclarations",
+    "-enable-upcoming-feature",
+    "ForwardTrailingClosures",
+    "-enable-upcoming-feature",
+    "ImplicitOpenExistentials",
+    "-Xfrontend",
+    "-warn-implicit-overrides",
 ]
 
 strict_concurrency_copts = [
     "-Xfrontend",
     "-strict-concurrency=complete",
+]
+
+targeted_concurrency_copts = [
+    "-Xfrontend",
+    "-strict-concurrency=targeted",
 ]
 
 # Targets
@@ -69,7 +82,7 @@ swift_library(
     name = "SwiftLintCore",
     package_name = "SwiftLint",
     srcs = glob(["Source/SwiftLintCore/**/*.swift"]),
-    copts = copts,  # TODO: strict_concurrency_copts
+    copts = copts + strict_concurrency_copts,
     module_name = "SwiftLintCore",
     plugins = select({
         ":universal_tools_config": [":SwiftLintCoreMacros"],
@@ -95,10 +108,7 @@ swift_library(
     name = "SwiftLintBuiltInRules",
     package_name = "SwiftLint",
     srcs = glob(["Source/SwiftLintBuiltInRules/**/*.swift"]),
-    copts = copts + select({
-        ":strict_concurrency_builtin_rules": strict_concurrency_copts,
-        "//conditions:default": [],
-    }),
+    copts = copts + strict_concurrency_copts,
     module_name = "SwiftLintBuiltInRules",
     visibility = ["//visibility:public"],
     deps = [
@@ -127,37 +137,27 @@ swift_library(
     srcs = glob(
         ["Source/SwiftLintFramework/**/*.swift"],
     ),
-    copts = copts + strict_concurrency_copts,
+    copts = copts + targeted_concurrency_copts,
     module_name = "SwiftLintFramework",
     visibility = ["//visibility:public"],
     deps = [
         ":SwiftLintBuiltInRules",
         ":SwiftLintCore",
         ":SwiftLintExtraRules",
-    ],
-)
-
-swift_library(
-    name = "swiftlint.library",
-    package_name = "SwiftLint",
-    srcs = glob(["Source/swiftlint/**/*.swift"]),
-    copts = copts,  # TODO: strict_concurrency_copts
-    module_name = "swiftlint",
-    visibility = ["//visibility:public"],
-    deps = [
-        ":SwiftLintFramework",
         "@com_github_johnsundell_collectionconcurrencykit//:CollectionConcurrencyKit",
-        "@sourcekitten_com_github_apple_swift_argument_parser//:ArgumentParser",
-        "@swiftlint_com_github_scottrhoyt_swifty_text_table//:SwiftyTextTable",
     ],
 )
 
 swift_binary(
     name = "swiftlint",
+    package_name = "SwiftLint",
+    srcs = glob(["Source/swiftlint/**/*.swift"]),
     copts = copts + strict_concurrency_copts,
     visibility = ["//visibility:public"],
     deps = [
-        ":swiftlint.library",
+        ":SwiftLintFramework",
+        "@sourcekitten_com_github_apple_swift_argument_parser//:ArgumentParser",
+        "@swiftlint_com_github_scottrhoyt_swifty_text_table//:SwiftyTextTable",
     ],
 )
 
@@ -192,9 +192,13 @@ cc_library(
 
 filegroup(
     name = "LintInputs",
-    srcs = glob(["Source/**/*.swift"]) + [
+    srcs = glob([
+        "Plugins/**/*.swift",
+        "Source/**/*.swift",
+    ]) + [
         ".swiftlint.yml",
-        "//Tests:SwiftLintFrameworkTestsData",
+        "Package.swift",
+        "//Tests:TestSources",
     ],
     visibility = ["//Tests:__subpackages__"],
 )

@@ -1,5 +1,5 @@
-import Dispatch
-import Foundation
+@preconcurrency import Dispatch
+@preconcurrency import Foundation
 
 private let outputQueue: DispatchQueue = {
     let queue = DispatchQueue(
@@ -17,7 +17,10 @@ private let outputQueue: DispatchQueue = {
 
 private func setupAtExitHandler() {
     atexit {
-        outputQueue.sync(flags: .barrier) {}
+        // Ensure all queued output is written before exiting.
+        outputQueue.sync(flags: .barrier) {
+            // Just wait.
+        }
     }
 }
 
