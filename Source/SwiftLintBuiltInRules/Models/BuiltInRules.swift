@@ -9,6 +9,7 @@ public let builtInRules: [any Rule.Type] = [
     ArrayInitRule.self,
     AsyncWithoutAwaitRule.self,
     AttributeNameSpacingRule.self,
+    BackendIDManipulationRule.self,
     AttributesRule.self,
     BalancedXCTestLifecycleRule.self,
     BlanketDisableCommandRule.self,

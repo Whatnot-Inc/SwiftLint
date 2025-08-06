@@ -74,7 +74,7 @@ struct NameConfiguration<Parent: Rule>: RuleConfiguration, InlinableOptionType {
         if let validatesStartWithLowercase = configurationDict[$validatesStartWithLowercase.key] as? String {
             try self.validatesStartWithLowercase.apply(configuration: validatesStartWithLowercase)
         } else if let validatesStartWithLowercase = configurationDict[$validatesStartWithLowercase.key] as? Bool {
-            // TODO: [05/10/2025] Remove deprecation warning after ~2 years.
+            // TODO: [05/10/2027] Remove deprecation warning after ~2 years.
             self.validatesStartWithLowercase = validatesStartWithLowercase ? .error : .off
             Issue.genericWarning(
                 """
