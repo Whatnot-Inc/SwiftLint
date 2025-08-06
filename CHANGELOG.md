@@ -1,16 +1,54 @@
 # Changelog
 
-## Main
+## 0.59.1: Crisp Spring Clean
 
 ### Breaking
 
-* None.
+* Remove `opaque_over_existential` opt-in rule as it causes too many false positives
+  that can even lead to wrong-compilable code when `any` is required by a protocol the
+  type conforms to. In this case, using `some` can be totally valid even though the
+  protocol requirement is not reimplemented for the type causing behavioral changes.  
+  [SimplyDanny](https://github.com/SimplyDanny)
 
 ### Experimental
 
 * None.
 
 ### Enhancements
+
+* Add new `allowed_numbers` option to the `no_magic_numbers` rule.  
+  [Martin Redington](https://github.com/mildm8nnered)
+
+### Bug Fixes
+
+* None.
+
+## 0.59.0: Crisp Spring Clean
+
+### Breaking
+
+* Remove tracking of correction positions. Print the number of corrections applied instead.  
+  [SimplyDanny](https://github.com/SimplyDanny)
+
+### Experimental
+
+* Introduce `swiftlint-dev` command line tool that's intended to help to develop SwiftLint by encapsulating repetitive
+  tasks. It can already be used to generate templates for new rules including optional configurations and tests. Run
+  `swift run swiftlint-dev rules template -h` to get an overview of the command's usage and the available customization
+  options. To register new rules, run `swift run swiftlint-dev rules register`.  
+  [SimplyDanny](https://github.com/SimplyDanny)
+
+### Enhancements
+
+* Add new option `ignores_multiline_strings` to `line_length` rule. It allows to ignore too long
+  lines inside of multiline strings.  
+  [thisIsTheFoxe](https://github.com/thisisthefoxe)
+  [#2689](https://github.com/realm/SwiftLint/issues/2689)
+
+* Ignore `UIColor` initializers in `no_magic_numbers` rule.  
+  [suojae](https://github.com/suojae)
+  [hyeffie](https://github.com/hyeffie)
+  [#5183](https://github.com/realm/SwiftLint/issues/5183)
 
 * Exclude types with a `@Suite` attribute and functions annotated with `@Test` from `no_magic_numbers` rule.
   Also treat a type as a `@Suite` if it contains `@Test` functions.  
@@ -21,10 +59,28 @@
   function parameter can be replaced with an opaque `some` type.  
   [SimplyDanny](https://github.com/SimplyDanny)
 
+* Add a new rationale property to rule descriptions, providing a more expansive
+  description of the motivation behind each rule.  
+  [Martin Redington](https://github.com/mildm8nnered)
+  [#5681](https://github.com/realm/SwiftLint/issues/5681)
+
+* Add new `allowed_types` option to `legacy_objc_type` rule to ignore certain types.  
+  [kapitoshka438](https://github.com/kapitoshka438)
+  [#3723](https://github.com/realm/SwiftLint/issues/3723)
+
+* Add `excluded_methods` configuration option to `unneeded_override` to opt out checking methods with a given name.
+  For example, this helps avoid a conflict with `balanced_xctest_lifecycle` where one of `setUp/tearDown`
+  is empty but the other is not.  
+  [jaredgrubb](https://github.com/jaredgrubb)
+
 ### Bug Fixes
 
 * Fix issue referencing the Tests package from another Bazel workspace.  
   [jszumski](https://github.com/jszumski)
+
+* Fix crash when a disable command is preceded by a unicode character.  
+  [SimplyDanny](https://github.com/SimplyDanny)
+  [#5945](https://github.com/realm/SwiftLint/issues/5945)
 
 * Allow severity of `duplicate_imports` rule to be configurable.  
   [SimplyDanny](https://github.com/SimplyDanny)
@@ -37,6 +93,14 @@
 * Consider types restricting a protocol to classes in composed inherited types in `class_delegate_protocol` rule.  
   [SimplyDanny](https://github.com/SimplyDanny)
   [#5982](https://github.com/realm/SwiftLint/issues/5982)
+
+* Rewrite `type_contents_order` rule with SwiftSyntax fixing an issue with experimental availability macros.  
+  [SimplyDanny](https://github.com/SimplyDanny)
+  [#5999](https://github.com/realm/SwiftLint/issues/5999)
+
+* Update `file_name` rule to consider `macro` types.  
+  [fraioli](https://github.com/fraioli)
+  [#6026](https://github.com/realm/SwiftLint/issues/6026)
 
 ## 0.58.2: New Year’s Fresh Fold
 

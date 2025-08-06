@@ -1,3 +1,5 @@
+// swiftlint:disable file_length
+
 import SwiftSyntax
 
 @SwiftSyntaxRule(foldExpressions: true, optIn: true)
@@ -110,6 +112,35 @@ struct NoMagicNumbersRule: Rule {
             let a = 2
             #endif
             """),
+            Example("""
+            let myColor: UIColor = UIColor(red: 0.6, green: 1.0, blue: 0.2, alpha: 0.52)
+            """),
+            Example("""
+            let colorLiteral = #colorLiteral(red: 0.7019607843, green: 0.7019607843, blue: 0.7019607843, alpha: 1)
+            """),
+            Example("""
+            let yourColor: UIColor = UIColor(hue: 0.9, saturation: 0.6, brightness: 0.333334, alpha: 1.0)
+            """, excludeFromDocumentation: true),
+            Example("""
+            let systemColor = UIColor(displayP3Red: 0.3, green: 0.8, blue: 0.5, alpha: 0.75)
+            """, excludeFromDocumentation: true),
+            Example("""
+            func createColor() -> UIColor {
+                return UIColor(white: 0.5, alpha: 0.8)
+            }
+            """, excludeFromDocumentation: true),
+            Example("""
+            let memberColor = UIColor.init(red: 0.5, green: 0.3, blue: 0.9, alpha: 1.0)
+            """, excludeFromDocumentation: true),
+            Example("""
+            func createMemberColor() -> UIColor {
+                return UIColor.init(hue: 0.2, saturation: 0.8, brightness: 0.7, alpha: 0.5)
+            }
+            """, excludeFromDocumentation: true),
+            Example("let a = b + 2", configuration: ["allowed_numbers": [2]], excludeFromDocumentation: true),
+            Example("let a = b + 2", configuration: ["allowed_numbers": [2.0]], excludeFromDocumentation: true),
+            Example("let a = b + 1", configuration: ["allowed_numbers": [2.0]], excludeFromDocumentation: true),
+            Example("let a = b + 2.5", configuration: ["allowed_numbers": [2.5]], excludeFromDocumentation: true),
         ],
         triggeringExamples: [
             Example("foo(↓321)"),
@@ -150,6 +181,7 @@ struct NoMagicNumbersRule: Rule {
             f(↓4.0)
             #endif
             """),
+            Example("let a = b + ↓3", configuration: ["allowed_numbers": [2.0]], excludeFromDocumentation: true),
         ]
     )
 }
@@ -183,7 +215,7 @@ private extension NoMagicNumbersRule {
         }
 
         override func visitPost(_ node: FloatLiteralExprSyntax) {
-            guard node.literal.isMagicNumber else {
+            guard node.literal.isMagicNumber(configuration.allowedNumbers) else {
                 return
             }
             collectViolation(forNode: node)
@@ -201,7 +233,7 @@ private extension NoMagicNumbersRule {
         }
 
         override func visitPost(_ node: IntegerLiteralExprSyntax) {
-            guard node.literal.isMagicNumber else {
+            guard node.literal.isMagicNumber(configuration.allowedNumbers) else {
                 return
             }
             collectViolation(forNode: node)
@@ -224,6 +256,9 @@ private extension NoMagicNumbersRule {
                 return
             }
             if node.isOperandOfFreestandingShiftOperation() {
+                return
+            }
+            if node.isPartOfUIColorInitializer() {
                 return
             }
             let violation = node.positionAfterSkippingLeadingTrivia
@@ -262,11 +297,11 @@ private extension DeclGroupSyntax {
 }
 
 private extension TokenSyntax {
-    var isMagicNumber: Bool {
+    func isMagicNumber(_ allowedNumbers: Set<Double>) -> Bool {
         guard let number = Double(text.replacingOccurrences(of: "_", with: "")) else {
             return false
         }
-        if [0, 1, 100].contains(number) {
+        if allowedNumbers.contains(number) {
             return false
         }
         guard let grandparent = parent?.parent else {
@@ -323,6 +358,36 @@ private extension ExprSyntaxProtocol {
            let operatorSymbol = operation.operator.as(BinaryOperatorExprSyntax.self)?.operator.tokenKind,
            [.binaryOperator("<<"), .binaryOperator(">>")].contains(operatorSymbol) {
             return operation.parent?.isProtocol((any ExprSyntaxProtocol).self) != true
+        }
+        return false
+    }
+
+    func isPartOfUIColorInitializer() -> Bool {
+        guard let param = parent?.as(LabeledExprSyntax.self),
+              let label = param.label?.text else {
+            return false
+        }
+        let uiColorInitializerLabels = [
+            "white", "alpha", "red", "displayP3Red", "green", "blue", "hue",
+            "saturation", "brightness", "cgColor", "ciColor", "resource", "patternImage",
+        ]
+        if uiColorInitializerLabels.contains(label),
+           let call = param.parent?.as(LabeledExprListSyntax.self)?.parent?.as(FunctionCallExprSyntax.self) {
+            if let calledExpr = call.calledExpression.as(DeclReferenceExprSyntax.self),
+               calledExpr.baseName.text == "UIColor" {
+                return true
+            }
+            if let memberAccess = call.calledExpression.as(MemberAccessExprSyntax.self),
+               let baseExpr = memberAccess.base?.as(DeclReferenceExprSyntax.self),
+               baseExpr.baseName.text == "UIColor",
+               memberAccess.declName.baseName.text == "init" {
+                return true
+            }
+        }
+        if ["red", "green", "blue", "alpha"].contains(label),
+           let call = param.parent?.as(LabeledExprListSyntax.self)?.parent?.as(MacroExpansionExprSyntax.self),
+           call.macroName.text == "colorLiteral" {
+            return true
         }
         return false
     }

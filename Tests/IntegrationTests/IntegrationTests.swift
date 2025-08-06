@@ -16,7 +16,7 @@ private let config: Configuration = {
 final class IntegrationTests: SwiftLintTestCase {
     func testSwiftLintLints() throws {
         try XCTSkipUnless(
-            ProcessInfo.processInfo.environment["CI"] == nil,
+            ProcessInfo.processInfo.environment["SKIP_INTEGRATION_TESTS"] == nil,
             "Will be covered by separate linting job"
         )
         // This is as close as we're ever going to get to a self-hosting linter.
@@ -42,7 +42,7 @@ final class IntegrationTests: SwiftLintTestCase {
 
     func testSwiftLintAutoCorrects() throws {
         try XCTSkipUnless(
-            ProcessInfo.processInfo.environment["CI"] == nil,
+            ProcessInfo.processInfo.environment["SKIP_INTEGRATION_TESTS"] == nil,
             "Corrections are not verified in CI"
         )
         let swiftFiles = config.lintableFiles(
@@ -50,35 +50,10 @@ final class IntegrationTests: SwiftLintTestCase {
             forceExclude: false,
             excludeBy: .paths(excludedPaths: config.excludedPaths()))
         let storage = RuleStorage()
-        let corrections = swiftFiles.parallelFlatMap {
+        let corrections = swiftFiles.parallelMap {
             Linter(file: $0, configuration: config).collect(into: storage).correct(using: storage)
         }
-        for correction in corrections {
-            correction.location.file!.withStaticString {
-                XCTFail(correction.ruleDescription.description,
-                        file: $0, line: UInt(correction.location.line!))
-            }
-        }
-    }
-
-    func testDefaultConfigurations() {
-        let defaultConfig = Configuration(rulesMode: .allCommandLine).rules
-            .map { type(of: $0) }
-            .filter { $0.identifier != "custom_rules" }
-            .map { ruleType in
-                let rule = ruleType.init()
-                return """
-                    \(ruleType.identifier):
-                    \(rule.createConfigurationDescription().yaml().indent(by: 2))
-                      meta:
-                        opt-in: \(rule is any OptInRule)
-                    """
-            }
-            .joined(separator: "\n")
-        let referenceFile = URL(fileURLWithPath: #filePath)
-            .deletingLastPathComponent()
-            .appendingPathComponent("default_rule_configurations.yml")
-        XCTAssertEqual(defaultConfig + "\n", try String(contentsOf: referenceFile))
+        XCTAssert(corrections.allSatisfy { $0.isEmpty }, "Unexpected corrections have been applied")
     }
 }
 

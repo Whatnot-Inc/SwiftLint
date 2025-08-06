@@ -31,16 +31,14 @@ struct SyntacticSugarRule: CorrectableRule, SourceKitFreeRule {
         violations.flatMap { [$0] + flattenViolations($0.children) }
     }
 
-    func correct(file: SwiftLintFile) -> [Correction] {
+    func correct(file: SwiftLintFile) -> Int {
         let visitor = SyntacticSugarRuleVisitor(viewMode: .sourceAccurate)
         return visitor.walk(file: file) { visitor in
             var context = CorrectingContext(rule: self, file: file, contents: file.contents)
             context.correctViolations(visitor.violations)
-
             file.write(context.contents)
-
-            return context.corrections
-        }
+            return [context.numberOfCorrections]
+        }.reduce(0, +)
     }
 }
 
@@ -151,10 +149,10 @@ private final class SyntacticSugarRuleVisitor: SyntaxVisitor {
 
     override func visitPost(_ node: SameTypeRequirementSyntax) {
         // @_specialize(where S == ↓Array<Character>)
-        if let violation = violation(in: node.leftType) {
+        if let violation = violation(in: node.leftType.as(TypeSyntax.self)) {
             violations.append(violation)
         }
-        if let violation = violation(in: node.rightType) {
+        if let violation = violation(in: node.rightType.as(TypeSyntax.self)) {
             violations.append(violation)
         }
     }
@@ -180,7 +178,7 @@ private final class SyntacticSugarRuleVisitor: SyntaxVisitor {
         // If there's no type, check all inner generics like in the case of 'Box<Array<T>>'
         node.genericArgumentClause.arguments
             .lazy
-            .compactMap { self.violation(in: $0.argument) }
+            .compactMap { self.violation(in: $0.argument.as(TypeSyntax.self)) }
             .first
             .map { violations.append($0) }
     }
@@ -203,7 +201,7 @@ private final class SyntacticSugarRuleVisitor: SyntaxVisitor {
 
             // If there's no type, check all inner generics like in the case of 'Box<Array<T>>'
             guard let genericArguments = simpleType.genericArgumentClause else { return nil }
-            let innerTypes = genericArguments.arguments.compactMap { violation(in: $0.argument) }
+            let innerTypes = genericArguments.arguments.compactMap { violation(in: $0.argument.as(TypeSyntax.self)) }
             return innerTypes.first
         }
 
@@ -238,8 +236,10 @@ private final class SyntacticSugarRuleVisitor: SyntaxVisitor {
             correctionType = .dictionary(commaStart: lastArgumentEnd, commaEnd: comma.endPosition)
         }
 
-        let firstInnerViolation = violation(in: firstGenericType.argument)
-        let secondInnerViolation = generic.arguments.count > 1 ? violation(in: lastGenericType.argument) : nil
+        let firstInnerViolation = violation(in: firstGenericType.argument.as(TypeSyntax.self))
+        let secondInnerViolation = generic.arguments.count > 1
+            ? violation(in: lastGenericType.argument.as(TypeSyntax.self))
+            : nil
 
         return SyntacticSugarRuleViolation(
             position: node.positionAfterSkippingLeadingTrivia,
@@ -259,7 +259,7 @@ private struct CorrectingContext<R: Rule> {
     let rule: R
     let file: SwiftLintFile
     var contents: String
-    var corrections: [Correction] = []
+    var numberOfCorrections = 0
 
     mutating func correctViolations(_ violations: [SyntacticSugarRuleViolation]) {
         let sortedVolations = violations.sorted(by: { $0.correction.typeStart > $1.correction.typeStart })
@@ -309,9 +309,7 @@ private struct CorrectingContext<R: Rule> {
             correctViolations(violation.children)
             replaceCharacters(in: leftRange, with: "")
         }
-
-        let location = Location(file: file, byteOffset: ByteCount(correction.typeStart))
-        corrections.append(Correction(ruleDescription: type(of: rule).description, location: location))
+        numberOfCorrections += 1
     }
 
     private func typeIsOpaqueOrExistential(correction: SyntacticSugarRuleViolation.Correction) -> Bool {

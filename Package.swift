@@ -33,7 +33,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-argument-parser.git", .upToNextMajor(from: "1.2.1")),
-        .package(url: "https://github.com/swiftlang/swift-syntax.git", exact: "600.0.0"),
+        .package(url: "https://github.com/swiftlang/swift-syntax.git", exact: "601.0.0"),
         .package(url: "https://github.com/jpsim/SourceKitten.git", .upToNextMajor(from: "0.37.0")),
         .package(url: "https://github.com/jpsim/Yams.git", .upToNextMajor(from: "5.3.0")),
         .package(url: "https://github.com/scottrhoyt/SwiftyTextTable.git", .upToNextMajor(from: "0.9.0")),
@@ -48,6 +48,14 @@ let package = Package(
                 "CollectionConcurrencyKit",
                 "SwiftLintFramework",
                 "SwiftyTextTable",
+            ],
+            swiftSettings: swiftFeatures + strictConcurrency
+        ),
+        .executableTarget(
+            name: "swiftlint-dev",
+            dependencies: [
+                .product(name: "ArgumentParser", package: "swift-argument-parser"),
+                "SwiftLintFramework",
             ],
             swiftSettings: swiftFeatures + strictConcurrency
         ),
@@ -197,8 +205,8 @@ let package = Package(
 package.targets.append(
     .binaryTarget(
         name: "SwiftLintBinary",
-        url: "https://github.com/realm/SwiftLint/releases/download/0.58.2/SwiftLintBinary.artifactbundle.zip",
-        checksum: "f2de7c148dba39bf0ad55ada8f60b15dde383c643c69f7eb2448bd2ed532f659"
+        url: "https://github.com/realm/SwiftLint/releases/download/0.59.1/SwiftLintBinary.artifactbundle.zip",
+        checksum: "b9f915a58a818afcc66846740d272d5e73f37baf874e7809ff6f246ea98ad8a2"
     )
 )
 #endif

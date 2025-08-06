@@ -1,5 +1,5 @@
-// Generated using Sourcery 2.1.2 — https://github.com/krzysztofzablocki/Sourcery
-// DO NOT EDIT
+// GENERATED FILE. DO NOT EDIT!
+
 @testable import SwiftLintBuiltInRules
 @testable import SwiftLintCore
 import TestHelpers
@@ -838,12 +838,6 @@ final class ObjectLiteralRuleGeneratedTests: SwiftLintTestCase {
 final class OneDeclarationPerFileRuleGeneratedTests: SwiftLintTestCase {
     func testWithDefaultConfiguration() {
         verifyRule(OneDeclarationPerFileRule.description)
-    }
-}
-
-final class OpaqueOverExistentialParameterRuleGeneratedTests: SwiftLintTestCase {
-    func testWithDefaultConfiguration() {
-        verifyRule(OpaqueOverExistentialParameterRule.description)
     }
 }
 

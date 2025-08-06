@@ -4,6 +4,9 @@ import Foundation
 
 /// A type that can be converted into a human-readable representation.
 public protocol Documentable {
+    /// Indicate if the item has some content that is useful to document.
+    var hasContent: Bool { get }
+
     /// Convert an object to Markdown.
     ///
     /// - Returns: A Markdown string describing the object.
@@ -13,9 +16,6 @@ public protocol Documentable {
     ///
     /// - Returns: A "one liner" describing the object.
     func oneLiner() -> String
-
-    /// Indicate if the item has some content that is useful to document.
-    var hasContent: Bool { get }
 
     /// Convert an object to YAML as used in `.swiftlint.yml`.
     ///
@@ -623,10 +623,13 @@ extension Double: AcceptableByConfigurationElement {
     }
 
     public init(fromAny value: Any, context ruleID: String) throws {
-        guard let value = value as? Self else {
+        if let value = value as? Self {
+            self = value
+        } else if let value = value as? Int {
+            self = Double(value)
+        } else {
             throw Issue.invalidConfiguration(ruleID: ruleID)
         }
-        self = value
     }
 }
 

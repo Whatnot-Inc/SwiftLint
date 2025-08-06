@@ -70,6 +70,10 @@ file_name:
   excluded:
     - Exports.swift
     - GeneratedTests.swift
+    - Macros.swift
+    - Reporters+Register.swift
+    - Rules+Register.swift
+    - Rules+Template.swift
     - RuleConfigurationMacros.swift
     - SwiftSyntax+SwiftLint.swift
     - TestHelpers.swift

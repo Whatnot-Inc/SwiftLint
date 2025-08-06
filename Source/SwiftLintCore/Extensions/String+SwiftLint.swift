@@ -119,13 +119,40 @@ public extension String {
         return String(dropFirst(prefix.count))
     }
 
-    func indent(by spaces: Int) -> String {
-        components(separatedBy: "\n")
-            .map { String(repeating: " ", count: spaces) + $0 }
-            .joined(separator: "\n")
+    func indent(by spaces: Int, skipFirst: Bool = false, skipEmptyLines: Bool = true) -> String {
+        let lines = components(separatedBy: "\n")
+        if skipFirst, let firstLine = lines.first {
+            return firstLine + "\n" + lines.dropFirst().indent(by: spaces, skipEmptyLines: skipEmptyLines)
+        }
+        return lines.indent(by: spaces, skipEmptyLines: skipEmptyLines)
     }
 
     func linesPrefixed(with prefix: Self) -> Self {
         split(separator: "\n").joined(separator: "\n\(prefix)")
+    }
+
+    func characterPosition(of utf8Offset: Int) -> Int? {
+        guard utf8Offset != 0 else {
+            return 0
+        }
+        guard utf8Offset > 0, utf8Offset < lengthOfBytes(using: .utf8) else {
+            return nil
+        }
+        for (offset, index) in indices.enumerated() where self[...index].lengthOfBytes(using: .utf8) == utf8Offset {
+            return offset + 1
+        }
+        return nil
+    }
+}
+
+private extension Sequence where Element == String {
+    func indent(by spaces: Int, skipEmptyLines: Bool = true) -> String {
+        map { line in
+            if skipEmptyLines, line.isEmpty {
+                return line
+            }
+            return String(repeating: " ", count: spaces) + line
+        }
+        .joined(separator: "\n")
     }
 }

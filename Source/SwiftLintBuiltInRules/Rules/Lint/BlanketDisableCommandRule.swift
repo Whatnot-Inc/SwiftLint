@@ -9,6 +9,27 @@ struct BlanketDisableCommandRule: Rule, SourceKitFreeRule {
                      single line, or `swiftlint:enable` to re-enable the rules immediately after the violations \
                      to be ignored, instead of disabling the rule for the rest of the file.
                      """,
+        rationale: """
+        The intent of this rule is to prevent code like
+
+        ```
+        // swiftlint:disable force_unwrapping
+        let foo = bar!
+        ```
+
+        which disables the `force_unwrapping` rule for the remainder of the file, instead of just for the specific \
+        violation.
+
+        `next`, `this`, or `previous` can be used to restrict the disable command's scope to a single line, or it \
+        can be re-enabled after the violations.
+
+        To disable this rule in code you will need to do something like
+
+        ```
+        // swiftlint:disable:next blanket_disable_command
+        // swiftlint:disable force_unwrapping
+        ```
+        """,
         kind: .lint,
         nonTriggeringExamples: [
             Example("""
@@ -38,6 +59,7 @@ struct BlanketDisableCommandRule: Rule, SourceKitFreeRule {
             Example("""
             // swiftlint:enable ↓unused_import
             """),
+            Example("// swiftlint:disable all"),
         ].skipWrappingInCommentTests().skipDisableCommandTests()
      )
 
@@ -189,7 +211,7 @@ struct BlanketDisableCommandRule: Rule, SourceKitFreeRule {
 
 private extension Command {
     func location(of ruleIdentifier: String, in file: SwiftLintFile) -> Location {
-        var location = character
+        var location = range?.upperBound
         if line > 0, line <= file.lines.count {
             let line = file.lines[line - 1].content
             if let ruleIdentifierIndex = line.range(of: ruleIdentifier)?.lowerBound {
