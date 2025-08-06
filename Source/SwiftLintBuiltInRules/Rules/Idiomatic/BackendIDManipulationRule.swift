@@ -16,7 +16,7 @@ struct BackendIDManipulationRule: Rule {
             Example("identity.canonicalIDForAnalytics"), // Local Identity struct
             Example("func canonicalId() -> String { }"), // Method definition
             Example("Data(image.jpegData()).base64EncodedString()"), // Non-ID base64
-            Example("let split = text.split(separator: \":\")") // Non-ID string splitting
+            Example("let split = text.split(separator: \":\")"), // Non-ID string splitting
         ],
         triggeringExamples: [
             Example("let decoded = userID↓.canonicalId"),
@@ -28,7 +28,7 @@ struct BackendIDManipulationRule: Rule {
             Example("@EncodedWhatnotID var ↓userID: String"), // Property wrapper
             Example("EncodedWhatnotID(↓wrappedValue: \"test\")"), // Constructor
             Example("Data(\"UserNode:\\(id)\".utf8)↓.base64EncodedString()"), // Manual encoding
-            Example("Data(base64Encoded: idString)↓?.split(separator: \":\")") // Manual decoding
+            Example("Data(base64Encoded: idString)↓?.split(separator: \":\")"), // Manual decoding
         ]
     )
 }
@@ -90,10 +90,8 @@ extension BackendIDManipulationRule {
 
         // MARK: - Context Analysis
 
-
-
         private func isManualIDEncoding(_ base: ExprSyntax?) -> Bool {
-            guard let base = base else { return false }
+            guard let base else { return false }
             let baseText = base.description
 
             // Look for pattern: Data("ModelName:" + id).base64EncodedString()
