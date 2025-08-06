@@ -12,11 +12,13 @@ struct BackendIDManipulationRule: Rule {
         nonTriggeringExamples: [
             Example("let userID = user.id"), // Direct usage
             Example("if user.id == otherUser.id { }"), // Direct comparison
+            Example("let directUsage = listing.id"), // Direct ID usage
             Example("identity.unsignedIntIDForLiveXP"), // Local Identity struct
             Example("identity.canonicalIDForAnalytics"), // Local Identity struct
             Example("func canonicalId() -> String { }"), // Method definition
             Example("Data(image.jpegData()).base64EncodedString()"), // Non-ID base64
-            Example("let split = text.split(separator: \":\")"), // Non-ID string splitting
+            Example("let split = text.split(separator: \";\")"), // Non-ID string splitting (semicolon)
+            Example("let canonical = data.canonicalForm"), // Non-ID canonical usage
         ],
         triggeringExamples: [
             Example("let decoded = userID↓.canonicalId"),
